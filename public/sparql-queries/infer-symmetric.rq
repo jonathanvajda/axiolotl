@@ -1,0 +1,14 @@
+
+### Symmetric Relationships Inference Query
+# infers Symmetric relationships in an ontology.
+# It finds all properties that are Symmetric of other properties.
+
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+INSERT {
+    ?y ?p ?x .
+    }
+WHERE {
+    ?x ?p ?y .
+    ?p a owl:SymmetricProperty .
+    }

@@ -1,0 +1,14 @@
+
+### Transitive Relationships Inference Query
+# infers transitive relationships in an ontology.
+# It finds all properties that are transitive of other properties.
+
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+INSERT {
+    ?x ?p ?z .
+}
+WHERE { ?x ?p ?y .
+    ?y ?p ?z .
+    ?p a owl:TransitiveProperty .
+}

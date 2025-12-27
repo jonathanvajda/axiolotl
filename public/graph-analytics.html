@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IRI Path Finder — shortest paths in RDF graphs</title>
+  <style>
+    :root {
+      --bg: #0b0f14; --card: #111827; --muted: #94a3b8; --text: #e5e7eb; --accent: #60a5fa; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+    }
+    html, body { height: 100%; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 24px; margin: 0 0 12px; letter-spacing: .2px; }
+    .sub { color: var(--muted); margin-bottom: 18px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { background: var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+    label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type="text"], textarea, select { width: 100%; background: #0f172a; color: var(--text); border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 10px 12px; outline: none; }
+    textarea { min-height: 90px; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .row-3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .btns { display:flex; flex-wrap: wrap; gap: 10px; }
+    button { background: #0f172a; color: var(--text); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+    button.primary { background: var(--accent); border-color: transparent; color: #0b1220; font-weight: 600; }
+    .pill { display:inline-flex; align-items:center; gap:8px; background:#0f172a; border:1px solid rgba(255,255,255,.08); border-radius:999px; padding:6px 10px; font-size:12px; }
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .log { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; white-space: pre-wrap; background:#0a1220; border:1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 10px; min-height: 80px; }
+    .kv { display:grid; grid-template-columns: 220px 1fr; gap:8px; }
+    .w-100 { width: 100%; }
+    .nowrap { white-space: nowrap; }
+    .small { font-size: 12px; }
+    .badge { font-size:11px; background:#0a1220; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.08); }
+    .list { list-style: none; padding:0; margin:8px 0 0; }
+    .edge { color: #93c5fd; }
+    .node { color: #a7f3d0; }
+    .error { color: var(--err); }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; }
+  </style>
+  <!-- Libraries: N3 for Turtle/N-Triples/N-Quads; jsonld for JSON-LD -> N-Quads; rdflib for RDF/XML fallback -->
+  <script src="https://cdn.jsdelivr.net/npm/n3@1.17.3/browser/n3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsonld@8.3.2/dist/jsonld.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/rdflib@2.2.13/dist/rdflib.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <h1>IRI Path Finder</h1>
+    <div class="sub">Load an ontology/graph file, pick two IRIs (or an IRI and a literal), optionally constrain predicates, and compute the shortest path or enumerate paths. All in-browser.</div>
+
+    <div class="row">
+      <div class="card">
+        <div class="row-3">
+          <div>
+            <label>Graph file (TTL, NT/NQ, JSON-LD, RDF/XML)</label>
+            <input id="file" type="file" accept=".ttl,.nt,.nq,.trig,.json,.jsonld,.rdf,.owl,.xml,.n3,.ttl.gz,.nt.gz" />
+          </div>
+          <div>
+            <label>Format (optional override)</label>
+            <select id="format">
+              <option value="auto">Auto-detect</option>
+              <option value="text/turtle">Turtle / N3</option>
+              <option value="application/n-triples">N-Triples / N-Quads</option>
+              <option value="application/ld+json">JSON-LD</option>
+              <option value="application/rdf+xml">RDF/XML</option>
+            </select>
+          </div>
+          <div>
+            <label>Base IRI (for resolving relative IRIs)</label>
+            <input id="baseIri" type="text" placeholder="http://example.org/" />
+          </div>
+        </div>
+
+        <div class="row-3" style="margin-top:12px;">
+          <div>
+            <label>Start node (IRI or literal)</label>
+            <input id="start" type="text" placeholder="<http://example.org/A> or literal like 42 or \"Alice\"" />
+          </div>
+          <div>
+            <label>Goal node (IRI or literal)</label>
+            <input id="goal" type="text" placeholder="<http://example.org/B> or literal" />
+          </div>
+          <div>
+            <label>Edge direction</label>
+            <select id="edgeMode">
+              <option value="directed">Directed (subject → object)</option>
+              <option value="undirected">Undirected (allow traversing both directions)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <div class="row-3">
+            <div>
+              <label>Predicate filter mode</label>
+              <select id="predMode">
+                <option value="all">All predicates</option>
+                <option value="list">Only these predicates</option>
+                <option value="objectProps">Only owl:ObjectProperty (from data)</option>
+                <option value="subpropTree">Descendants of these root properties</option>
+              </select>
+            </div>
+            <div>
+              <label>Allowed predicates (one per line)</label>
+              <textarea id="predList" placeholder="http://purl.org/dc/terms/creator\nhttp://schema.org/parent"></textarea>
+            </div>
+            <div>
+              <label>Subproperty roots (one per line)</label>
+              <textarea id="subpropRoots" placeholder="http://example.org/relatedTo\nhttp://schema.org/knows"></textarea>
+            </div>
+          </div>
+
+          <div class="row-3" style="margin-top:12px;">
+            <div>
+              <label>Max depth (for search)</label>
+              <input id="maxDepth" type="number" min="1" value="8" />
+              <div class="muted">Protects against infinite/huge graphs</div>
+            </div>
+            <div>
+              <label>Max paths (when enumerating all)</label>
+              <input id="maxPaths" type="number" min="1" value="50" />
+            </div>
+            <div>
+              <label>Include literal nodes</label>
+              <select id="includeLiterals">
+                <option value="yes">Yes</option>
+                <option value="no" selected>No (IRIs only)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="btns" style="margin-top:12px;">
+          <button class="primary" id="btnLoad">Load graph</button>
+          <button id="btnShortest">Find shortest path</button>
+          <button id="btnAll">Find all paths</button>
+          <button id="btnSparql">Generate SPARQL for shortest path</button>
+          <span class="pill"><span id="stats">No graph loaded</span></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <label>Logs</label>
+        <div id="logs" class="log"></div>
+        <div class="grid-2" style="margin-top:12px;">
+          <div>
+            <label>Shortest path (ordered)</label>
+            <ol id="shortest" class="list"></ol>
+          </div>
+          <div>
+            <label>All paths (limited)</label>
+            <ol id="allpaths" class="list"></ol>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>SPARQL query for the shortest path</label>
+          <textarea id="sparql" class="mono" placeholder="Click 'Generate SPARQL' after computing a path"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+<script src="lib/n3.min.js"></script>
+<script src="lib/rdflib.min.js"></script>
+<script src="lib/comunica-browser.js"></script>
+<script src="lib/idb.min.js"></script>
+<script src="lib/comunica-indexeddb-bridge.js"></script>
+<script src="indexeddb-triplestore.js"></script>
+
+<script>
+(function(){
+  // --- State ---
+  const state = {
+    quads: [], // { s,p,o,g }
+    nodes: new Set(),
+    preds: new Set(),
+    subjToEdges: new Map(), // subject IRI/Literal -> [{p, o}]
+    objToEdges: new Map(),  // reverse index for undirected traversal
+    subPropIndex: new Map(), // p -> [children]
+    objectProps: new Set(),  // owl:ObjectProperty IRIs in data
+    loadedName: null,
+  };
+
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const logEl = $('#logs');
+  const statsEl = $('#stats');
+
+  function log(msg, level='info') {
+    const color = level==='error' ? 'error' : level==='warn' ? 'warn' : 'muted';
+    const prefix = level==='error' ? '✖' : level==='warn' ? '⚠' : '•';
+    logEl.textContent += `${prefix} ${msg}\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function clearLogs(){ logEl.textContent=''; }
+
+  // --- Parsing helpers ---
+  function detectFormatByName(name) {
+    if (!name) return 'auto';
+    const n = name.toLowerCase();
+    if (n.endsWith('.ttl') || n.endsWith('.n3') || n.endsWith('.trig')) return 'text/turtle';
+    if (n.endsWith('.nt') || n.endsWith('.nq')) return 'application/n-triples';
+    if (n.endsWith('.json') || n.endsWith('.jsonld')) return 'application/ld+json';
+    if (n.endsWith('.rdf') || n.endsWith('.owl') || n.endsWith('.xml')) return 'application/rdf+xml';
+    return 'auto';
+  }
+
+  function iri(str) {
+    // Accepts <IRI> or bare IRI; returns a canonical string form.
+    const s = String(str || '').trim();
+    if (!s) return '';
+    if (s.startsWith('<') && s.endsWith('>')) return s.slice(1, -1);
+    // Quote literals: "foo" or number detection
+    if (s.startsWith('"') && s.endsWith('"')) return s; // literal
+    if (/^[-+]?[0-9]+(\.[0-9]+)?$/.test(s)) return s; // numeric literal-ish
+    return s; // assume IRI
+  }
+
+  function isLiteralTerm(val){
+    // crude heuristic: quoted string, or numeric without angle brackets
+    if (val == null) return false;
+    const s = String(val);
+    return (s.startsWith('"') && s.endsWith('"')) || (/^[-+]?[0-9]+(\.[0-9]+)?$/.test(s));
+  }
+
+  // Convert RDFlib statements to N3-like quad objects
+  function rdflibStatementsToQuads(statements) {
+    const quads = [];
+    for (const st of statements) {
+      const s = st.subject.termType === 'BlankNode' ? ('_:' + st.subject.value) : st.subject.value;
+      const p = st.predicate.value;
+      const o = st.object.termType === 'BlankNode' ? ('_:' + st.object.value) : (st.object.termType === 'Literal' ? JSON.stringify(st.object.value) : st.object.value);
+      quads.push({ s, p, o, g: st.why && st.why.value ? st.why.value : undefined });
+    }
+    return quads;
+  }
+
+  async function parseFileToQuads(file, overrideFormat, baseIRI) {
+    const name = file?.name || 'graph';
+    const fmt = overrideFormat && overrideFormat !== 'auto' ? overrideFormat : detectFormatByName(name);
+    const text = await file.text();
+
+    // JSON-LD -> N-Quads -> quads
+    if (fmt === 'application/ld+json' || (fmt==='auto' && text.trim().startsWith('{'))) {
+      log(`Parsing as JSON-LD…`);
+      const nquads = await jsonld.toRDF(JSON.parse(text), { format: 'application/n-quads', base: baseIRI || undefined });
+      const parser = new N3.Parser({ format: 'N-Quads', baseIRI: baseIRI || undefined });
+      const quads = [];
+      parser.parse(nquads, (error, quad, prefixes) => {
+        if (error) throw error;
+        if (quad) quads.push({ s: quad.subject.id, p: quad.predicate.id, o: quad.object.termType === 'Literal' ? JSON.stringify(quad.object.value) : quad.object.id, g: quad.graph.id });
+      });
+      return quads;
+    }
+
+    // Turtle / N3 / TriG / N-Triples / N-Quads
+    if (fmt === 'text/turtle' || fmt === 'application/n-triples' || fmt === 'auto') {
+      // Try N3 first; it can parse most text syntaxes except RDF/XML
+      try {
+        log(`Parsing as ${fmt==='text/turtle' ? 'Turtle/N3' : (fmt==='application/n-triples' ? 'N-Triples/N-Quads' : 'Turtle/N3 (auto)')}…`);
+        const parser = new N3.Parser({ format: fmt==='application/n-triples' ? 'N-Triples' : undefined, baseIRI: baseIRI || undefined });
+        const quads = [];
+        parser.parse(text, (error, quad, prefixes) => {
+          if (error) throw error;
+          if (quad) quads.push({ s: quad.subject.id, p: quad.predicate.id, o: quad.object.termType === 'Literal' ? JSON.stringify(quad.object.value) : quad.object.id, g: quad.graph.id });
+        });
+        if (quads.length > 0) return quads;
+      } catch(e) {
+        log(`N3 parse attempt did not succeed; will try RDF/XML if appropriate.`, 'warn');
+        // fallthrough to RDF/XML
+      }
+    }
+
+    // RDF/XML via rdflib
+    if (fmt === 'application/rdf+xml' || /<rdf:RDF[\s>]/.test(text)) {
+      log(`Parsing as RDF/XML via rdflib…`);
+      const store = $rdf.graph();
+      const base = baseIRI || 'http://example.org/';
+      try {
+        $rdf.parse(text, store, base, 'application/rdf+xml');
+      } catch (e) {
+        log(`RDF/XML parse failed: ${e.message || e}`, 'error');
+        throw e;
+      }
+      return rdflibStatementsToQuads(store.statements);
+    }
+
+    throw new Error('Unsupported format or failed to parse. Try selecting a format override or check file syntax.');
+  }
+
+  // --- Graph building & indexes ---
+  function buildIndexes(quads, includeLiterals) {
+    state.nodes.clear();
+    state.preds.clear();
+    state.subjToEdges.clear();
+    state.objToEdges.clear();
+    state.subPropIndex.clear();
+    state.objectProps.clear();
+
+    const subjToEdges = state.subjToEdges;
+    const objToEdges = state.objToEdges;
+
+    for (const q of quads) {
+      const {s, p, o} = q;
+      state.preds.add(p);
+      // capture owl:ObjectProperty
+      if (p === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' && o === 'http://www.w3.org/2002/07/owl#ObjectProperty') {
+        state.objectProps.add(s);
+      }
+      // subPropertyOf tree
+      if (p === 'http://www.w3.org/2000/01/rdf-schema#subPropertyOf') {
+        const child = s, parent = o;
+        const arr = state.subPropIndex.get(parent) || [];
+        arr.push(child);
+        state.subPropIndex.set(parent, arr);
+      }
+
+      // Build adjacency lists, honoring literal inclusion
+      const allowLiteralEdge = (includeLiterals === 'yes') || (!isLiteralTerm(o));
+      if (allowLiteralEdge) {
+        state.nodes.add(s); state.nodes.add(o);
+        const list = subjToEdges.get(s) || [];
+        list.push({ p, o });
+        subjToEdges.set(s, list);
+        // Reverse index for undirected traversal
+        const rev = objToEdges.get(o) || [];
+        rev.push({ p, s });
+        objToEdges.set(o, rev);
+      }
+    }
+
+    statsEl.textContent = `${state.nodes.size} nodes • ${state.preds.size} predicates • ${quads.length} triples`;
+  }
+
+  function expandSubProps(roots) {
+    // BFS over rdfs:subPropertyOf to collect all descendants
+    const result = new Set();
+    const q = [...roots];
+    while (q.length) {
+      const cur = q.shift();
+      if (result.has(cur)) continue;
+      result.add(cur);
+      const kids = state.subPropIndex.get(cur) || [];
+      for (const k of kids) if (!result.has(k)) q.push(k);
+    }
+    return result;
+  }
+
+  function allowedPredicateSet(mode, listText, subpropRootsText) {
+    if (mode === 'all') return null; // null => allow all
+    if (mode === 'list') {
+      const s = new Set(listText.split(/\r?\n/).map(x=>x.trim()).filter(Boolean));
+      return s.size ? s : null;
+    }
+    if (mode === 'objectProps') {
+      return new Set(state.objectProps);
+    }
+    if (mode === 'subpropTree') {
+      const roots = new Set(subpropRootsText.split(/\r?\n/).map(x=>x.trim()).filter(Boolean));
+      if (!roots.size) return null;
+      const expanded = expandSubProps(roots);
+      return expanded.size ? expanded : null;
+    }
+    return null;
+  }
+
+  // --- Search algorithms ---
+  function neighborsOf(node, edgeMode, allowedPreds) {
+    const outs = state.subjToEdges.get(node) || [];
+    const next = [];
+    for (const {p, o} of outs) {
+      if (!allowedPreds || allowedPreds.has(p)) next.push({ via: p, to: o, dir: '→' });
+    }
+    if (edgeMode === 'undirected') {
+      const ins = state.objToEdges.get(node) || [];
+      for (const {p, s} of ins) {
+        if (!allowedPreds || allowedPreds.has(p)) next.push({ via: p, to: s, dir: '←' });
+      }
+    }
+    return next;
+  }
+
+  function bfsShortest(start, goal, edgeMode, allowedPreds, maxDepth) {
+    const startKey = iri(start), goalKey = iri(goal);
+    if (!startKey || !goalKey) throw new Error('Start and goal must be provided.');
+    const q = [{ node: startKey, path: [] }];
+    const seen = new Set([startKey]);
+    let depth = 0;
+    while (q.length) {
+      const { node, path } = q.shift();
+      if (node === goalKey) return path; // path is list of {from, via, to, dir}
+      if (path.length >= maxDepth) continue;
+      for (const step of neighborsOf(node, edgeMode, allowedPreds)) {
+        if (!seen.has(step.to)) {
+          seen.add(step.to);
+          q.push({ node: step.to, path: [...path, { from: node, via: step.via, to: step.to, dir: step.dir }] });
+        }
+      }
+      depth++;
+    }
+    return null;
+  }
+
+  function dfsAllPaths(start, goal, edgeMode, allowedPreds, maxDepth, maxPaths) {
+    const startKey = iri(start), goalKey = iri(goal);
+    const results = [];
+    const stack = [{ node: startKey, path: [], visited: new Set([startKey]) }];
+    while (stack.length && results.length < maxPaths) {
+      const { node, path, visited } = stack.pop();
+      if (node === goalKey) { results.push(path); continue; }
+      if (path.length >= maxDepth) continue;
+      const nbrs = neighborsOf(node, edgeMode, allowedPreds);
+      for (const step of nbrs.reverse()) { // reverse to keep natural order
+        if (!visited.has(step.to)) {
+          const nextVisited = new Set(visited);
+          nextVisited.add(step.to);
+          stack.push({ node: step.to, path: [...path, { from: node, via: step.via, to: step.to, dir: step.dir }], visited: nextVisited });
+        }
+      }
+    }
+    return results;
+  }
+
+  function renderPathList(container, path) {
+    container.innerHTML = '';
+    if (!path) { container.innerHTML = '<li class="muted">(none)</li>'; return; }
+    if (Array.isArray(path) && path.length === 0) { container.innerHTML = '<li class="muted">(start equals goal)</li>'; return; }
+    for (const step of path) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="node">${escapeHtml(step.from)}</span> <span class="edge">${escapeHtml(step.dir)} ${escapeHtml(step.via)}</span> <span class="node">${escapeHtml(step.to)}</span>`;
+      container.appendChild(li);
+    }
+  }
+
+  function renderAllPaths(container, paths) {
+    container.innerHTML = '';
+    if (!paths || paths.length === 0) { container.innerHTML = '<li class="muted">(none)</li>'; return; }
+    let idx = 1;
+    for (const path of paths) {
+      const li = document.createElement('li');
+      const pieces = path.map(st => `${escapeHtml(st.from)} <span class="edge">${escapeHtml(st.dir)} ${escapeHtml(st.via)}</span> ${escapeHtml(st.to)}`);
+      li.innerHTML = `<div class="badge">#${idx++}</div> ` + pieces.join(' &nbsp;»&nbsp; ');
+      container.appendChild(li);
+    }
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+  function generateSparqlForPath(path, start, goal) {
+    if (!path || !path.length) return '';
+    // Build SELECT using variables ?n1 ?n2 ... and concrete predicates
+    const vars = [];
+    const lines = [];
+    let cur = `<${iri(start)}>`;
+    for (let i=0; i<path.length; i++) {
+      const v = `?n${i+1}`;
+      vars.push(v);
+      const p = `<${path[i].via}>`;
+      const triple = path[i].dir === '←' ? `${v} ${p} ${cur} .` : `${cur} ${p} ${v} .`;
+      lines.push(triple);
+      cur = v;
+    }
+    const finalBind = `${cur} ${cur.startsWith('?') ? '' : ''}`;
+    const where = lines.join('\n  ');
+    const query = `# Concrete chain for discovered path\nSELECT ${vars.join(' ')} WHERE {\n  ${where}\n}`;
+    return query;
+  }
+
+  // --- UI handlers ---
+  $('#btnLoad').addEventListener('click', async () => {
+    clearLogs();
+    const file = $('#file').files?.[0];
+    if (!file) { log('Please choose a graph file first.', 'warn'); return; }
+    try {
+      log(`Loading: ${file.name}`);
+      state.loadedName = file.name;
+      const quads = await parseFileToQuads(file, $('#format').value, $('#baseIri').value.trim());
+      state.quads = quads;
+      buildIndexes(quads, $('#includeLiterals').value);
+      log(`Loaded ${quads.length} triples; found ${state.nodes.size} nodes, ${state.preds.size} unique predicates.`);
+      if (state.objectProps.size) log(`Detected ${state.objectProps.size} owl:ObjectProperty definitions.`);
+    } catch (e) {
+      console.error(e);
+      log(String(e.message || e), 'error');
+    }
+  });
+
+  $('#btnShortest').addEventListener('click', () => {
+    try {
+      clearOutputs();
+      if (!state.quads.length) { log('Load a graph first.', 'warn'); return; }
+      const allowed = allowedPredicateSet($('#predMode').value, $('#predList').value, $('#subpropRoots').value);
+      const path = bfsShortest($('#start').value, $('#goal').value, $('#edgeMode').value, allowed, Number($('#maxDepth').value || 8));
+      if (!path) { log('No path found within limits.', 'warn'); renderPathList($('#shortest'), null); return; }
+      log(`Shortest path length: ${path.length}`, 'info');
+      renderPathList($('#shortest'), path);
+      $('#sparql').value = generateSparqlForPath(path, $('#start').value, $('#goal').value);
+    } catch (e) { log(String(e.message || e), 'error'); }
+  });
+
+  $('#btnAll').addEventListener('click', () => {
+    try {
+      clearOutputs(false);
+      if (!state.quads.length) { log('Load a graph first.', 'warn'); return; }
+      const allowed = allowedPredicateSet($('#predMode').value, $('#predList').value, $('#subpropRoots').value);
+      const paths = dfsAllPaths($('#start').value, $('#goal').value, $('#edgeMode').value, allowed, Number($('#maxDepth').value || 8), Number($('#maxPaths').value || 50));
+      log(`Enumerated ${paths.length} path(s).`);
+      renderAllPaths($('#allpaths'), paths);
+    } catch (e) { log(String(e.message || e), 'error'); }
+  });
+
+  $('#btnSparql').addEventListener('click', () => {
+    try {
+      const items = $('#shortest').querySelectorAll('li');
+      if (!items.length || items[0].classList.contains('muted')) { log('Compute a shortest path first.', 'warn'); return; }
+      // Reconstruct path from DOM list (each has innerHTML with from, via, to). Simpler: store last path.
+      const recalc = bfsShortest($('#start').value, $('#goal').value, $('#edgeMode').value, allowedPredicateSet($('#predMode').value, $('#predList').value, $('#subpropRoots').value), Number($('#maxDepth').value || 8));
+      if (!recalc) { log('No path to generate SPARQL for.', 'warn'); return; }
+      $('#sparql').value = generateSparqlForPath(recalc, $('#start').value, $('#goal').value);
+      log('SPARQL generated for current shortest path.');
+    } catch (e) { log(String(e.message || e), 'error'); }
+  });
+
+  function clearOutputs(clearShortest=true){
+    if (clearShortest) $('#shortest').innerHTML='';
+    $('#allpaths').innerHTML='';
+    $('#sparql').value='';
+  }
+})();
+</script>
+  
+  <!-- ==================== DRY add-on: path-finder.js (uses your existing libs) ==================== -->
+  <script>
+  // Path Finder — reuses your existing rdflib/comunica + inference helpers (no duplicate parsers)
+  // Exposes window.PathFinder with: loadStore, computeAllowedPredicates, shortestPath, allPaths, toSparql
+  //
+  // Depends on:
+  //   - loadGraphFromIndexedDB(), formulaToRdfjsStore()  (from comunica-indexeddb-bridge.js)
+  //   - mapFromQuads(), transitiveClosure(), and RDF/OWL/RDFS constants (from axiolotl-inference.js)
+  //   - global N3 (RDF/JS DataFactory/Store)
+  (function(){
+    const DF = N3.DataFactory;
+    const { namedNode, blankNode, literal } = DF;
+
+    // --- Utilities ---
+    const isLiteralTerm = (term) => term && term.termType === 'Literal';
+
+    function normalizeNodeInput(x){
+      // Accept <IRI> or bare IRI or JSON-string literal like "Alice" or numbers
+      if (typeof x !== 'string') return String(x);
+      const s = x.trim();
+      if (!s) return s;
+      if (s.startsWith('<') && s.endsWith('>')) return s.slice(1,-1);
+      return s;
+    }
+
+    // Build a lightweight adjacency over an RDF/JS store, honoring predicate allow-list and literal policy
+    function neighbors(store, nodeIri, { edgeMode='directed', allowed=null, includeLiterals=false }){
+      const out = [];
+      // outgoing s->o
+      for (const q of store.getQuads(namedNode(nodeIri), null, null, null)){
+        if (allowed && !allowed.has(q.predicate.value)) continue;
+        if (!includeLiterals && isLiteralTerm(q.object)) continue;
+        out.push({ via:q.predicate.value, to:q.object.value, dir:'→' });
+      }
+      if (edgeMode === 'undirected'){
+        // incoming as reverse
+        for (const q of store.getQuads(null, null, namedNode(nodeIri), null)){
+          if (allowed && !allowed.has(q.predicate.value)) continue;
+          if (!includeLiterals && isLiteralTerm(q.subject)) continue; // should always be non-literal
+          out.push({ via:q.predicate.value, to:q.subject.value, dir:'←' });
+        }
+      }
+      return out;
+    }
+
+    function bfsShortest(store, start, goal, opt){
+      const s = normalizeNodeInput(start);
+      const g = normalizeNodeInput(goal);
+      if (!s || !g) throw new Error('Start and goal are required.');
+
+      if (s === g) return [];
+      const Q = [{ node:s, path:[] }];
+      const seen = new Set([s]);
+      const maxDepth = Number(opt.maxDepth||8);
+
+      while (Q.length){
+        const cur = Q.shift();
+        if (cur.path.length > maxDepth) continue;
+        for (const step of neighbors(store, cur.node, opt)){
+          if (seen.has(step.to)) continue;
+          const path = cur.path.concat({ from:cur.node, via:step.via, to:step.to, dir:step.dir });
+          if (step.to === g) return path;
+          seen.add(step.to);
+          Q.push({ node:step.to, path });
+        }
+      }
+      return null;
+    }
+
+    function dfsAll(store, start, goal, opt){
+      const s = normalizeNodeInput(start);
+      const g = normalizeNodeInput(goal);
+      const maxDepth = Number(opt.maxDepth||8);
+      const maxPaths = Number(opt.maxPaths||50);
+      const results = [];
+      const stack = [{ node:s, path:[], seen:new Set([s]) }];
+
+      while (stack.length && results.length < maxPaths){
+        const cur = stack.pop();
+        if (cur.node === g){ results.push(cur.path); continue; }
+        if (cur.path.length >= maxDepth) continue;
+        const nbrs = neighbors(store, cur.node, opt);
+        // push in reverse for natural order on pop
+        for (let i=nbrs.length-1; i>=0; i--){
+          const step = nbrs[i];
+          if (cur.seen.has(step.to)) continue;
+          const nextSeen = new Set(cur.seen); nextSeen.add(step.to);
+          stack.push({ node:step.to, path:cur.path.concat({ from:cur.node, via:step.via, to:step.to, dir:step.dir }), seen:nextSeen });
+        }
+      }
+      return results;
+    }
+
+    function toSparql(path, start){
+      if (!path || !path.length) return '';
+      const lines = [];
+      let cur = `<${normalizeNodeInput(start)}>`;
+      for (let i=0; i<path.length; i++){
+        const v = `?n${i+1}`;
+        const p = `<${path[i].via}>`;
+        const t = path[i].dir === '←' ? `${v} ${p} ${cur} .` : `${cur} ${p} ${v} .`;
+        lines.push(t); cur = v;
+      }
+      return `SELECT ${path.map((_,i)=>`?n${i+1}`).join(' ')} WHERE {
+  ${lines.join('  ')} }`;
+    }
+
+    // --- Allowed predicate calculation (DRY: reuse axiolotl-inference.js helpers) ---
+    function computeAllowedPredicates(store, { mode='all', list=[], subpropRoots=[] }){
+      if (mode === 'all') return null; // null ⇒ allow all
+      if (mode === 'list') return new Set(list);
+
+      // discover owl:ObjectProperty in data
+      if (mode === 'objectProps'){
+        const out = new Set();
+        const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+        const OWL_OP   = 'http://www.w3.org/2002/07/owl#ObjectProperty';
+        for (const q of store.getQuads(null, namedNode(RDF_TYPE), namedNode(OWL_OP), null)){
+          out.add(q.subject.value);
+        }
+        return out;
+      }
+
+      if (mode === 'subpropTree'){
+        const RDFS_SP = 'http://www.w3.org/2000/01/rdf-schema#subPropertyOf';
+        const edges = (typeof mapFromQuads === 'function')
+          ? mapFromQuads(store, RDFS_SP)
+          : (function fallback(){
+              const M = new Map();
+              for (const q of store.getQuads(null, namedNode(RDFS_SP), null, null)){
+                const c = q.subject.value, p = q.object.value;
+                if (!M.has(c)) M.set(c, new Set());
+                if (!M.has(p)) M.set(p, new Set());
+                M.get(c).add(p);
+              }
+              return M;
+            })();
+        const closure = (typeof transitiveClosure === 'function')
+          ? transitiveClosure(edges)
+          : (function fallbackTC(E){
+              const C = new Map();
+              for (const [child, parents] of E){
+                const seen = new Set(); const st = [...parents];
+                while (st.length){ const x = st.pop(); if (seen.has(x)) continue; seen.add(x); const up = E.get(x); if (up) up.forEach(u => st.push(u)); }
+                C.set(child, seen);
+              }
+              return C;
+            })(edges);
+        const roots = new Set(subpropRoots);
+        const allowed = new Set();
+        for (const root of roots){
+          allowed.add(root);
+          for (const [p, supers] of closure){ if (supers.has(root)) allowed.add(p); }
+        }
+        return allowed;
+      }
+      return null;
+    }
+
+    async function loadStore(){
+      const rdflibGraph = await loadGraphFromIndexedDB();
+      return formulaToRdfjsStore(rdflibGraph);
+    }
+
+    // Public API
+    window.PathFinder = {
+      loadStore,
+      computeAllowedPredicates,
+      shortestPath: bfsShortest,
+      allPaths: dfsAll,
+      toSparql,
+    };
+  })();
+
+  // --- Example minimal wiring (keep or remove):
+  // document.getElementById('btnShortest')?.addEventListener('click', async () => {
+  //   const store = await PathFinder.loadStore();
+  //   const opt = {
+  //     edgeMode: document.getElementById('edgeMode')?.value || 'directed',
+  //     includeLiterals: (document.getElementById('includeLiterals')?.value||'no') === 'yes',
+  //     maxDepth: Number(document.getElementById('maxDepth')?.value||8),
+  //   };
+  //   const mode = document.getElementById('predMode')?.value || 'all';
+  //   const list = (document.getElementById('predList')?.value||'').split(/?/).filter(Boolean);
+  //   const roots = (document.getElementById('subpropRoots')?.value||'').split(/?/).filter(Boolean);
+  //   opt.allowed = PathFinder.computeAllowedPredicates(store, { mode, list, subpropRoots: roots });
+  //   const path = PathFinder.shortestPath(store, document.getElementById('start').value, document.getElementById('goal').value, opt);
+  //   document.getElementById('sparql').value = PathFinder.toSparql(path, document.getElementById('start').value);
+  // });
+  </script>
+</body>
+</html>

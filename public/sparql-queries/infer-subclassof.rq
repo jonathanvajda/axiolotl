@@ -1,0 +1,12 @@
+### Subclass Inference Query
+# infers subclass relationships in an ontology.
+# It finds all classes that are subclasses of other classes
+
+INSERT {
+      ?x rdf:type ?superClass .
+    }
+    WHERE {
+      ?x rdf:type ?class .
+      ?class rdfs:subClassOf+ ?superClass .
+      FILTER(?class != ?superClass)
+    }

@@ -1,0 +1,69 @@
+# .gitlab-ci.yml
+# Runs Jest tests, uploads JUnit + coverage, caches dependencies, and (optionally) tests on multiple Node versions.
+# Runs ingest of ontology list using Python.
+# Deploys site to GitLab Pages.
+
+stages:
+  - test
+  - ingest
+  - deploy
+
+test:jest:npm:
+  stage: test
+  image: node:20
+  variables:
+    NODE_ENV: test
+    NODE_OPTIONS: --experimental-vm-modules   # ESM-friendly for Jest
+    JEST_JUNIT_OUTPUT: junit.xml
+  cache:
+    key:
+      files: [package-lock.json]
+    paths:
+      - node_modules/
+    policy: pull-push
+  rules:
+    - exists: [package-lock.json]
+  before_script:
+    - npm ci
+  script:
+    - npx jest --ci --coverage
+  artifacts:
+    when: always
+    reports:
+      junit: junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+    paths:
+      - coverage/lcov.info
+      - coverage/coverage-final.json
+      - junit.xml
+    expire_in: 1 week
+
+generate-ontology-list:
+  image: python:latest
+  stage: ingest
+  script:
+    - pip install rdflib
+    - python src/get-ontology-list.py --input public/ontology-files --output public/ontology-files/ontology-list.json
+  artifacts:
+    paths:
+      - public/ontology-files/ontology-list.json
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+
+pages:
+  image: busybox
+  stage: deploy
+  script:
+    - |
+      #!/bin/bash
+      BUILD_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+      echo "{\"buildTime\": \"$BUILD_TIME\"}" > public/build-info.json
+    - echo "The site will be deployed to $CI_PAGES_URL"
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

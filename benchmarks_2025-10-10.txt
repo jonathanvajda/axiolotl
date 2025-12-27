@@ -1,0 +1,16 @@
+CCO 2.0 merged
+- axiolotl
+- all inference rules
+-- 157 + 2542 = 2699 triples
+-- 6 minutes 35 seconds
+
+- rdflib infer-predicates.py
+- all inference rules
+-- 157 + 2542 = 2699 triples
+-- 4 seconds
+
+
+Proposed solution:
+- materialize subClassOf+ outside of SPARQL, natively with N3.Store
+- materialize subPropertyOf+ outside of SPARQL, natively with N3.Store
+-- Note: this seems important to be done last? One needs to coax the domain, range, inverse, symmetric, etc. first, right?  

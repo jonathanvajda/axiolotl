@@ -1,0 +1,15 @@
+### Superproperty Inference Query
+# This query infers subproperty relationships in an ontology.
+# It finds all properties that are subproperties of other properties
+
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+INSERT {
+    ?x ?super ?y .
+}
+WHERE {
+    ?x ?p ?y .
+    ?p rdfs:subPropertyOf+ ?super .
+    FILTER(?p != ?super)
+}

@@ -1,0 +1,326 @@
+/* General page styling */
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #e1f3ffd3;
+  color: #222;
+  margin: 0;
+  padding: 0 0 2em 0;
+}
+
+/* Header Banner */
+.header {
+  background: #00406e;
+  color: #fff;
+  font-size: 1.75em;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.7em;
+  justify-content: center;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* Main Content Area */
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5em 2em 2em 2em;
+  background: #f8fbfd;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+}
+
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+
+
+h1 {
+  color: #007acc;
+  text-align: center;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  font-size: 2em;
+  letter-spacing: 0.03em;
+}
+
+h3 {
+  color: #007acc;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  font-size: 1.15em;
+}
+
+/* Table layout for upload and endpoint */
+table {
+  margin: 1em auto 2em auto;
+  border-collapse: collapse;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 600px;
+  max-width: 90vw;
+}
+thead td {
+  background: #e0f3ff;
+  color: #007acc;
+  font-size: 1.08em;
+  padding: 0.7em 0.5em;
+  border-bottom: 1px solid #cce6fa;
+}
+td {
+  padding: 0.7em 0.5em;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* Inputs and buttons */
+input[type="file"], input[type="textbox"] {
+  font-size: 1em;
+  padding: 0.3em 0.5em;
+  border-radius: 4px;
+  border: 1px solid #b5d6f6;
+  background: #f5faff;
+  margin: 0.2em 0;
+}
+
+button {
+  padding: 0.35em 1.1em;
+  font-size: 1em;
+  border-radius: 5px;
+  border: 1px solid #007acc;
+  background: #f5faff;
+  color: #007acc;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  margin: 0.2em 0.3em;
+}
+
+button.prefix-button {
+  padding: 0.25em .5em;
+  font-size: 0.75em;
+  margin: 0.1em 0.1em;}
+
+button:hover {
+  background: #e0f3ff;
+  color: #005a99;
+}
+
+/* Inference rules checkboxes */
+#rules {
+  display: flex;
+  gap: 1em;
+  flex-wrap: wrap;
+  margin-bottom: 1em;
+}
+#rules label {
+  font-size: 1em;
+  color: #222;
+  background: #f5faff;
+  border-radius: 4px;
+  padding: 0.2em 0.6em;
+  border: 1px solid #e0f3ff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#rules label:hover {
+  background: #e0f3ff;
+}
+
+/* Textarea for RDF preview */
+textarea {
+  font-size: 1em;
+  border-radius: 4px;
+  border: 1px solid #b5d6f6;
+  padding: 0.5em;
+  background: #fafcff;
+  width: 98%;
+  box-sizing: border-box;
+  margin-bottom: 0.7em;
+  resize: vertical;
+}
+
+.file-upload-row input[type="file"] {
+  width: 45%;
+}
+
+/* Select dropdown */
+select {
+  font-size: 1em;
+  border-radius: 4px;
+  border: 1px solid #b5d6f6;
+  background: #f5faff;
+  padding: 0.3em 0.7em;
+  margin-left: 0.5em;
+}
+
+/* Responsive for small screens */
+@media (max-width: 700px) {
+  table {
+    min-width: 0;
+    width: 98vw;
+    font-size: 0.98em;
+  }
+  textarea {
+    font-size: 1em;
+    width: 98vw;
+  }
+  #rules {
+    flex-direction: column;
+    gap: 0.5em;
+  }
+}
+
+#toast-container {
+    position: fixed; right: 16px; bottom: 16px;
+    display: flex; flex-direction: column; gap: 8px; z-index: 9999;
+  }
+  .toast {
+    min-width: 260px; max-width: 420px;
+    padding: 10px 12px; border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.15);
+    background: #222; color: #fff; font: 14px/1.35 system-ui, sans-serif;
+    display: flex; align-items: flex-start; gap: 10px;
+    opacity: .98; transform: translateY(0); transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast.hide { opacity: 0; transform: translateY(6px); }
+  .toast__icon { font-size: 18px; line-height: 1; }
+  .toast--success { background: #0f5132; }
+  .toast--error   { background: #842029; }
+  .toast--info    { background: #1f2a44; }
+  /* optional: quick button flash */
+  .flash-success { animation: flashSuccess .9s ease; }
+  .flash-error   { animation: flashError .9s ease; }
+  @keyframes flashSuccess {
+    0% { box-shadow: 0 0 0 0 rgba(16,185,129,.4); }
+    100% { box-shadow: 0 0 0 14px rgba(16,185,129,0); }
+  }
+  @keyframes flashError {
+    0% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); }
+    100% { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
+  }
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: none; }
+  .toast.hide { transform: none; }
+}
+
+/* Focus ring for a11y */
+.toast:focus-visible {
+  outline: 2px solid rgba(13,110,253,.6);
+  outline-offset: 2px;
+}
+
+
+  /* Decrease font size for all table data cells */
+.query-results-td {
+    font-size: 0.8em; /* You can adjust this value to your preference */
+}
+
+/* Set the background color for every even-numbered row */
+.query-results-tr:nth-child(even) {
+    background-color: #f2f2f2; /* A light grey color */
+}
+
+/* Ensure the odd-numbered rows are white, which is often the default, but it's good practice to be explicit */
+.query-results-tr:nth-child(odd) {
+    background-color: #ffffff;
+}
+
+/* Make the header row cells bold */
+thead th {
+    font-weight: bold;
+    background-color: #d2d2d2; /* A slightly darker grey for the header */
+}
+
+/* Tab buttons */
+.tab-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: .6rem .9rem;
+  font-weight: 500;
+  color: #444;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.tab-btn:hover { color: #111; }
+
+/* Active state */
+.tab-btn.active {
+  color: #111827;
+  font-weight: 600;
+  border-bottom-color: #3b82f6;
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+/* Optional “pressed” look */
+.tab-btn.active:active { transform: none; }
+
+/* Optional: focus ring for a11y */
+.tab-btn:focus-visible {
+  outline: 2px solid #0d6efd66;
+  outline-offset: 2px;
+}
+
+.status-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Base status button styling */
+.status-btn {
+  --radius: 999px;
+  --pad-x: 14px;
+  --pad-y: 8px;
+  --font: 14px;
+
+  font-size: var(--font);
+  border-radius: var(--radius);
+  padding: var(--pad-y) var(--pad-x);
+  border: 1px solid transparent;
+  cursor: default;
+  user-select: none;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  white-space: nowrap;
+}
+
+/* OFF state: clearer "off" */
+.status-idle {
+  color: #374151;           /* gray-700 */
+  background: #d1d5db;      /* gray-300 */
+  border-color: #9ca3af;    /* gray-400 */
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+}
+
+/* ON state: a bit more eye-catching */
+.status-ok {
+  color: #065f46;           /* emerald-800 */
+  background: #86efac;      /* emerald-300 */
+  border-color: #34d399;    /* emerald-400 */
+  box-shadow: inset 0 0 0 1px rgba(16,185,129,0.5);
+}
+
+/* Optional: subtle hover focus */
+.status-btn:focus-visible {
+  outline: 2px solid #94d5c6;
+  outline-offset: 2px;
+}

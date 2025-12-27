@@ -1,0 +1,469 @@
+@prefix : </#>.
+@prefix dc: <http://purl.org/dc/elements/1.1/>.
+@prefix dct: <http://purl.org/dc/terms/>.
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix skos: <http://www.w3.org/2004/02/skos/core#>.
+@prefix obo: <http://purl.obolibrary.org/obo/>.
+@prefix n0: <http://www.w3.org/2000/01/>.
+@prefix n1: <http://www.w3.org/2002/07/>.
+
+obo:BFO_0000001 a rdfs:Class.
+
+obo:BFO_0000002 a rdfs:Class.
+
+obo:BFO_0000003 a rdfs:Class.
+
+obo:BFO_0000004 a rdfs:Class.
+
+obo:BFO_0000006 a rdfs:Class.
+
+obo:BFO_0000008 a rdfs:Class.
+
+obo:BFO_0000009 a rdfs:Class.
+
+obo:BFO_0000011 a rdfs:Class.
+
+obo:BFO_0000015 a rdfs:Class.
+
+obo:BFO_0000016 a rdfs:Class.
+
+obo:BFO_0000017 a rdfs:Class.
+
+obo:BFO_0000018 a rdfs:Class.
+
+obo:BFO_0000019 a rdfs:Class.
+
+obo:BFO_0000020 a rdfs:Class.
+
+obo:BFO_0000023 a rdfs:Class.
+
+obo:BFO_0000024 a rdfs:Class.
+
+obo:BFO_0000026 a rdfs:Class.
+
+obo:BFO_0000027 a rdfs:Class.
+
+obo:BFO_0000028 a rdfs:Class.
+
+obo:BFO_0000029 a rdfs:Class.
+
+obo:BFO_0000030 a rdfs:Class.
+
+obo:BFO_0000031 a rdfs:Class.
+
+obo:BFO_0000034 a rdfs:Class.
+
+obo:BFO_0000035 a rdfs:Class.
+
+obo:BFO_0000038 a rdfs:Class.
+
+obo:BFO_0000040 a rdfs:Class.
+
+obo:BFO_0000054 a rdf:Property.
+
+obo:BFO_0000055 a rdf:Property.
+
+obo:BFO_0000056 a rdf:Property.
+
+obo:BFO_0000057 a rdf:Property.
+
+obo:BFO_0000058 a rdf:Property.
+
+obo:BFO_0000059 a rdf:Property.
+
+obo:BFO_0000062 a rdf:Property.
+
+obo:BFO_0000063 a rdf:Property.
+
+obo:BFO_0000066 a rdf:Property.
+
+obo:BFO_0000084 a rdf:Property.
+
+obo:BFO_0000101 a rdf:Property.
+
+obo:BFO_0000108 a rdf:Property.
+
+obo:BFO_0000115 a rdf:Property.
+
+obo:BFO_0000117 a rdf:Property.
+
+obo:BFO_0000121 a rdf:Property.
+
+obo:BFO_0000124 a rdf:Property.
+
+obo:BFO_0000127 a rdf:Property.
+
+obo:BFO_0000129 a rdf:Property.
+
+obo:BFO_0000132 a rdf:Property.
+
+obo:BFO_0000139 a rdf:Property.
+
+obo:BFO_0000140 a rdfs:Class.
+
+obo:BFO_0000141 a rdfs:Class.
+
+obo:BFO_0000142 a rdfs:Class.
+
+obo:BFO_0000145 a rdfs:Class.
+
+obo:BFO_0000146 a rdfs:Class.
+
+obo:BFO_0000147 a rdfs:Class.
+
+obo:BFO_0000148 a rdfs:Class.
+
+obo:BFO_0000153 a rdf:Property.
+
+obo:BFO_0000171 a rdf:Property.
+
+obo:BFO_0000176 a rdf:Property.
+
+obo:BFO_0000178 a rdf:Property.
+
+obo:BFO_0000182 a rdfs:Class.
+
+obo:BFO_0000183 a rdf:Property.
+
+obo:BFO_0000184 a rdf:Property.
+
+obo:BFO_0000185 a rdf:Property.
+
+obo:BFO_0000194 a rdf:Property.
+
+obo:BFO_0000195 a rdf:Property.
+
+obo:BFO_0000196 a rdf:Property.
+
+obo:BFO_0000197 a rdf:Property.
+
+obo:BFO_0000199 a rdf:Property.
+
+obo:BFO_0000200 a rdf:Property.
+
+obo:BFO_0000202 a rdfs:Class.
+
+obo:BFO_0000203 a rdfs:Class.
+
+obo:BFO_0000210 a rdf:Property.
+
+obo:BFO_0000216 a rdf:Property.
+
+obo:BFO_0000218 a rdf:Property.
+
+obo:BFO_0000221 a rdf:Property.
+
+obo:BFO_0000222 a rdf:Property.
+
+obo:BFO_0000223 a rdf:Property.
+
+obo:BFO_0000224 a rdf:Property.
+
+<http://purl.obolibrary.org/obo/bfo.owl> a rdfs:Resource.
+
+<http://purl.obolibrary.org/obo/bfo/2020/bfo-core.ttl>
+a rdfs:Resource, owl:Ontology.
+dc:contributor a rdf:Property.
+
+dc:identifier a rdf:Property.
+
+dc:license a rdf:Property.
+
+dct:description a rdf:Property.
+
+dct:license a rdf:Property.
+
+dct:title a rdf:Property.
+
+n0:rdf-schema a rdfs:Resource, owl:Ontology.
+
+n1:owl a rdfs:Resource.
+
+owl:backwardCompatibleWith a rdf:Property.
+
+owl:bottomDataProperty a rdf:Property.
+
+owl:bottomObjectProperty a rdf:Property.
+
+owl:deprecated a rdf:Property.
+
+owl:imports a rdf:Property.
+
+owl:incompatibleWith a rdf:Property.
+
+owl:Nothing a rdfs:Class.
+
+owl:priorVersion a rdf:Property.
+
+owl:Thing a rdfs:Class.
+
+owl:topDataProperty a rdf:Property.
+
+owl:topObjectProperty a rdf:Property.
+
+owl:versionInfo a rdf:Property.
+
+owl:versionIRI a rdf:Property.
+
+skos:altLabel a rdf:Property.
+
+skos:definition a rdf:Property.
+
+skos:example a rdf:Property.
+
+skos:prefLabel a rdf:Property.
+
+skos:scopeNote a rdf:Property.
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdf:List ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Class, owl:Class ].
+
+[ a rdfs:Resource ].
+
+[ a rdfs:Resource ].
+
+[ a rdfs:Resource ].
+
+[ a rdfs:Resource ].
+
+[ a rdfs:Resource ].
+
+[ a rdfs:Resource ].
+

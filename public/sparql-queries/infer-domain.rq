@@ -1,0 +1,14 @@
+### Domain Inference Query
+# infers domain relationships in an ontology.
+# It finds all properties that have a domain defined and infers the domain for the property.
+
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+INSERT {
+      ?x rdf:type ?domain .
+    }
+    WHERE {
+      ?x ?p ?y .
+      ?p rdfs:domain ?domain .
+    }

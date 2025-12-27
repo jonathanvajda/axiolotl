@@ -1,0 +1,1578 @@
+@prefix : </#>.
+@prefix skos: <http://www.w3.org/2004/02/skos/core#>.
+@prefix www: <https://www.commoncoreontologies.org/>.
+@prefix obo: <http://purl.obolibrary.org/obo/>.
+
+www:ont00000106 skos:altLabel "EOL", "EoL".
+
+www:ont00000150 skos:altLabel "RF".
+
+www:ont00000169 skos:altLabel "VHF".
+
+www:ont00000172 skos:altLabel "MOB".
+
+www:ont00000337 skos:altLabel "RPG".
+
+www:ont00000359 skos:altLabel "JD".
+
+www:ont00000391 skos:altLabel "THF".
+
+www:ont00000396 skos:altLabel "ELF".
+
+www:ont00000465 skos:altLabel "MJD".
+
+www:ont00000467 skos:altLabel "APC".
+
+www:ont00000519 skos:altLabel "EHF".
+
+www:ont00000630 skos:altLabel "UT".
+
+www:ont00000643 skos:altLabel "LF".
+
+www:ont00000672 skos:altLabel "SLF".
+
+www:ont00000737 skos:altLabel "FOB".
+
+www:ont00000753 skos:altLabel "ULF".
+
+www:ont00000822 skos:altLabel "VLF".
+
+www:ont00000858 skos:altLabel "IED".
+
+www:ont00000924 skos:altLabel "BOL", "BoL".
+
+www:ont00000964 skos:altLabel "MF".
+
+www:ont00000989 skos:altLabel "SHF".
+
+www:ont00001108 skos:altLabel "UHF".
+
+www:ont00001208 skos:altLabel "HF".
+
+www:ont00001342 skos:altLabel "IFV".
+
+www:ont00001385
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001386
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001387
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001388
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "'";
+    www:ont00001753 "'".
+www:ont00001389
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001390
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001391
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001392
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001393
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "T".
+www:ont00001394
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001395
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "NST".
+www:ont00001396
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001397
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001398
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000275,
+        www:ont00000398, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "GARS".
+www:ont00001399
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001400
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001401
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001402
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "kg/L";
+    www:ont00001753 "kg/L".
+www:ont00001403
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "B".
+www:ont00001404
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001405
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001406
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "ACST".
+www:ont00001407
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001408
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "X".
+www:ont00001409
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001410
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001411
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001412
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001413
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001414
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "TT".
+www:ont00001415
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001416
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001417
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "ET".
+www:ont00001418
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001419
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001420
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001421
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "S".
+www:ont00001422
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "qt".
+www:ont00001423
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001424
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "A".
+www:ont00001425
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001426
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001427
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001428
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001429
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001430
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "F".
+www:ont00001431
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "W".
+www:ont00001432
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "kg/cm^2", "kgf/cm^2".
+www:ont00001433
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001434
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001435
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001436
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000124,
+        www:ont00000398, www:ont00000853, www:ont00000958, www:ont00001328, [],
+        [];
+    skos:altLabel "UT1D".
+www:ont00001437
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "L";
+    www:ont00001753 "L".
+www:ont00001438
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001439
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, www:ont00001328, [], [].
+www:ont00001440
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001441
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001442
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001443
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001444
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001445
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001446
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "M".
+www:ont00001447
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001448
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001449
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001450
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001451
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001452
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001453
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001454
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "L".
+www:ont00001455
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001456
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001457
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "Q".
+www:ont00001458
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001459
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [].
+www:ont00001460
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001461
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "TDB".
+www:ont00001462
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001463
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001464
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001465
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001466
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001467
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001468
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001469
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001470
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001471
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001472
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001473
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001474
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001475
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001476
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001477
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "kg", "kilogram";
+    www:ont00001753 "kg".
+www:ont00001478
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001479
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001480
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "I".
+www:ont00001481
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001482
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001483
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "mol", "mole";
+    www:ont00001753 "mol".
+www:ont00001484
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001485
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001486
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001487
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001488
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "T".
+www:ont00001489
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "rad", "radian";
+    www:ont00001753 "rad".
+www:ont00001490
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001491
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000124,
+        www:ont00000398, www:ont00000853, www:ont00000958, www:ont00001328, [],
+        [];
+    skos:altLabel "UT1A".
+www:ont00001492
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001493
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001494
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001495
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001496
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001497
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001498
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001499
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001500
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "E".
+www:ont00001501
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001502
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "dBi";
+    www:ont00001753 "dBi".
+www:ont00001503
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001504
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "N-m";
+    www:ont00001753 "N-m".
+www:ont00001505
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001506
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000124,
+        www:ont00000398, www:ont00000853, www:ont00000958, www:ont00001328, [],
+        [];
+    skos:altLabel "UT1F".
+www:ont00001507
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001508
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001509
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001510
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001511
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001512
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001513
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001514
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001515
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001516
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "O".
+www:ont00001517
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001518
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001519
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001520
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001521
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001522
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001523
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001524
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001525
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "N", "newton";
+    www:ont00001753 "N".
+www:ont00001526
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001527
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "H".
+www:ont00001528
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001529
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "TCG".
+www:ont00001530
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "cumec", "m^3/s";
+    www:ont00001753 "m^3/s".
+www:ont00001531
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001532
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001533
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "h";
+    www:ont00001753 "h".
+www:ont00001534
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001535
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001536
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "s", "second";
+    www:ont00001753 "s".
+www:ont00001537
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000124,
+        www:ont00000398, www:ont00000853, www:ont00000958, www:ont00001328, [],
+        [];
+    skos:altLabel "UTC".
+www:ont00001538
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001539
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001540
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001541
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001542
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001543
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001544
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001545
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001546
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001547
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001548
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000124,
+        www:ont00000398, www:ont00000853, www:ont00000958, www:ont00001328, [],
+        [];
+    skos:altLabel "UT1R".
+www:ont00001549
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001550
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000891, www:ont00000958, www:ont00001328, [],
+        [].
+www:ont00001551
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001552
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001553
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001554
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001555
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "lb ft".
+www:ont00001556
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001557
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "lb ft s^2".
+www:ont00001558
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001559
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "Pa", "pascal";
+    www:ont00001753 "Pa".
+www:ont00001560
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001561
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001562
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001563
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001564
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001565
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001566
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "W", "watt";
+    www:ont00001753 "W".
+www:ont00001567
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001568
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "g/cm^3";
+    www:ont00001753 "g/cm^3".
+www:ont00001569
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "kg/m^3".
+www:ont00001570
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001571
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001572
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "K", "kelvin";
+    www:ont00001753 "K".
+www:ont00001573
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "t".
+www:ont00001574
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001575
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001576
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001577
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001578
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001579
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [].
+www:ont00001580
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "P".
+www:ont00001581
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000275,
+        www:ont00000398, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "ITRS".
+www:ont00001582
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000275,
+        www:ont00000398, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "UTM".
+www:ont00001583
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001584
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000275,
+        www:ont00000398, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "WGRS".
+www:ont00001585
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001586
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001587
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001588
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001589
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001590
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "TAI".
+www:ont00001591
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "U".
+www:ont00001592
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001593
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001594
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001595
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001596
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "kg/s";
+    www:ont00001753 "kg/s".
+www:ont00001597
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001598
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001599
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "IRST", "IT".
+www:ont00001600
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001601
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001602
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001603
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "N".
+www:ont00001604
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "°";
+    www:ont00001753 "°".
+www:ont00001605
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001606
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "degree Celsius", "°C";
+    www:ont00001753 "°C".
+www:ont00001607
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "V".
+www:ont00001608
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001609
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001610
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001611
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001612
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001613
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001614
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001615
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001616
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001617
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001618
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001619
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001620
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001621
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001622
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001623
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001624
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "G".
+www:ont00001625
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000124,
+        www:ont00000398, www:ont00000853, www:ont00000958, www:ont00001328, [],
+        [];
+    skos:altLabel "UT0".
+www:ont00001626
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, www:ont00001328, [], [].
+www:ont00001627
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001628
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "Y".
+www:ont00001629
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001630
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000275,
+        www:ont00000398, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "WGS 84".
+www:ont00001631
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001632
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001633
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001634
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001635
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001636
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001637
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001638
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001639
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001640
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001641
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "kg-m^2";
+    www:ont00001753 "kg-m^2".
+www:ont00001642
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001643
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001644
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "cusec".
+www:ont00001645
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001646
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001647
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001648
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000275,
+        www:ont00000398, www:ont00000853, www:ont00000958, [], [].
+www:ont00001649
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001650
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001651
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [].
+www:ont00001652
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001653
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "J", "joule";
+    www:ont00001753 "J".
+www:ont00001654
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001655
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001656
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001657
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001658
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "Teph".
+www:ont00001659
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001660
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000275,
+        www:ont00000398, www:ont00000853, www:ont00000958, [], [].
+www:ont00001661
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001662
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001663
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001664
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "dB";
+    www:ont00001753 "dB".
+www:ont00001665
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001666
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "TCB".
+www:ont00001667
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "min";
+    www:ont00001753 "min".
+www:ont00001668
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001669
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001670
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001671
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001672
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001673
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001674
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000891, www:ont00000958, www:ont00001328, [],
+        [].
+www:ont00001675
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001676
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "t";
+    www:ont00001753 "t".
+www:ont00001677
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001678
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001679
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001680
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001681
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [].
+www:ont00001682
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001683
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "m", "meter";
+    www:ont00001753 "m".
+www:ont00001684
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001685
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "\"";
+    www:ont00001753 "\"".
+www:ont00001686
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "sccm".
+www:ont00001687
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001688
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001689
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001690
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001691
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001692
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000398,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001693
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "Z".
+www:ont00001694
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001695
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000124,
+        www:ont00000398, www:ont00000853, www:ont00000958, www:ont00001328, [],
+        [];
+    skos:altLabel "UT2".
+www:ont00001696
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001697
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001698
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001699
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001700
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "J".
+www:ont00001701
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001702
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "IST", "SLST".
+www:ont00001703
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001704
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [].
+www:ont00001705
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001706
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001707
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001708
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001709
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "m^4";
+    www:ont00001753 "m^4".
+www:ont00001710
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001711
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001712
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "R".
+www:ont00001713
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001714
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001715
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001716
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000124,
+        www:ont00000398, www:ont00000853, www:ont00000958, www:ont00001328, [],
+        [];
+    skos:altLabel "UT1".
+www:ont00001717
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001718
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001719
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001720
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001721
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001722
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001723
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "D".
+www:ont00001724
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001725
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001726
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001727
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "K".
+www:ont00001728
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001729
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001730
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [];
+    skos:altLabel "Hz", "hertz";
+    www:ont00001753 "Hz".
+www:ont00001731
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].
+www:ont00001732
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000390,
+        www:ont00000686, www:ont00000829, www:ont00000958, [], [];
+    skos:altLabel "C".
+www:ont00001733
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000061,
+        www:ont00000120, www:ont00000853, www:ont00000958, [], [].
+www:ont00001734
+    a
+        obo:BFO_0000001, obo:BFO_0000002, obo:BFO_0000031, www:ont00000120,
+        www:ont00000853, www:ont00000958, [], [].

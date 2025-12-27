@@ -1,0 +1,21 @@
+
+### Inverse Relationships Inference Query
+# infers inverse relationships in an ontology.
+# It finds all properties that are inverses of other properties.
+
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+INSERT {
+  ?y ?inverse ?x .
+}
+WHERE {
+  ?x ?p ?y .
+  ?p owl:inverseOf ?inverse .
+};
+INSERT {
+  ?y ?p ?x .
+}
+WHERE {
+  ?x ?inverse ?y .
+  ?p owl:inverseOf ?inverse .
+}
