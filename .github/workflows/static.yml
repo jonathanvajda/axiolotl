@@ -5,7 +5,7 @@ name: CI and Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main          # <-- change if your default branch is different
+      - master          # <-- change if your default branch is different
   pull_request:       # run tests on PRs too (no deploy)
 
 permissions:
@@ -57,7 +57,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     # Only build for default branch, like your GitLab rules
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -92,7 +92,7 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
