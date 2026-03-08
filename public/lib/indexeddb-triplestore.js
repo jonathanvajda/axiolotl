@@ -10,7 +10,7 @@ const SETTINGS_DB_NAME = 'SPARQLSettings';
 const SETTINGS_STORE_NAME = 'Settings';
 
 const QUERY_STORE_NAME = 'savedQueries';
-const INFERENCE_DB_VERSION = 2;
+const INFERENCE_DB_VERSION = 3;
 
 /*
 * Initializes the settings database with required object store.
