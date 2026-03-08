@@ -10,7 +10,7 @@ const SETTINGS_DB_NAME = 'SPARQLSettings';
 const SETTINGS_STORE_NAME = 'Settings';
 
 const QUERY_STORE_NAME = 'savedQueries';
-const QUERY_DB_VERSION = 2;
+const INFERENCE_DB_VERSION = 2;
 
 /*
 * Initializes the settings database with required object store.
@@ -18,7 +18,7 @@ const QUERY_DB_VERSION = 2;
 * @returns {Promise<IDBPDatabase>} A promise that resolves to the database instance.
 */
 async function initSettingsDB() {
-  return idb.openDB(SETTINGS_DB_NAME, 2, {
+  return idb.openDB(SETTINGS_DB_NAME, INFERENCE_DB_VERSION, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
         db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: 'key' });
@@ -90,39 +90,7 @@ const QUERY_IRI = {
  * @returns {Promise<IDBPDatabase>}
  */
 async function initQueryStore() {
-  try {
-    const db = await idb.openDB(DB_NAME, QUERY_DB_VERSION, {
-      upgrade(db, oldVersion, newVersion, tx) {
-        // Existing triples store
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, {
-            keyPath: ['subject', 'predicate', 'object', 'graph']
-          });
-          store.createIndex('subject', 'subject');
-          store.createIndex('predicate', 'predicate');
-          store.createIndex('object', 'object');
-          store.createIndex('graph', 'graph');
-        }
-
-        // New query store
-        if (!db.objectStoreNames.contains(QUERY_STORE_NAME)) {
-          const queryStore = db.createObjectStore(QUERY_STORE_NAME, {
-            keyPath: 'id'
-          });
-          queryStore.createIndex('label', 'label');
-          queryStore.createIndex('type', 'type');
-          queryStore.createIndex('value', 'value');
-          queryStore.createIndex('createdAt', 'createdAt');
-        }
-      }
-    });
-    return db;
-  } catch (error) {
-    if (debuggingConsoleEnabled) {
-      console.error('[initQueryStore] Failed to initialize query store:', error);
-    }
-    throw error;
-  }
+  return initTripleStore();
 }
 
 /**
@@ -171,6 +139,14 @@ async function getSavedQueryById(id) {
  */
 async function getAllSavedQueries() {
   const db = await initQueryStore();
+
+  if (!db.objectStoreNames.contains(QUERY_STORE_NAME)) {
+    if (debuggingConsoleEnabled) {
+      console.warn(`[getAllSavedQueries] Missing store: ${QUERY_STORE_NAME}`);
+    }
+    return [];
+  }
+
   const rows = await db.getAll(QUERY_STORE_NAME);
   return rows.sort((a, b) => {
     const av = a.createdAt || '';
@@ -408,10 +384,20 @@ async function clearSavedQueries() {
  * Creates the 'triples' object store with indexes for subject, predicate, object, and graph.
  * @returns {Promise<IDBPDatabase>} A promise that resolves to the database instance.
  */
+/**
+ * Initializes the IndexedDB database with required stores and indexes.
+ * Creates:
+ * - 'triples' object store
+ * - 'savedQueries' object store
+ * @returns {Promise<IDBPDatabase>}
+ */
 async function initTripleStore() {
   try {
-    if (debuggingConsoleEnabled) { console.info('[initTripleStore] Initializing IndexedDB store...'); }
-    const db = await idb.openDB(DB_NAME, 2, {
+    if (debuggingConsoleEnabled) {
+      console.info('[initTripleStore] Initializing IndexedDB store...');
+    }
+
+    const db = await idb.openDB(DB_NAME, INFERENCE_DB_VERSION, {
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, {
@@ -422,14 +408,27 @@ async function initTripleStore() {
           store.createIndex('object', 'object');
           store.createIndex('graph', 'graph');
         }
+
+        if (!db.objectStoreNames.contains(QUERY_STORE_NAME)) {
+          const queryStore = db.createObjectStore(QUERY_STORE_NAME, {
+            keyPath: 'id'
+          });
+          queryStore.createIndex('label', 'label');
+          queryStore.createIndex('type', 'type');
+          queryStore.createIndex('value', 'value');
+          queryStore.createIndex('createdAt', 'createdAt');
+        }
       }
     });
+
     return db;
   } catch (error) {
-    if (debuggingConsoleEnabled) { console.error('[initTripleStore] Failed to initialize store:', error); }
+    if (debuggingConsoleEnabled) {
+      console.error('[initTripleStore] Failed to initialize store:', error);
+    }
     throw error;
   }
-};
+}
 
 /**
  * Adds RDF triples to the IndexedDB triple store.
