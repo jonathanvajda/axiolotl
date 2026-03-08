@@ -835,6 +835,200 @@ async function renderOntologyList() {
   }
 }
 
+/**
+ * Generate a GUID-like identifier.
+ * Uses crypto.randomUUID when available.
+ * @returns {string}
+ */
+function makeGuidLike() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID().replaceAll('-', '');
+  }
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+
+/**
+ * Build one normalized saved-query record from textarea content.
+ * @param {string} queryText
+ * @returns {{id:string,type:string,value:string,createdAt:string}}
+ */
+function buildSavedQueryRecord(queryText,queryLabel) {
+  const GUID = makeGuidLike();
+  return {
+    id: `https://github.com/jonathanvajda/SemanticArtifactOntology/ont000007_SPARQLQuery_${GUID}`,
+    label: String(queryLabel ?? 'Untitled'),
+    type: QUERY_IRI.class,
+    value: String(queryText ?? ''),
+    createdAt: new Date().toISOString()
+  };
+}
+
+async function handleSaveQueryForLater() {
+  try {
+    const textarea = document.getElementById('sparql-query');
+    const queryText = textarea?.value ?? '';
+    const queryLabelInput = document.getElementById('query-label');
+    const queryLabel = queryLabelInput?.value ?? 'Untitled';
+
+    if (!queryText.trim()) {
+      showToast('There is no SPARQL query text to save.', 'warning');
+      return;
+    }
+    if (!queryLabel.trim()) {
+      showToast('Please provide a name for your query.', 'warning');
+      return;
+    }
+
+    const record = buildSavedQueryRecord(queryText,queryLabel);
+    await saveSavedQuery(record);
+    await renderSavedQuerySidebar();
+
+    showToast('Query saved for later.', 'success');
+  } catch (err) {
+    if (debuggingConsoleEnabled) {
+      console.error('[handleSaveQueryForLater] failed:', err);
+    }
+    showToast(err.message || String(err), 'error');
+  }
+}
+
+/**
+ * Render the saved query list in the sidebar.
+ */
+async function renderSavedQuerySidebar() {
+  const listEl = document.getElementById('saved-query-list');
+  if (!listEl) return;
+
+  try {
+    const rows = await getAllSavedQueries();
+    listEl.innerHTML = '';
+
+    if (!rows.length) {
+      listEl.innerHTML = '<li><em>No saved queries yet.</em></li>';
+      return;
+    }
+
+    for (const row of rows) {
+      const li = document.createElement('li');
+      li.className = 'saved-query-item';
+
+      const loadBtn = document.createElement('button');
+      loadBtn.type = 'button';
+      loadBtn.className = 'saved-query-load';
+      loadBtn.textContent = summarizeSavedQueryLabel(row);
+      loadBtn.title = row.id;
+      loadBtn.addEventListener('click', () => {
+        const textarea = document.getElementById('sparql-query');
+        if (textarea) textarea.value = row.value || '';
+        showToast('Saved query loaded into editor.', 'success');
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'saved-query-delete';
+      deleteBtn.textContent = '×';
+      deleteBtn.title = 'Delete saved query';
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await deleteSavedQuery(row.id);
+        await renderSavedQuerySidebar();
+        showToast('Saved query deleted.', 'success');
+      });
+
+      li.appendChild(loadBtn);
+      li.appendChild(deleteBtn);
+      listEl.appendChild(li);
+    }
+  } catch (err) {
+    if (debuggingConsoleEnabled) {
+      console.error('[renderSavedQuerySidebar] failed:', err);
+    }
+    listEl.innerHTML = '<li style="color:red;">Failed to load saved queries.</li>';
+  }
+}
+
+function summarizeSavedQueryLabel(row) {
+  const text = String(row.label || '').trim().replace(/\s+/g, ' ');
+  if (!text) return '(empty query)';
+  return text.length > 80 ? text.slice(0, 80) + '…' : text;
+}
+
+async function handleDownloadSavedQueriesJsonLd() {
+  try {
+    const jsonld = await exportSavedQueriesAsJsonLd();
+    downloadText(
+      `saved-queries-${Date.now()}.jsonld`,
+      JSON.stringify(jsonld, null, 2),
+      'application/ld+json'
+    );
+    showToast('Saved queries JSON-LD download started.', 'success');
+  } catch (err) {
+    if (debuggingConsoleEnabled) {
+      console.error('[handleDownloadSavedQueriesJsonLd] failed:', err);
+    }
+    showToast(err.message || String(err), 'error');
+  }
+}
+
+async function handleDownloadSavedQueriesCsv() {
+  try {
+    const csv = await exportSavedQueriesAsCsv();
+    downloadText(
+      `saved-queries-${Date.now()}.csv`,
+      csv,
+      'text/csv'
+    );
+    showToast('Saved queries CSV download started.', 'success');
+  } catch (err) {
+    if (debuggingConsoleEnabled) {
+      console.error('[handleDownloadSavedQueriesCsv] failed:', err);
+    }
+    showToast(err.message || String(err), 'error');
+  }
+}
+
+async function handleUploadSavedQueriesCsv(file) {
+  try {
+    if (!file) {
+      showToast('No CSV file selected.', 'warning');
+      return;
+    }
+
+    const text = await readFileAsText(file);
+    const result = await importSavedQueriesFromCsv(text);
+    await renderSavedQuerySidebar();
+
+    showToast(`Imported ${result.count} saved quer${result.count === 1 ? 'y' : 'ies'}.`, 'success');
+  } catch (err) {
+    if (debuggingConsoleEnabled) {
+      console.error('[handleUploadSavedQueriesCsv] failed:', err);
+    }
+    showToast(err.message || String(err), 'error');
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('save-query-for-later')
+    ?.addEventListener('click', handleSaveQueryForLater);
+
+  document.getElementById('download-saved-queries-jsonld')
+    ?.addEventListener('click', handleDownloadSavedQueriesJsonLd);
+
+  document.getElementById('download-saved-queries-csv')
+    ?.addEventListener('click', handleDownloadSavedQueriesCsv);
+
+  document.getElementById('upload-saved-queries-csv')
+    ?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      await handleUploadSavedQueriesCsv(file);
+      e.target.value = '';
+    });
+
+  renderSavedQuerySidebar();
+});
+
+window.addEventListener('saved-queries-changed', renderSavedQuerySidebar);
 
 /**
  * Live updates: initialize + listen for changes

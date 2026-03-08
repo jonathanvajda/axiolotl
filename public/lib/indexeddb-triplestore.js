@@ -1,7 +1,7 @@
 // indexeddb-triplestore.js
 // Dependencies
-  // idb : aka indexedDB
-    // openDB
+// idb : aka indexedDB
+// openDB
 
 const DB_NAME = 'inferenceDB';
 const STORE_NAME = 'triples';
@@ -9,13 +9,16 @@ const STORE_NAME = 'triples';
 const SETTINGS_DB_NAME = 'SPARQLSettings';
 const SETTINGS_STORE_NAME = 'Settings';
 
+const QUERY_STORE_NAME = 'savedQueries';
+const QUERY_DB_VERSION = 2;
+
 /*
 * Initializes the settings database with required object store.
 * Creates the 'Settings' object store with 'key' as the keyPath.
 * @returns {Promise<IDBPDatabase>} A promise that resolves to the database instance.
 */
 async function initSettingsDB() {
-  return idb.openDB(SETTINGS_DB_NAME, 1, {
+  return idb.openDB(SETTINGS_DB_NAME, 2, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
         db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: 'key' });
@@ -53,13 +56,13 @@ async function saveSetting(key, value) {
         const db = await initSettingsDB();
         await db.put(SETTINGS_STORE_NAME, { key, value });
         return;
-      } catch {}
+      } catch { }
     }
     if (debuggingConsoleEnabled) console.warn('[saveSetting] failed:', e);
   }
 }
 
- async function saveSetting(key, value) {
+async function saveSetting(key, value) {
   const db = await initSettingsDB();
   await db.put(SETTINGS_STORE_NAME, { key, value });
 }
@@ -75,6 +78,331 @@ async function getSetting(key) {
   return entry?.value;
 }
 
+const QUERY_IRI = {
+  class: "https://github.com/jonathanvajda/SemanticArtifactOntology/ont000007",
+  predicate: "https://github.com/jonathanvajda/SemanticArtifactOntology/has_sparql_query_text_value",
+  label: "http://www.w3.org/2000/01/rdf-schema#label"
+}
+
+/**
+ * Initializes the triple store database and ensures the savedQueries store exists.
+ * Reuses the same DB as triples, but adds a separate store for saved query artifacts.
+ * @returns {Promise<IDBPDatabase>}
+ */
+async function initQueryStore() {
+  try {
+    const db = await idb.openDB(DB_NAME, QUERY_DB_VERSION, {
+      upgrade(db, oldVersion, newVersion, tx) {
+        // Existing triples store
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          const store = db.createObjectStore(STORE_NAME, {
+            keyPath: ['subject', 'predicate', 'object', 'graph']
+          });
+          store.createIndex('subject', 'subject');
+          store.createIndex('predicate', 'predicate');
+          store.createIndex('object', 'object');
+          store.createIndex('graph', 'graph');
+        }
+
+        // New query store
+        if (!db.objectStoreNames.contains(QUERY_STORE_NAME)) {
+          const queryStore = db.createObjectStore(QUERY_STORE_NAME, {
+            keyPath: 'id'
+          });
+          queryStore.createIndex('label', 'label');
+          queryStore.createIndex('type', 'type');
+          queryStore.createIndex('value', 'value');
+          queryStore.createIndex('createdAt', 'createdAt');
+        }
+      }
+    });
+    return db;
+  } catch (error) {
+    if (debuggingConsoleEnabled) {
+      console.error('[initQueryStore] Failed to initialize query store:', error);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Save one normalized query record.
+ * @param {{id:string,type:string,value:string,label?:string,createdAt?:string}} record
+ * @returns {Promise<object>}
+ */
+async function saveSavedQuery(record) {
+  const db = await initQueryStore();
+  const tx = db.transaction(QUERY_STORE_NAME, 'readwrite');
+  const store = tx.objectStore(QUERY_STORE_NAME);
+
+  const normalized = {
+    id: String(record.id).trim(),
+    label: String(record.label).trim(),
+    type: String(record.type).trim(),
+    value: String(record.value ?? ''),
+    createdAt: record.createdAt || new Date().toISOString()
+  };
+
+  await store.put(normalized);
+  await tx.done;
+
+  try {
+    window?.dispatchEvent(new CustomEvent('saved-queries-changed', {
+      detail: { db: DB_NAME, store: QUERY_STORE_NAME, type: 'put', key: normalized.id }
+    }));
+  } catch { }
+
+  return normalized;
+}
+
+/**
+ * Get one saved query by IRI.
+ * @param {string} id
+ * @returns {Promise<object|undefined>}
+ */
+async function getSavedQueryById(id) {
+  const db = await initQueryStore();
+  return db.get(QUERY_STORE_NAME, id);
+}
+
+/**
+ * List all saved queries.
+ * @returns {Promise<Array<{id:string,label:string,type:string,value:string,createdAt:string}>>}
+ */
+async function getAllSavedQueries() {
+  const db = await initQueryStore();
+  const rows = await db.getAll(QUERY_STORE_NAME);
+  return rows.sort((a, b) => {
+    const av = a.createdAt || '';
+    const bv = b.createdAt || '';
+    return bv.localeCompare(av);
+  });
+}
+
+/**
+ * Delete one saved query by IRI.
+ * @param {string} id
+ * @returns {Promise<void>}
+ */
+async function deleteSavedQuery(id) {
+  const db = await initQueryStore();
+  const tx = db.transaction(QUERY_STORE_NAME, 'readwrite');
+  await tx.objectStore(QUERY_STORE_NAME).delete(id);
+  await tx.done;
+
+  try {
+    window?.dispatchEvent(new CustomEvent('saved-queries-changed', {
+      detail: { db: DB_NAME, store: QUERY_STORE_NAME, type: 'delete', key: id }
+    }));
+  } catch { }
+}
+
+/**
+ * Convert one normalized query record into your JSON-LD shape.
+ * @param {{id:string,label:string,type:string,value:string}} record
+ * @returns {object}
+ */
+function savedQueryRecordToJsonLd(record) {
+  return {
+    '@id': record.id,
+    '@type': [record.type, 'http://www.w3.org/2002/07/owl#NamedIndividual'],
+    [QUERY_IRI.predicate]: [{ '@value': record.value }],
+    [QUERY_IRI.label]: [{'@value': record.label }]
+  };
+}
+
+/**
+ * Export all saved queries as a JSON-LD array.
+ * @returns {Promise<Array<object>>}
+ */
+async function exportSavedQueriesAsJsonLd() {
+  const rows = await getAllSavedQueries();
+  return rows.map(savedQueryRecordToJsonLd);
+}
+
+const SAVED_QUERY_CSV_HEADERS = [
+  'query ID (IRI)',
+  'label',
+  'type (class iri)',
+  "value ('has sparql query text value')"
+];
+
+function escapeCsvCell(value) {
+  const s = String(value ?? '');
+  if (/[",\n\r]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+/**
+ * Convert normalized query rows to CSV text.
+ * @param {Array<{id:string,label:string,type:string,value:string}>} rows
+ * @returns {string}
+ */
+function savedQueriesToCsv(rows) {
+  const lines = [SAVED_QUERY_CSV_HEADERS.join(',')];
+  for (const row of rows) {
+    lines.push([
+      escapeCsvCell(row.id),
+      escapeCsvCell(row.label),
+      escapeCsvCell(row.type),
+      escapeCsvCell(row.value)
+    ].join(','));
+  }
+  return lines.join('\n');
+}
+
+/**
+ * Export all saved queries as normalized CSV text.
+ * @returns {Promise<string>}
+ */
+async function exportSavedQueriesAsCsv() {
+  const rows = await getAllSavedQueries();
+  return savedQueriesToCsv(rows);
+}
+
+/**
+ * Parse a normalized CSV line array into query objects.
+ * Assumes CSV was generated by this app's exporter.
+ * @param {string} csvText
+ * @returns {Array<{id:string,label:string,type:string,value:string}>}
+ */
+function parseSavedQueriesCsv(csvText) {
+  const text = String(csvText || '').trim();
+  if (!text) return [];
+
+  const rows = [];
+  let i = 0;
+  let field = '';
+  let row = [];
+  let inQuotes = false;
+
+  while (i < text.length) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (inQuotes) {
+      if (ch === '"' && next === '"') {
+        field += '"';
+        i += 2;
+        continue;
+      }
+      if (ch === '"') {
+        inQuotes = false;
+        i += 1;
+        continue;
+      }
+      field += ch;
+      i += 1;
+      continue;
+    }
+
+    if (ch === '"') {
+      inQuotes = true;
+      i += 1;
+      continue;
+    }
+
+    if (ch === ',') {
+      row.push(field);
+      field = '';
+      i += 1;
+      continue;
+    }
+
+    if (ch === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+      i += 1;
+      continue;
+    }
+
+    if (ch === '\r') {
+      i += 1;
+      continue;
+    }
+
+    field += ch;
+    i += 1;
+  }
+
+  row.push(field);
+  rows.push(row);
+
+  if (!rows.length) return [];
+
+  const header = rows[0].map(x => String(x).trim());
+  const expected = SAVED_QUERY_CSV_HEADERS;
+
+  const headerOk = expected.length === header.length &&
+    expected.every((h, idx) => h === header[idx]);
+
+  if (!headerOk) {
+    throw new Error('CSV header does not match the normalized saved-query format.');
+  }
+
+  return rows.slice(1)
+    .filter(r => r.some(cell => String(cell).trim() !== ''))
+    .map(r => ({
+      id: String(r[0] || '').trim(),
+      label: String(r[1] || '').trim(),
+      type: String(r[2] || '').trim(),
+      value: String(r[3] || '')
+    }));
+}
+
+/**
+ * Import normalized CSV into savedQueries store.
+ * Upserts by id.
+ * @param {string} csvText
+ * @returns {Promise<{count:number}>}
+ */
+async function importSavedQueriesFromCsv(csvText) {
+  const rows = parseSavedQueriesCsv(csvText);
+  const db = await initQueryStore();
+  const tx = db.transaction(QUERY_STORE_NAME, 'readwrite');
+  const store = tx.objectStore(QUERY_STORE_NAME);
+
+  for (const row of rows) {
+    if (!row.id || !row.type) continue;
+    await store.put({
+      id: row.id,
+      label: row.label,
+      type: row.type,
+      value: row.value,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  await tx.done;
+
+  try {
+    window?.dispatchEvent(new CustomEvent('saved-queries-changed', {
+      detail: { db: DB_NAME, store: QUERY_STORE_NAME, type: 'bulk-import' }
+    }));
+  } catch { }
+
+  return { count: rows.length };
+}
+
+async function clearSavedQueries() {
+  const db = await initQueryStore();
+  const tx = db.transaction(QUERY_STORE_NAME, 'readwrite');
+  await tx.objectStore(QUERY_STORE_NAME).clear();
+  await tx.done;
+
+  try {
+    window?.dispatchEvent(new CustomEvent('saved-queries-changed', {
+      detail: { db: DB_NAME, store: QUERY_STORE_NAME, type: 'clear' }
+    }));
+  } catch { }
+}
+
+
+
 /**
  * Initializes the triple store database with required indexes.
  * Creates the 'triples' object store with indexes for subject, predicate, object, and graph.
@@ -82,8 +410,8 @@ async function getSetting(key) {
  */
 async function initTripleStore() {
   try {
-    if (debuggingConsoleEnabled) {console.info('[initTripleStore] Initializing IndexedDB store...');}
-    const db = await idb.openDB(DB_NAME, 1, {
+    if (debuggingConsoleEnabled) { console.info('[initTripleStore] Initializing IndexedDB store...'); }
+    const db = await idb.openDB(DB_NAME, 2, {
       upgrade(db) {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, {
@@ -98,7 +426,7 @@ async function initTripleStore() {
     });
     return db;
   } catch (error) {
-    if (debuggingConsoleEnabled) {console.error('[initTripleStore] Failed to initialize store:', error);}
+    if (debuggingConsoleEnabled) { console.error('[initTripleStore] Failed to initialize store:', error); }
     throw error;
   }
 };
@@ -109,7 +437,7 @@ async function initTripleStore() {
  */
 async function storeTriplesInNamedGraph(triples) {
   try {
-    if (debuggingConsoleEnabled) {console.info(`[storeTriplesInNamedGraph] Adding ${triples.length} triples to IndexedDB`);}
+    if (debuggingConsoleEnabled) { console.info(`[storeTriplesInNamedGraph] Adding ${triples.length} triples to IndexedDB`); }
     const db = await initTripleStore();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
@@ -127,10 +455,10 @@ async function storeTriplesInNamedGraph(triples) {
       });
     }
     await tx.done;
-    try { window?.dispatchEvent(new CustomEvent('triples-changed', { detail: { db: DB_NAME, store: STORE_NAME, type: 'put' } })); } catch {}
-    if (debuggingConsoleEnabled) {console.info('[storeTriplesInNamedGraph] Triples successfully stored.');}
+    try { window?.dispatchEvent(new CustomEvent('triples-changed', { detail: { db: DB_NAME, store: STORE_NAME, type: 'put' } })); } catch { }
+    if (debuggingConsoleEnabled) { console.info('[storeTriplesInNamedGraph] Triples successfully stored.'); }
   } catch (error) {
-    if (debuggingConsoleEnabled) {console.error('[storeTriplesInNamedGraph] Error storing triples:', error);}
+    if (debuggingConsoleEnabled) { console.error('[storeTriplesInNamedGraph] Error storing triples:', error); }
     throw error;
   }
 };
@@ -139,14 +467,14 @@ async function storeTriplesInNamedGraph(triples) {
  * Retrieves all triples from the triple store.
  * @returns {Promise<Array>} A promise that resolves to an array of all stored triples.
  */
-async function getAllTriples () {
+async function getAllTriples() {
   try {
     const db = await initTripleStore();
     const triples = await db.getAll(STORE_NAME);
-    if (debuggingConsoleEnabled) {console.info(`[getAllTriples] Retrieved ${triples.length} triples.`);}
+    if (debuggingConsoleEnabled) { console.info(`[getAllTriples] Retrieved ${triples.length} triples.`); }
     return triples;
   } catch (error) {
-    if (debuggingConsoleEnabled) {console.error('[getAllTriples] Failed to fetch triples:', error);}
+    if (debuggingConsoleEnabled) { console.error('[getAllTriples] Failed to fetch triples:', error); }
     throw error;
   }
 };
@@ -171,10 +499,10 @@ async function getAllGraphNames() {
         .map(g => g.trim())
     )];
 
-    if (debuggingConsoleEnabled) {console.info(`[getAllGraphNames] Found ${unique.length} named graphs`);}
+    if (debuggingConsoleEnabled) { console.info(`[getAllGraphNames] Found ${unique.length} named graphs`); }
     return unique;
   } catch (err) {
-    if (debuggingConsoleEnabled) {console.error('[getAllGraphNames] Failed to retrieve graph names:', err);}
+    if (debuggingConsoleEnabled) { console.error('[getAllGraphNames] Failed to retrieve graph names:', err); }
     return [];
   }
 }
@@ -183,7 +511,7 @@ async function getAllGraphNames() {
  * Remove a batch of exact triples (subject,predicate,object,graph) from the store.
  * @param {Array<{subject:string,predicate:string,object:string,graph:string}>} triples
  */
-const deleteExactTriples = async (triples=[]) => {
+const deleteExactTriples = async (triples = []) => {
   const db = await initTripleStore();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   const store = tx.objectStore(STORE_NAME);
@@ -194,11 +522,11 @@ const deleteExactTriples = async (triples=[]) => {
       await store.delete(key);
       removed++;
     } catch (e) {
-      if (debuggingConsoleEnabled) {console.warn('[deleteExactTriples] Failed to delete key', key, e);}
+      if (debuggingConsoleEnabled) { console.warn('[deleteExactTriples] Failed to delete key', key, e); }
     }
   }
   await tx.done;
-  if (debuggingConsoleEnabled) {console.info(`[deleteExactTriples] Removed ${removed}/${triples.length} triples.`);}
+  if (debuggingConsoleEnabled) { console.info(`[deleteExactTriples] Removed ${removed}/${triples.length} triples.`); }
   return removed;
 };
 
@@ -210,10 +538,10 @@ async function clearTriples() {
   try {
     const db = await initTripleStore();
     await db.clear(STORE_NAME);
-    try { window?.dispatchEvent(new CustomEvent('triples-changed', { detail: { db: DB_NAME, store: STORE_NAME, type: 'clear' } })); } catch {}
-    if (debuggingConsoleEnabled) {console.info('[clearTriples] All triples cleared from store.');}
+    try { window?.dispatchEvent(new CustomEvent('triples-changed', { detail: { db: DB_NAME, store: STORE_NAME, type: 'clear' } })); } catch { }
+    if (debuggingConsoleEnabled) { console.info('[clearTriples] All triples cleared from store.'); }
   } catch (error) {
-    if (debuggingConsoleEnabled) {console.error('[clearTriples] Error clearing store:', error);}
+    if (debuggingConsoleEnabled) { console.error('[clearTriples] Error clearing store:', error); }
     throw error;
   }
 };
@@ -229,18 +557,18 @@ const getTriplesByField = async (field, value) => {
     const db = await initTripleStore();
     const index = db.transaction(STORE_NAME).store.index(field);
     const results = await index.getAll(value);
-    if (debuggingConsoleEnabled) {console.info(`[getTriplesByField] Retrieved ${results.length} triples for ${field}=${value}`);}
+    if (debuggingConsoleEnabled) { console.info(`[getTriplesByField] Retrieved ${results.length} triples for ${field}=${value}`); }
     return results;
   } catch (error) {
-    if (debuggingConsoleEnabled) {console.error(`[getTriplesByField] Error retrieving by ${field}:`, error);}
+    if (debuggingConsoleEnabled) { console.error(`[getTriplesByField] Error retrieving by ${field}:`, error); }
     throw error;
   }
 };
 
 
 // Best-effort: close any open connections first (avoids 'blocked' state)
-async function closeOpenIndexedDBConnections () {
- try {
+async function closeOpenIndexedDBConnections() {
+  try {
     const [db1, db2] = await Promise.all([
       idb.openDB(DB_NAME).catch(() => null),
       idb.openDB(SETTINGS_DB_NAME).catch(() => null),
@@ -259,18 +587,18 @@ async function deleteIndexedDBInstance(name) {
     new Promise((resolve, reject) => {
       const req = indexedDB.deleteDatabase(name);
       req.onsuccess = () => {
-        if (debuggingConsoleEnabled) {console.info(`[wipeActiveWorkspace] Deleted IndexedDB "${name}"`);}
+        if (debuggingConsoleEnabled) { console.info(`[wipeActiveWorkspace] Deleted IndexedDB "${name}"`); }
         resolve();
       };
       req.onerror = () => {
-        if (debuggingConsoleEnabled) {console.error(`[wipeActiveWorkspace] Failed to delete "${name}"`, req.error);}
+        if (debuggingConsoleEnabled) { console.error(`[wipeActiveWorkspace] Failed to delete "${name}"`, req.error); }
         reject(req.error);
       };
       req.onblocked = () => {
-        if (debuggingConsoleEnabled) {console.warn(`[wipeActiveWorkspace] Delete for "${name}" is blocked (another tab open?)`);}
+        if (debuggingConsoleEnabled) { console.warn(`[wipeActiveWorkspace] Delete for "${name}" is blocked (another tab open?)`); }
       };
-     });
- });
+    });
+  });
 };
 
 // Clear Browser's localStorage
@@ -278,9 +606,9 @@ function clearLocalStorage() {
   // Clear localStorage (if you prefer a narrower clear, replace with removals of known keys)
   try {
     localStorage.clear();
-    if (debuggingConsoleEnabled) {console.info('[wipeActiveWorkspace] Cleared localStorage');}
+    if (debuggingConsoleEnabled) { console.info('[wipeActiveWorkspace] Cleared localStorage'); }
   } catch (e) {
-    if (debuggingConsoleEnabled) {console.warn('[wipeActiveWorkspace] Could not clear localStorage:', e);}
+    if (debuggingConsoleEnabled) { console.warn('[wipeActiveWorkspace] Could not clear localStorage:', e); }
   }
 };
 
@@ -290,7 +618,7 @@ function clearLocalStorage() {
  * - Clears localStorage keys for this origin.
  */
 async function wipeActiveWorkspace() {
- // close any open connections first (avoids 'blocked' state)
+  // close any open connections first (avoids 'blocked' state)
   await closeOpenIndexedDBConnections();
 
   // Delete the two databases (and actually await the promises)
@@ -302,8 +630,8 @@ async function wipeActiveWorkspace() {
   // Clear localStorage
   clearLocalStorage();
 
-  try { window?.dispatchEvent(new CustomEvent('triples-changed',  { detail: { db: 'inferenceDB',  store: 'triples',  type: 'clear' } })); } catch {}
-  try { window?.dispatchEvent(new CustomEvent('settings-changed', { detail: { db: 'SPARQLSettings', store: 'Settings', type: 'clear' } })); } catch {}
-  try { notifyIdbChange?.({ db: 'inferenceDB',  store: 'triples',  type: 'clear' }); } catch {}
-  try { notifyIdbChange?.({ db: 'SPARQLSettings', store: 'Settings', type: 'clear' }); } catch {}
+  try { window?.dispatchEvent(new CustomEvent('triples-changed', { detail: { db: 'inferenceDB', store: 'triples', type: 'clear' } })); } catch { }
+  try { window?.dispatchEvent(new CustomEvent('settings-changed', { detail: { db: 'SPARQLSettings', store: 'Settings', type: 'clear' } })); } catch { }
+  try { notifyIdbChange?.({ db: 'inferenceDB', store: 'triples', type: 'clear' }); } catch { }
+  try { notifyIdbChange?.({ db: 'SPARQLSettings', store: 'Settings', type: 'clear' }); } catch { }
 }

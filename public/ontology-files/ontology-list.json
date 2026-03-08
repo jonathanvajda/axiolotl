@@ -1,0 +1,101 @@
+[
+  {
+    "owl:ontologyIRI": "https://www.commoncoreontologies.org/AgentOntology",
+    "owl:versionIRI": "https://www.commoncoreontologies.org/2024-11-05/AgentOntology",
+    "rdfs:label": "Agent Ontology",
+    "dcterms:title": null,
+    "dc:title": null,
+    "owl:versionInfo": "Version 2.0",
+    "file:name": "AgentOntology.ttl"
+  },
+  {
+    "owl:ontologyIRI": "http://purl.obolibrary.org/obo/bfo.owl",
+    "owl:versionIRI": "http://purl.obolibrary.org/obo/bfo/2020/bfo-core.ttl",
+    "rdfs:label": null,
+    "dcterms:title": "BFO 2020",
+    "dc:title": null,
+    "owl:versionInfo": null,
+    "file:name": "bfo-core.ttl"
+  },
+  {
+    "owl:ontologyIRI": "http://www.w3.org/ns/dcat",
+    "owl:versionIRI": "http://www.w3.org/ns/dcat3",
+    "rdfs:label": "The data catalog vocabulary",
+    "dcterms:title": "The data catalog vocabulary",
+    "dc:title": null,
+    "owl:versionInfo": "3",
+    "file:name": "dcat3.ttl"
+  },
+  {
+    "owl:ontologyIRI": "http://xmlns.com/foaf/0.1/",
+    "owl:versionIRI": "None",
+    "rdfs:label": null,
+    "dcterms:title": null,
+    "dc:title": "Friend of a Friend (FOAF) vocabulary",
+    "owl:versionInfo": null,
+    "file:name": "foaf-20140114.rdf"
+  },
+  {
+    "owl:ontologyIRI": "http://purl.org/geojson/vocab#",
+    "owl:versionIRI": "None",
+    "rdfs:label": null,
+    "dcterms:title": null,
+    "dc:title": "GeoJSON-LD vocabulary",
+    "owl:versionInfo": null,
+    "file:name": "geojson.rdf"
+  },
+  {
+    "owl:ontologyIRI": "https://www.commoncoreontologies.org/InformationEntityOntology",
+    "owl:versionIRI": "https://www.commoncoreontologies.org/2024-11-06/InformationEntityOntology",
+    "rdfs:label": "Information Entity Ontology",
+    "dcterms:title": null,
+    "dc:title": null,
+    "owl:versionInfo": "Version 2.0",
+    "file:name": "InformationEntityOntology.ttl"
+  },
+  {
+    "owl:ontologyIRI": "http://purl.obolibrary.org/obo/omo.owl",
+    "owl:versionIRI": "http://purl.obolibrary.org/obo/omo/releases/2024-11-13/omo.owl",
+    "rdfs:label": null,
+    "dcterms:title": null,
+    "dc:title": "OBO Metadata Ontology",
+    "owl:versionInfo": "2024-11-13",
+    "file:name": "omo.owl"
+  },
+  {
+    "owl:ontologyIRI": "http://www.w3.org/2002/07/owl",
+    "owl:versionIRI": "http://www.w3.org/2002/07/owl",
+    "rdfs:label": null,
+    "dcterms:title": null,
+    "dc:title": "The OWL 2 Schema vocabulary (OWL 2)",
+    "owl:versionInfo": "$Date: 2009/11/15 10:54:12 $",
+    "file:name": "owl.ttl"
+  },
+  {
+    "owl:ontologyIRI": "http://www.w3.org/2000/01/rdf-schema#",
+    "owl:versionIRI": "None",
+    "rdfs:label": null,
+    "dcterms:title": null,
+    "dc:title": "The RDF Schema vocabulary (RDFS)",
+    "owl:versionInfo": null,
+    "file:name": "rdf-schema.ttl"
+  },
+  {
+    "owl:ontologyIRI": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "owl:versionIRI": "None",
+    "rdfs:label": null,
+    "dcterms:title": null,
+    "dc:title": "The RDF Concepts Vocabulary (RDF)",
+    "owl:versionInfo": null,
+    "file:name": "rdf-syntax.ttl"
+  },
+  {
+    "owl:ontologyIRI": "http://www.w3.org/2004/02/skos/core",
+    "owl:versionIRI": "None",
+    "rdfs:label": null,
+    "dcterms:title": "SKOS Vocabulary",
+    "dc:title": null,
+    "owl:versionInfo": null,
+    "file:name": "skos.rdf"
+  }
+]

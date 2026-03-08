@@ -22,26 +22,26 @@ body {
 .tabs {
   display: flex;
   gap: 0.7em;
-  justify-content: center;
+  justify-content: space-around;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
 }
 
 /* Main Content Area */
 main {
-  max-width: 1100px;
   margin: 0 auto;
   padding: 1.5em 2em 2em 2em;
   background: #f8fbfd;
   border-radius: 12px;
   box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+  max-width: 94%;
 }
 
 .tab-content {
   display: none;
 }
 .tab-content.active {
-  display: block;
+  display: grid;
 }
 
 
@@ -143,7 +143,7 @@ button:hover {
 
 /* Textarea for RDF preview */
 textarea {
-  font-size: 1em;
+  font-size: 1rem;
   border-radius: 4px;
   border: 1px solid #b5d6f6;
   padding: 0.5em;
@@ -168,6 +168,15 @@ select {
   margin-left: 0.5em;
 }
 
+.danger,
+.danger-zone {
+ padding: 1rem 1rem; 
+ font-weight: 600;
+ color: #000;
+ background-color: rgba(255, 0, 0, 0.1);
+}
+
+
 /* Responsive for small screens */
 @media (max-width: 700px) {
   table {
@@ -176,7 +185,7 @@ select {
     font-size: 0.98em;
   }
   textarea {
-    font-size: 1em;
+    font-size: 1rem;
     width: 98vw;
   }
   #rules {
@@ -268,10 +277,95 @@ thead th {
   border-bottom-color: #3b82f6;
 }
 
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: grid;
+  grid-template-columns: 20% 55% 25%;
+  align-items: start;
+  column-gap: 1rem;
+  row-gap: 1rem;
+  width: 100%;
+}
+
 /* Optional “pressed” look */
 .tab-btn.active:active { transform: none; }
+
+/* Standard three-column tab content */
+.sidebar-left {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.mid-section {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.sidebar-right {
+  grid-column: 3;
+  min-width: 0;
+}
+
+/* Query results row below all 3 columns */
+#query-results {
+  grid-column: 1 / 4;
+  width: 98%;
+  max-width: 100%;
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #d9e8f5;
+  border-radius: 8px;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+/* Optional: give sidebars a card-like feel */
+.sidebar-left,
+.sidebar-right,
+.mid-section,
+.tab-mid-section {
+  box-sizing: border-box;
+}
+
+/* Make wide results tables scroll instead of breaking the page */
+#query-results table {
+  min-width: 50%;
+  width: max-content;
+  max-width: none;
+}
+
+/* Better query textarea sizing */
+#sparql-query,
+#rdf-preview {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+footer {
+  padding: 2rem;
+}
+
+/* Mobile / smaller screens */
+@media (max-width: 900px) {
+  .tab-panel.active {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-left,
+  .mid-section,
+  .tab-mid-section,
+  .sidebar-right,
+  #query-results {
+    grid-column: 1;
+  }
+
+  .tabs {
+    flex-wrap: wrap;
+  }
+}
 
 /* Optional: focus ring for a11y */
 .tab-btn:focus-visible {
