@@ -236,25 +236,49 @@ select {
 }
 
 
-  /* Decrease font size for all table data cells */
+/* Decrease font size for all table data cells */
+.query-results-th,
 .query-results-td {
-    font-size: 0.8em; /* You can adjust this value to your preference */
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  border: 1px solid #e5e7eb;
+  font-size: 0.8em;
 }
 
-/* Set the background color for every even-numbered row */
+/* Zebra striping */
 .query-results-tr:nth-child(even) {
-    background-color: #f2f2f2; /* A light grey color */
+  background-color: #f2f2f2;
 }
 
-/* Ensure the odd-numbered rows are white, which is often the default, but it's good practice to be explicit */
 .query-results-tr:nth-child(odd) {
-    background-color: #ffffff;
+  background-color: #ffffff;
 }
 
 /* Make the header row cells bold */
 thead th {
     font-weight: bold;
     background-color: #d2d2d2; /* A slightly darker grey for the header */
+}
+
+/* Inner wrapper controls visual width */
+.query-cell {
+  display: block;
+  max-width: 26rem;          /* adjust to taste, e.g. 320px, 28rem, etc. */
+  white-space: normal;
+  overflow-wrap: anywhere;   /* key for long IRIs */
+  word-break: break-word;    /* decent fallback */
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+/* Optional: click cell to expand/collapse */
+.query-cell.is-expanded {
+  max-width: none;
+}
+
+/* Headers can wrap too */
+.query-results-th .query-cell {
+  font-weight: 600;
 }
 
 /* Tab buttons */
@@ -332,7 +356,8 @@ thead th {
 
 /* Make wide results tables scroll instead of breaking the page */
 #query-results table {
-  min-width: 50%;
+  border-collapse: collapse;
+  min-width: 100%;
   width: max-content;
   max-width: none;
 }

@@ -657,12 +657,16 @@ function structureQueryResults(result) {
     const { vars, rows } = result;
     if (rows.length === 0) return '<em>No results.</em>';
 
-    let html = `<table><thead><tr>${vars.map(v => `<th>${v}</th>`).join('')}</tr></thead><tbody>`;
+    let html = `<table><thead><tr>${
+      vars.map(v => `<th class="query-results-th">${renderQueryCell(v)}</th>`).join('')
+    }</tr></thead><tbody>`;
+
     for (const row of rows) {
       html += `<tr class="query-results-tr">` +
-        vars.map(v => `<td class="query-results-td">${row[v]?.value ?? ''}</td>`).join('') +
+        vars.map(v => `<td class="query-results-td">${renderQueryCell(row[v]?.value ?? '')}</td>`).join('') +
         `</tr>`;
     }
+
     html += '</tbody></table>';
     return html;
   }
@@ -674,24 +678,41 @@ function structureQueryResults(result) {
 
   // Graph/Quads: your old path (array of { nt: { value } })
   if (Array.isArray(result) && result[0] && result[0].nt) {
-    return `<pre>${result.map(x => x.nt.value).join('\n')}</pre>`;
+    return `<pre>${escapeHtml(result.map(x => x.nt.value).join('\n'))}</pre>`;
   }
 
   // Legacy / fallback: previous array-of-bindings shape
   if (Array.isArray(result) && result.length) {
     const vars = Object.keys(result[0]);
-    let html = `<table><thead><tr>${vars.map(v => `<th>${v}</th>`).join('')}</tr></thead><tbody>`;
+
+    let html = `<table><thead><tr>${
+      vars.map(v => `<th class="query-results-th">${renderQueryCell(v)}</th>`).join('')
+    }</tr></thead><tbody>`;
+
     for (const row of result) {
       html += `<tr class="query-results-tr">` +
-        vars.map(v => `<td class="query-results-td">${row[v]?.value ?? ''}</td>`).join('') +
+        vars.map(v => `<td class="query-results-td">${renderQueryCell(row[v]?.value ?? '')}</td>`).join('') +
         `</tr>`;
     }
+
     html += '</tbody></table>';
     return html;
   }
 
   return '<em>No results.</em>';
 }
+
+function renderQueryCell(value) {
+  const safe = escapeHtml(value);
+  return `<div class="query-cell" title="${safe}">${safe}</div>`;
+}
+
+document.getElementById('query-results').addEventListener('click', function (event) {
+  const cell = event.target.closest('.query-cell');
+  if (cell) {
+    cell.classList.toggle('is-expanded');
+  }
+});
 
 /**
  * Commit an UPDATE by materializing its delta:
@@ -1181,9 +1202,18 @@ async function loadSelectedOntologiesToDB() {
 // Handle special characters in HTML
 function escapeHtml(s) {
   return String(s)
-    .replaceAll('&','&amp;')
-    .replaceAll('<','&lt;')
-    .replaceAll('>','&gt;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderCell(binding) {
+  const text = binding?.value ?? '';
+  const safe = escapeHtml(text);
+
+  return `<div class="query-cell" title="${safe}">${safe}</div>`;
 }
 
 /**
