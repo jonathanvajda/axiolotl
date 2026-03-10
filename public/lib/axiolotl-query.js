@@ -658,25 +658,24 @@ function structureQueryResults(result) {
     if (rows.length === 0) return '<em>No results.</em>';
 
     let html = `<table><thead><tr>${
-      vars.map(v => `<th class="query-results-th">${renderQueryCell(v)}</th>`).join('')
+      vars.map(v => `<th class="query-results-th">${renderQueryCell(v, 40)}</th>`).join('')
     }</tr></thead><tbody>`;
 
     for (const row of rows) {
       html += `<tr class="query-results-tr">` +
-        vars.map(v => `<td class="query-results-td">${renderQueryCell(row[v]?.value ?? '')}</td>`).join('') +
+        vars.map(v => `<td class="query-results-td">${renderQueryCell(row[v]?.value ?? '', 75)}</td>`).join('') +
         `</tr>`;
     }
-
     html += '</tbody></table>';
     return html;
   }
 
-  // ASK (if you returned { kind:'ask', value })
+  // ASK
   if (result && result.kind === 'ask') {
     return `<pre>${result.value ? 'true' : 'false'}</pre>`;
   }
 
-  // Graph/Quads: your old path (array of { nt: { value } })
+  // Graph/Quads
   if (Array.isArray(result) && result[0] && result[0].nt) {
     return `<pre>${escapeHtml(result.map(x => x.nt.value).join('\n'))}</pre>`;
   }
@@ -684,17 +683,15 @@ function structureQueryResults(result) {
   // Legacy / fallback: previous array-of-bindings shape
   if (Array.isArray(result) && result.length) {
     const vars = Object.keys(result[0]);
-
     let html = `<table><thead><tr>${
-      vars.map(v => `<th class="query-results-th">${renderQueryCell(v)}</th>`).join('')
+      vars.map(v => `<th class="query-results-th">${renderQueryCell(v, 40)}</th>`).join('')
     }</tr></thead><tbody>`;
 
     for (const row of result) {
       html += `<tr class="query-results-tr">` +
-        vars.map(v => `<td class="query-results-td">${renderQueryCell(row[v]?.value ?? '')}</td>`).join('') +
+        vars.map(v => `<td class="query-results-td">${renderQueryCell(row[v]?.value ?? '', 75)}</td>`).join('') +
         `</tr>`;
     }
-
     html += '</tbody></table>';
     return html;
   }
@@ -1200,8 +1197,8 @@ async function loadSelectedOntologiesToDB() {
 }
 
 // Handle special characters in HTML
-function escapeHtml(s) {
-  return String(s)
+function escapeHtml(value) {
+  return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -1209,12 +1206,78 @@ function escapeHtml(s) {
     .replaceAll("'", '&#39;');
 }
 
-function renderCell(binding) {
-  const text = binding?.value ?? '';
-  const safe = escapeHtml(text);
+function abbreviateText(value, maxChars) {
+  const text = String(value ?? '');
+  if (text.length <= maxChars) return text;
 
-  return `<div class="query-cell" title="${safe}">${safe}</div>`;
+  const slice = text.slice(0, maxChars);
+  const lastSpace = slice.lastIndexOf(' ');
+
+  if (lastSpace > 20) {
+    return slice.slice(0, lastSpace) + '...';
+  }
+
+  return slice + '...';
 }
+
+function renderQueryCell(value, maxChars = 75) {
+  const raw = String(value ?? '');
+  const safeFull = escapeHtml(raw);
+
+  if (raw.length <= maxChars) {
+    return `<div class="query-cell">${safeFull}</div>`;
+  }
+
+  const safeShort = escapeHtml(abbreviateText(raw, maxChars));
+
+  return `
+    <details class="query-cell query-cell-details">
+      <summary class="query-cell-summary" title="${safeFull}">${safeShort}</summary>
+      <div class="query-cell-full">${safeFull}</div>
+    </details>
+  `;
+}
+
+document.getElementById('run-query').onclick = async () => {
+  const t0 = performance.now();
+
+  try {
+    const prefixes       = getActivePrefixes();
+    const queryText      = document.getElementById('sparql-query')?.value ?? '';
+    const useEndpoint    = !!document.getElementById('endpoint-radio')?.checked;
+    const selectedGraphs = getSelectedGraphsFromUI();
+
+    const query = buildQuery(prefixes, queryText);
+    const t1 = performance.now();
+
+    let response;
+    if (useEndpoint) {
+      response = await runQueryOnEndpoint(
+        document.getElementById('endpoint-reference')?.value ?? '',
+        query
+      );
+    } else {
+      response = await runQueryOnDatabase(selectedGraphs, query);
+    }
+    const t2 = performance.now();
+
+    const resultsHtml = structureQueryResults(response);
+    const t3 = performance.now();
+
+    displayQueryResults(resultsHtml);
+    const t4 = performance.now();
+
+    console.table([{
+      buildQueryMs: Math.round(t1 - t0),
+      runQueryMs: Math.round(t2 - t1),
+      renderHtmlMs: Math.round(t3 - t2),
+      paintDomMs: Math.round(t4 - t3),
+      totalMs: Math.round(t4 - t0)
+    }]);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
 /**
  * Render a query error with possible hints into the results div.

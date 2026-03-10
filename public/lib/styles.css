@@ -239,10 +239,9 @@ select {
 /* Decrease font size for all table data cells */
 .query-results-th,
 .query-results-td {
-  padding: 0.5rem 0.75rem;
+  padding: 0.45rem 0.65rem;
   vertical-align: top;
-  border: 1px solid #e5e7eb;
-  font-size: 0.8em;
+  box-sizing: border-box;
 }
 
 /* Zebra striping */
@@ -263,22 +262,46 @@ thead th {
 /* Inner wrapper controls visual width */
 .query-cell {
   display: block;
-  max-width: 26rem;          /* adjust to taste, e.g. 320px, 28rem, etc. */
+  max-width: 26rem;         /* adjust */
   white-space: normal;
-  overflow-wrap: anywhere;   /* key for long IRIs */
-  word-break: break-word;    /* decent fallback */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 0.8rem;
   line-height: 1.35;
-  cursor: pointer;
 }
 
-/* Optional: click cell to expand/collapse */
-.query-cell.is-expanded {
-  max-width: none;
+/* details version stays capped too */
+.query-cell-details {
+  max-width: 26rem;
+}
+
+.query-cell-summary {
+  display: block;
+  max-width: 26rem;
+  cursor: pointer;
+  list-style: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 /* Headers can wrap too */
 .query-results-th .query-cell {
   font-weight: 600;
+}
+
+.query-cell-summary::-webkit-details-marker {
+  display: none;
+}
+
+.query-cell-full {
+  margin-top: 0.35rem;
+  max-width: 26rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  padding-top: 0.2rem;
+  border-top: 1px solid #e5e7eb;
 }
 
 /* Tab buttons */
