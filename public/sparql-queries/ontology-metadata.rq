@@ -1,0 +1,10 @@
+# Get standard ontology metadata.
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+SELECT ?ontology ?predicate ?object
+
+WHERE {
+    ?ontology a owl:Ontology .
+    OPTIONAL {?ontology ?predicate ?object }
+}

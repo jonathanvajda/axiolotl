@@ -1,0 +1,6 @@
+# Return all triples from every named graph, but not the default graph.
+SELECT ?s ?p ?o ?g
+WHERE {
+    GRAPH ?g { ?s ?p ?o }
+}
+## This may be slow, maybe LIMIT 100

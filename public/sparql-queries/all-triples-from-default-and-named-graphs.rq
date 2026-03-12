@@ -1,0 +1,8 @@
+# Return all triples from every named graph and from the default graph.
+SELECT ?s ?p ?o ?g
+WHERE {
+    {GRAPH ?g {?s ?p ?o}}
+    UNION
+    {?s ?p ?o}
+}
+## This may be slow, maybe LIMIT 100

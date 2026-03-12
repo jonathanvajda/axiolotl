@@ -1,0 +1,15 @@
+# Get standard information about the elements from an ontology.
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+
+SELECT ?resource ?type ?label ?altLabel ?definition ?subClassOf ?subPropertyOf
+
+WHERE {
+    ?resource a ?type.
+    FILTER(isIRI(?resource))
+    OPTIONAL {?resource rdfs:label ?label}
+    OPTIONAL {?resource skos:altLabel ?altLabel}
+    OPTIONAL {?resource skos:definition ?definition}
+    OPTIONAL {?resource rdfs:subClassOf ?subClassOf}
+    OPTIONAL {?resource rdfs:subPropertyOf ?subPropertyOf}
+}
