@@ -237,21 +237,6 @@ function handleDownloadPreview(format = 'text/turtle') {
   }
 }
 
-// Populate the multi-select (or single-select) of graphs
-async function renderGraphList() {
-  const select = document.getElementById('graph-select');
-  if (!select) return;           // nothing to render into
-
-  const names = await getAllGraphNames();
-  select.innerHTML = '';
-  for (const iri of names) {
-    const opt = document.createElement('option');
-    opt.value = iri;
-    opt.textContent = iri;
-    select.appendChild(opt);
-  }
-}
-
 // Get user choice of where to save inferred triples
 function getSaveTarget() {
   const isNamed = document.getElementById('save-target-named')?.checked;
@@ -565,9 +550,20 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   renderOntologyList();
   document.getElementById('load-selected-ontologies')?.addEventListener('click', loadSelectedOntologiesToDB);
-  renderGraphList();
   document.getElementById('download-overlay')?.addEventListener('click', () => handleDownloadPreview('text/turtle'));
 });
+
+/** 
+ * User data management DOM handlers
+ */
+// Clears data
+document.getElementById('clear-active-triples') ?.addEventListener('click', clearActiveTriples);
+// Clears queries
+document.getElementById('clear-saved-queries') ?.addEventListener('click', clearActiveSavedQueries);
+// Clears settings
+document.getElementById('clear-active-settings') ?.addEventListener('click', clearActiveSettings);
+// Removes databases
+document.getElementById('flush-active-workspace') ?.addEventListener('click', flushActiveWorkspace);
 
 window.addEventListener('DOMContentLoaded', async () => {
   // Load saved endpoint + auth settings
@@ -771,15 +767,6 @@ const commitUpdateByMaterialization = async (updateStr, targetMode='default') =>
 function displayQueryResults(resultsHtml) {
   const resultsDiv = document.getElementById('query-results');
   resultsDiv.innerHTML = resultsHtml;
-}
-
-// Get selected graphs from the multi-select
-function getSelectedGraphsFromUI() {
-  const graphSelect = document.getElementById('graph-select');
-  if (graphSelect) {
-    return Array.from(graphSelect.selectedOptions).map(opt => opt.value);
-  }
-  return [];
 }
 
 addNewFileRow(); // start with one row
@@ -1126,9 +1113,21 @@ async function refreshSparqlStatus() {
 }
 // refresh workspace status from IndexedDB
 async function refreshWorkspaceStatus() {
-  const triples = await getAllTriples();          // IO
-  const names   = await getAllGraphNames();       // IO
-  renderWorkspaceStatus(presentWorkspaceStatus(triples.length, names.length)); // PURE -> DOM
+  try {
+    const [tripleCount, namedGraphCount] = await Promise.all([
+      countAllTriples(),
+      countNamedGraphs()
+    ]);
+
+    renderWorkspaceStatus(
+      presentWorkspaceStatus(tripleCount, namedGraphCount)
+    );
+  } catch (error) {
+    if (debuggingConsoleEnabled) {
+      console.error('[refreshWorkspaceStatus] Failed:', error);
+    }
+    renderWorkspaceStatus(presentWorkspaceStatus(0, 0));
+  }
 }
 
 // Initial idle states
@@ -1148,7 +1147,6 @@ function instantIdleWorkspaceStatus() {
  * - fetch(), parseIntoNamedGraph(text, g, base, mime), storeTriplesInNamedGraph(triples)
  * - showToast(msg, level)
  * - detectRdfMimeByName(filename)
- * - renderGraphList() if defined
  * - debuggingConsoleEnabled global for logging 
  */
 async function loadSelectedOntologiesToDB() {
@@ -1192,7 +1190,6 @@ async function loadSelectedOntologiesToDB() {
     }
   }
 
-  if (typeof renderGraphList === 'function') await renderGraphList();
   showToast(`Done: ${ok} loaded, ${err} failed.`, err ? 'error' : 'success');
 }
 
@@ -1238,47 +1235,6 @@ function renderQueryCell(value, maxChars = 75) {
   `;
 }
 
-document.getElementById('run-query').onclick = async () => {
-  const t0 = performance.now();
-
-  try {
-    const prefixes       = getActivePrefixes();
-    const queryText      = document.getElementById('sparql-query')?.value ?? '';
-    const useEndpoint    = !!document.getElementById('endpoint-radio')?.checked;
-    const selectedGraphs = getSelectedGraphsFromUI();
-
-    const query = buildQuery(prefixes, queryText);
-    const t1 = performance.now();
-
-    let response;
-    if (useEndpoint) {
-      response = await runQueryOnEndpoint(
-        document.getElementById('endpoint-reference')?.value ?? '',
-        query
-      );
-    } else {
-      response = await runQueryOnDatabase(selectedGraphs, query);
-    }
-    const t2 = performance.now();
-
-    const resultsHtml = structureQueryResults(response);
-    const t3 = performance.now();
-
-    displayQueryResults(resultsHtml);
-    const t4 = performance.now();
-
-    console.table([{
-      buildQueryMs: Math.round(t1 - t0),
-      runQueryMs: Math.round(t2 - t1),
-      renderHtmlMs: Math.round(t3 - t2),
-      paintDomMs: Math.round(t4 - t3),
-      totalMs: Math.round(t4 - t0)
-    }]);
-  } catch (err) {
-    console.error(err);
-  }
-};
-
 /**
  * Render a query error with possible hints into the results div.
  * @param {} err 
@@ -1323,14 +1279,14 @@ window.renderQueryError = renderQueryError;
  * - Validates that the query kind (READ vs UPDATE) matches the chosen UI mode.
  * - READ mode:
  *    * If "endpoint" selected -> runQueryOnEndpoint and render as usual.
- *    * Else -> runQueryOnDatabase and render as usual.
+ *    * Else -> runQueryOnLocalDataset and render as usual.
  * - WRITE mode:
  *    * If action=Preview -> transforms UPDATE into 1..n CONSTRUCTs, runs each locally, renders serialized RDF.
  *    * If action=Commit -> materializes INSERT/DELETE deltas against IndexedDB and reports counts.
  *
  * Assumptions:
- *   getActivePrefixes(), buildQuery(prefixes, queryText), getSelectedGraphsFromUI(),
- *   runQueryOnEndpoint(endpoint, query), runQueryOnDatabase(selectedGraphs, query),
+ *   getActivePrefixes(), buildQuery(prefixes, queryText),
+ *   runQueryOnEndpoint(endpoint, query), runQueryOnLocalDataset(selectedGraphs, query),
  *   structureQueryResults(response), displayQueryResults(html),
  *   renderQueryError(err), toastFromQueryError(err), showToast(msg, level)
  *
@@ -1355,7 +1311,6 @@ document.getElementById('run-query').onclick = async () => {
     const prefixes       = getActivePrefixes();
     const queryText      = document.getElementById('sparql-query')?.value ?? '';
     const useEndpoint    = !!document.getElementById('endpoint-radio')?.checked;
-    const selectedGraphs = getSelectedGraphsFromUI();
 
     // Read/Write UI state
     const isWriteMode    = !!document.getElementById('mode-write')?.checked;
@@ -1388,7 +1343,7 @@ document.getElementById('run-query').onclick = async () => {
         response = await runQueryOnEndpoint(endpoint, query); // expected { vars, rows } for SELECT
       } else {
         if (debuggingConsoleEnabled) {console.info('[run-query] Using local database for READ');}
-        response = await runQueryOnDatabase(selectedGraphs, query); // your function handles SELECT (and possibly others)
+        response = await runQueryOnLocalDataset(query);
       }
 
       // Render using your existing pipeline

@@ -120,85 +120,33 @@ function asRdfjsObject(v, type, lang, datatype) {
   return literal(v ?? '');
 }
 
-// Build an RDFJS Store (N3.Store) from an rdflib.js graph
-function formulaToRdfjsStore(graph) {
-  const store = new Store();
-  for (const st of graph.statements) {
-    // subject
-    const s = st.subject.termType === 'NamedNode'
-      ? namedNode(st.subject.value)
-      : blankNode(st.subject.id || st.subject.value);
+async function loadGraphFromIndexedDB() {
+  const triples = await getAllTriples();
+  const store = new N3.Store();
 
-    // predicate (rdflib guarantees IRIs here)
-    const p = namedNode(st.predicate.value);
+  for (const t of triples) {
+    const sVal = t.subject ?? t.s;
+    const pVal = t.predicate ?? t.p;
+    const oVal = t.object ?? t.o;
+    const gVal = t.graph ?? t.g ?? '';
 
-    // object
-    let o;
-    if (st.object.termType === 'NamedNode') {
-      o = namedNode(st.object.value);
-    } else if (st.object.termType === 'BlankNode') {
-      o = blankNode(st.object.id || st.object.value || 'o');
-    } else {
-      const lang = st.object.lang || st.object.language || undefined;
-      const dt = st.object.datatype ? namedNode(st.object.datatype.value) : undefined;
-      o = lang ? literal(st.object.value, lang)
-          : dt ? literal(st.object.value, dt)
-          : literal(st.object.value);
-    }
+    const s = asRdfjsSubject(sVal, t.subjectType ?? t.sType);
+    const p = asRdfjsPredicate(pVal, t.predicateType ?? t.pType);
+    const o = asRdfjsObject(
+      oVal,
+      t.objectType ?? t.oType,
+      t.objectLang ?? t.lang,
+      t.objectDatatype ?? t.datatype
+    );
+    const g = (typeof gVal === 'string' && gVal.trim() !== '')
+      ? N3.DataFactory.namedNode(gVal.trim())
+      : N3.DataFactory.defaultGraph();
 
-    // graph
-    const g = (st.why && st.why.value) ? namedNode(st.why.value) : defaultGraph();
-
-    store.addQuad(quad(s, p, o, g));
+    store.addQuad(N3.DataFactory.quad(s, p, o, g));
   }
+
   return store;
 }
-
-/* -----------------------------
-   IndexedDB ↔ rdflib graph
-   ----------------------------- */
-
-/**
- * Loads all triples from IndexedDB into an rdflib.js graph.
- * @returns {Promise<$rdf.Formula>} A promise resolving to the populated rdflib graph.
- */
-const loadGraphFromIndexedDB = async () => {
-  try {
-    if (debuggingConsoleEnabled) {console.info('[loadGraphFromIndexedDB] Loading triples into rdflib graph...')};
-    const graph = $rdf.graph();
-    const triples = await getAllTriples();
-
-    triples.forEach(t => {
-      try {
-        // support both typed records and legacy strings
-        const sVal = t.subject ?? t.s;
-        const pVal = t.predicate ?? t.p;
-        const oVal = t.object ?? t.o;
-        const gVal = t.graph ?? t.g;
-
-        const s = asSubjectTerm(sVal, t.subjectType ?? t.sType);
-        const p = asPredicateTerm(pVal, t.predicateType ?? t.pType);
-        const o = asObjectTerm(
-          oVal,
-          t.objectType ?? t.oType,
-          t.objectLang ?? t.lang,
-          t.objectDatatype ?? t.datatype
-        );
-        const g = gVal && String(gVal).trim() ? $rdf.sym(String(gVal)) : undefined;
-
-        graph.add(s, p, o, g);
-      } catch (e) {
-        if (debuggingConsoleEnabled) {console.warn('[loadGraphFromIndexedDB] Skipping bad triple:', t, e)};
-      }
-    });
-
-    if (debuggingConsoleEnabled) {console.info(`[loadGraphFromIndexedDB] Loaded ${graph.statements.length} statements.`)};
-    return graph;
-  } catch (error) {
-    if (debuggingConsoleEnabled) {console.error('[loadGraphFromIndexedDB] Error:', error)};
-    throw error;
-  }
-};
 
 /**
  * Parses RDF content and adds statements to a target graph under a given named graph.
@@ -254,6 +202,86 @@ const applyUpdateWithComunica = async (updateQuery, graph) => {
   // throw new Error('applyUpdateWithComunica is not supported for stringSource; use CONSTRUCT-based inference.');
 };
 
+
+async function collectQueryResult(result) {
+  if (result.type === 'bindings') {
+    const { data } = await engine.resultToString(result, 'application/sparql-results+json');
+    let json = '';
+    await new Promise((resolve, reject) => {
+      data.on('data', chunk => { json += chunk; });
+      data.on('end', resolve);
+      data.on('error', reject);
+    });
+    const parsed = JSON.parse(json);
+    return {
+      vars: parsed?.head?.vars || [],
+      rows: parsed?.results?.bindings || []
+    };
+  }
+
+  if (result.type === 'boolean') {
+    const bool = await result.booleanResult;
+    return {
+      vars: ['ASK'],
+      rows: [{ ASK: { type: 'literal', value: String(bool) } }]
+    };
+  }
+
+  if (result.type === 'quads') {
+    const { data } = await engine.resultToString(result, 'application/n-triples');
+    let nt = '';
+    await new Promise((resolve, reject) => {
+      data.on('data', chunk => { nt += chunk; });
+      data.on('end', resolve);
+      data.on('error', reject);
+    });
+    return nt
+      .split('\n')
+      .filter(Boolean)
+      .map(line => ({ nt: { value: line } }));
+  }
+
+  return { vars: [], rows: [] };
+}
+
+async function runQueryOnLocalDataset(query) {
+  const store = await loadGraphFromIndexedDB();
+
+  const result = await engine.query(query, {
+    sources: [{ type: 'rdfjsSource', value: store }],
+  });
+
+  try {
+    const asJson = await engine.resultToString(result, 'application/sparql-results+json');
+    let jsonText = '';
+    await new Promise((resolve, reject) => {
+      asJson.data.on('data', chunk => { jsonText += chunk; });
+      asJson.data.on('end', resolve);
+      asJson.data.on('error', reject);
+    });
+
+    const parsed = JSON.parse(jsonText);
+    if ('boolean' in parsed) {
+      return {
+        vars: ['ASK'],
+        rows: [{ ASK: { type: 'literal', value: String(!!parsed.boolean) } }]
+      };
+    }
+    return {
+      vars: parsed.head?.vars || [],
+      rows: parsed.results?.bindings || []
+    };
+  } catch (_) {
+    const asNT = await engine.resultToString(result, 'application/n-triples');
+    let nt = '';
+    await new Promise((resolve, reject) => {
+      asNT.data.on('data', chunk => { nt += chunk; });
+      asNT.data.on('end', resolve);
+      asNT.data.on('error', reject);
+    });
+    return nt.split('\n').filter(Boolean).map(line => ({ nt: { value: line } }));
+  }
+}
 
 /**
  * Executes a SPARQL query against a specific named graph stored in IndexedDB using Comunica.
@@ -465,8 +493,7 @@ function buildQuery(prefixes, queryText) {
  */
 const runConstructPreview = async (constructQuery, format='text/turtle') => {
   if (debuggingConsoleEnabled) {console.info('[runConstructPreview] Executing CONSTRUCT preview...')};
-  const g = await loadGraphFromIndexedDB();           // rdflib graph
-  const store = formulaToRdfjsStore(g);               // N3.Store (RDFJS)
+  const store = loadGraphFromIndexedDB();
   const res = await engine.query(constructQuery, { sources:[{ type:'rdfjsSource', value: store }] });
   if (!res || !res.quadStream) return '';
   const { Writer } = N3;                              // available in your build
@@ -495,44 +522,6 @@ async function runQueryOnEndpoint(endpoint, query) {
   return { vars, rows };
 }
 
-/* Executes a SPARQL query on IndexedDB-stored triples using Comunica.
-  * graphs: array of named graph IRIs, or ['all'] for all graphs
-  * query: SPARQL query string
-  * returns: array of results (bindings or boolean)
-*/  
-async function runQueryOnDatabase(graphs, query) {
-  // All graphs / none selected → one shot
-  if (!graphs || graphs.length === 0 || graphs.includes('all')) {
-    return await queryAllNamedGraphs(query);
-  }
-
-  // Single graph → one shot
-  if (graphs.length === 1) {
-    return await queryFromNamedGraph(graphs[0], query);
-  }
-
-  // Multiple graphs → query each, preserve vars from first non-empty SELECT/ASK,
-  // and concatenate rows. If any path returns graph-y ({nt}) results, return that array directly.
-  let mergedVars = null;
-  let mergedRows = [];
-  for (const g of graphs) {
-    const res = await queryFromNamedGraph(g, query);
-
-    // If this path returned quads (array of {nt}), we can't merge — just return them.
-    if (Array.isArray(res) && res[0] && res[0].nt) {
-      return res;
-    }
-
-    // Normal SELECT/ASK shape
-    if (res && Array.isArray(res.vars) && Array.isArray(res.rows)) {
-      if (!mergedVars && res.vars.length) mergedVars = res.vars.slice();
-      if (Array.isArray(res.rows) && res.rows.length) {
-        mergedRows = mergedRows.concat(res.rows);
-      }
-    }
-  }
-  return { vars: mergedVars || [], rows: mergedRows };
-}
 
 
 /**
@@ -654,14 +643,13 @@ async function flushActiveWorkspace() {
     queueMicrotask(() => {
       try { refreshWorkspaceStatus?.(); } catch {}
       try { refreshSparqlStatus?.(); } catch {}
-      try { renderGraphList?.(); } catch {}
     });
 
     if (debuggingConsoleEnabled) console.info('[flush-active-workspace] Workspace data cleared.');
-    alert('Workspace data cleared.');
+    showToast('Workspace data cleared.', 'success');
   } catch (e) {
     if (debuggingConsoleEnabled) console.error('[flush-active-workspace] Failed to clear workspace:', e);
-    alert('Something went wrong while clearing. See console for details.');
+    showToast('Something went wrong while clearing. See console for details.', 'error');
   }
 }
 
@@ -701,9 +689,6 @@ async function addFilesToDB(rows, errors, namedGraphError) {
   }
 
   namedGraphError.textContent = errors.join(' | ');
-  if (errors.length === 0 && typeof renderGraphList === 'function') {
-    await renderGraphList(); // default graph doesn’t appear here by design
-  }
 };
 
 /**
@@ -846,6 +831,74 @@ async function stashGraphToIndexedDB(
   return { count, graphIRI: iri || '(default graph)' };
 }
 
+
+async function clearActiveTriples() {
+  const ok = confirm('This will delete all triples from the Active Workspace. Continue?');
+  if (!ok) return;
+
+  try {
+    await clearTriples();
+
+    instantIdleWorkspaceStatus();
+    queueMicrotask(() => {
+      try { refreshWorkspaceStatus?.(); } catch {}
+    });
+
+    if (debuggingConsoleEnabled) {
+      console.info('[clear-active-triples] Triple store cleared.');
+    }
+    showToast('All triples cleared.', 'success');
+  } catch (e) {
+    if (debuggingConsoleEnabled) {
+      console.error('[clear-active-triples] Failed:', e);
+    }
+    showToast('Something went wrong while clearing triples. See console for details.', 'error');
+  }
+}
+
+async function clearActiveSettings() {
+  const ok = confirm('This will delete all saved SPARQL settings. Continue?');
+  if (!ok) return;
+
+  try {
+    await clearSettingsStore();
+
+    instantIdleSparqlStatus();
+    queueMicrotask(() => {
+      try { refreshSparqlStatus?.(); } catch {}
+    });
+
+    if (debuggingConsoleEnabled) {
+      console.info('[clear-active-settings] Settings store cleared.');
+    }
+    showToast('SPARQL settings cleared.', 'success');
+  } catch (e) {
+    if (debuggingConsoleEnabled) {
+      console.error('[clear-active-settings] Failed:', e);
+    }
+    showToast('Something went wrong while clearing settings. See console for details.', 'error');
+  }
+}
+
+async function clearActiveSavedQueries() {
+  const ok = confirm('This will delete all saved queries. Continue?');
+  if (!ok) return;
+
+  try {
+    await clearSavedQueries();
+
+    if (debuggingConsoleEnabled) {
+      console.info('[clear-active-saved-queries] Saved queries cleared.');
+    }
+    showToast('Saved queries cleared.', 'success');
+  } catch (e) {
+    if (debuggingConsoleEnabled) {
+      console.error('[clear-active-saved-queries] Failed:', e);
+    }
+    showToast('Something went wrong while clearing saved queries. See console for details.', 'error');
+  }
+}
+
 /**
  * Canonical (pre-listed) URL → fetch → parse → stash to default/named.
  * Side-effects: fetch network + write to IndexedDB.
@@ -930,4 +983,3 @@ window.applyUpdateWithComunica = applyUpdateWithComunica;
 window.loadGraphFromIndexedDB  = loadGraphFromIndexedDB;
 window.stashGraphToIndexedDB = stashGraphToIndexedDB;
 window.queryAllNamedGraphs     = queryAllNamedGraphs;
-window.formulaToRdfjsStore = formulaToRdfjsStore;

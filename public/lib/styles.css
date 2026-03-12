@@ -168,12 +168,18 @@ select {
   margin-left: 0.5em;
 }
 
-.danger,
 .danger-zone {
- padding: 1rem 1rem; 
- font-weight: 600;
- color: #000;
- background-color: rgba(255, 0, 0, 0.1);
+  font-size:0.75rem;
+  color: #000;
+  background-color: rgba(255, 0, 0, 0.05);
+  padding: 1rem 1rem;
+}
+
+.danger {
+  font-size:0.75rem;
+  color: #000;
+  background-color: rgba(255, 0, 0, 0.05);
+  padding: 0.25rem 0.25rem;
 }
 
 
@@ -239,7 +245,6 @@ select {
 /* Decrease font size for all table data cells */
 .query-results-th,
 .query-results-td {
-  padding: 0.45rem 0.65rem;
   vertical-align: top;
   box-sizing: border-box;
 }
@@ -300,7 +305,6 @@ thead th {
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: normal;
-  padding-top: 0.2rem;
   border-top: 1px solid #e5e7eb;
 }
 

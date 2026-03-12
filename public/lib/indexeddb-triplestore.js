@@ -12,6 +12,9 @@ const SETTINGS_STORE_NAME = 'Settings';
 const QUERY_STORE_NAME = 'savedQueries';
 const INFERENCE_DB_VERSION = 3;
 
+let tripleDbHandle = null;
+let settingsDbHandle = null;
+
 /*
 * Initializes the settings database with required object store.
 * Creates the 'Settings' object store with 'key' as the keyPath.
@@ -62,11 +65,6 @@ async function saveSetting(key, value) {
   }
 }
 
-async function saveSetting(key, value) {
-  const db = await initSettingsDB();
-  await db.put(SETTINGS_STORE_NAME, { key, value });
-}
-
 /*
 * Retrieves a setting by key from the settings database.
 * @param {string} key - The key of the setting to retrieve.
@@ -76,6 +74,33 @@ async function getSetting(key) {
   const db = await initSettingsDB();
   const entry = await db.get(SETTINGS_STORE_NAME, key);
   return entry?.value;
+}
+
+/**
+ * Clears all SPARQL settings from the settings store.
+ */
+async function clearSettingsStore() {
+  try {
+    const db = await initSettingsDB();
+    const tx = db.transaction(SETTINGS_STORE_NAME, 'readwrite');
+    await tx.objectStore(SETTINGS_STORE_NAME).clear();
+    await tx.done;
+
+    try {
+      window?.dispatchEvent(new CustomEvent('settings-changed', {
+        detail: { db: SETTINGS_DB_NAME, store: SETTINGS_STORE_NAME, type: 'clear' }
+      }));
+    } catch {}
+
+    if (debuggingConsoleEnabled) {
+      console.info('[clearSettingsStore] All settings cleared from store.');
+    }
+  } catch (error) {
+    if (debuggingConsoleEnabled) {
+      console.error('[clearSettingsStore] Error clearing settings store:', error);
+    }
+    throw error;
+  }
 }
 
 const QUERY_IRI = {
@@ -450,7 +475,7 @@ async function storeTriplesInNamedGraph(triples) {
         objectType: t.object.termType,            // "NamedNode" | "BlankNode" | "Literal"
         objectLang: t.object.lang || null,
         objectDatatype: t.object.datatype?.value || null,
-        graph: t.graph ? t.graph.value : ''
+        graph: normalizeIriString(t.graph?.value || t.why?.value || '')
       });
     }
     await tx.done;
@@ -505,6 +530,60 @@ async function getAllGraphNames() {
     return [];
   }
 }
+
+/**
+ * Counts all triples in the triple store without loading them.
+ * @returns {Promise<number>}
+ */
+async function countAllTriples() {
+  try {
+    const db = await initTripleStore();
+    const tx = db.transaction(STORE_NAME);
+    const count = await tx.store.count();
+
+    if (debuggingConsoleEnabled) {
+      console.info(`[countAllTriples] Found ${count} triples.`);
+    }
+    return count;
+  } catch (error) {
+    if (debuggingConsoleEnabled) {
+      console.error('[countAllTriples] Failed to count triples:', error);
+    }
+    return 0;
+  }
+}
+
+/**
+ * Counts distinct named graphs in the triple store.
+ * Excludes the default graph, which is stored as an empty string.
+ * @returns {Promise<number>}
+ */
+async function countNamedGraphs() {
+  try {
+    const db = await initTripleStore();
+    const tx = db.transaction(STORE_NAME);
+    const idx = tx.store.index('graph');
+
+    const keys = await idx.getAllKeys();
+    const count = new Set(
+      keys
+        .filter(g => typeof g === 'string' && g.trim() !== '')
+        .map(g => g.trim())
+    ).size;
+
+    if (debuggingConsoleEnabled) {
+      console.info(`[countNamedGraphs] Found ${count} named graphs.`);
+    }
+    return count;
+  } catch (error) {
+    if (debuggingConsoleEnabled) {
+      console.error('[countNamedGraphs] Failed to count named graphs:', error);
+    }
+    return 0;
+  }
+}
+
+
 
 /**
  * Remove a batch of exact triples (subject,predicate,object,graph) from the store.
@@ -583,22 +662,31 @@ async function closeOpenIndexedDBConnections() {
  */
 async function deleteIndexedDBInstance(name) {
   return new Promise((resolve, reject) => {
-    new Promise((resolve, reject) => {
-      const req = indexedDB.deleteDatabase(name);
-      req.onsuccess = () => {
-        if (debuggingConsoleEnabled) { console.info(`[wipeActiveWorkspace] Deleted IndexedDB "${name}"`); }
-        resolve();
-      };
-      req.onerror = () => {
-        if (debuggingConsoleEnabled) { console.error(`[wipeActiveWorkspace] Failed to delete "${name}"`, req.error); }
-        reject(req.error);
-      };
-      req.onblocked = () => {
-        if (debuggingConsoleEnabled) { console.warn(`[wipeActiveWorkspace] Delete for "${name}" is blocked (another tab open?)`); }
-      };
-    });
+    const req = indexedDB.deleteDatabase(name);
+
+    req.onsuccess = () => {
+      if (debuggingConsoleEnabled) {
+        console.info(`[deleteIndexedDBInstance] Deleted "${name}"`);
+      }
+      resolve({ name, deleted: true, blocked: false });
+    };
+
+    req.onerror = () => {
+      if (debuggingConsoleEnabled) {
+        console.error(`[deleteIndexedDBInstance] Failed to delete "${name}"`, req.error);
+      }
+      reject(req.error || new Error(`Failed to delete ${name}`));
+    };
+
+    req.onblocked = () => {
+      const err = new Error(`Delete blocked for "${name}". Another tab or open connection is still using it.`);
+      if (debuggingConsoleEnabled) {
+        console.warn(`[deleteIndexedDBInstance] ${err.message}`);
+      }
+      reject(err);
+    };
   });
-};
+}
 
 // Clear Browser's localStorage
 function clearLocalStorage() {
@@ -633,4 +721,33 @@ async function wipeActiveWorkspace() {
   try { window?.dispatchEvent(new CustomEvent('settings-changed', { detail: { db: 'SPARQLSettings', store: 'Settings', type: 'clear' } })); } catch { }
   try { notifyIdbChange?.({ db: 'inferenceDB', store: 'triples', type: 'clear' }); } catch { }
   try { notifyIdbChange?.({ db: 'SPARQLSettings', store: 'Settings', type: 'clear' }); } catch { }
+}
+
+
+async function clearActiveWorkspace() {
+  await Promise.all([
+    clearTriples(),
+    clearSettingsStore(),
+    clearSavedQueries()
+  ]);
+  clearLocalStorage();
+
+  try { window?.dispatchEvent(new CustomEvent('triples-changed',  { detail: { db: DB_NAME, store: STORE_NAME, type: 'clear' } })); } catch {}
+  try { window?.dispatchEvent(new CustomEvent('settings-changed', { detail: { db: SETTINGS_DB_NAME, store: SETTINGS_STORE_NAME, type: 'clear' } })); } catch {}
+  try { window?.dispatchEvent(new CustomEvent('saved-queries-changed', { detail: { db: DB_NAME, store: QUERY_STORE_NAME, type: 'clear' } })); } catch {}
+}
+
+async function hardResetDatabases() {
+  await closeAllKnownDbHandles();
+
+  await Promise.all([
+    deleteIndexedDBInstance(DB_NAME),
+    deleteIndexedDBInstance(SETTINGS_DB_NAME)
+  ]);
+
+  clearLocalStorage();
+
+  try { window?.dispatchEvent(new CustomEvent('triples-changed',  { detail: { db: DB_NAME, store: STORE_NAME, type: 'clear' } })); } catch {}
+  try { window?.dispatchEvent(new CustomEvent('settings-changed', { detail: { db: SETTINGS_DB_NAME, store: SETTINGS_STORE_NAME, type: 'clear' } })); } catch {}
+  try { window?.dispatchEvent(new CustomEvent('saved-queries-changed', { detail: { db: DB_NAME, store: QUERY_STORE_NAME, type: 'clear' } })); } catch {}
 }

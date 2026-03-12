@@ -1288,10 +1288,27 @@ z" />
 				<br />
 				<br />
 				<div class="danger-zone">
-					<button id="flush-active-workspace" class="danger">Clear Workspace Data</button>
-					<small style="margin-top:6px; margin-bottom:6px;">
-						Deletes all data from Active Workspace (IndexedDB) and clears localStorage.
+					<h3 class="danger">Clear Workspace</h3>
+					<button id="clear-active-triples" class="danger">Drop Triples</button>
+					<small style="font-size:0.75rem;">
+						Clears all triples from the default graph and any named graphs.
+					</small><br />
+
+					<button id="clear-saved-queries" class="danger">Clear Saved Queries</button>
+					<small style="font-size:0.75rem;">
+						Clears all user-defined SPARQL queries.
+					</small><br />
+
+					<button id="clear-active-settings" class="danger">Clear User Settings</button>
+					<small style="font-size:0.75rem;">
+						Clears SPARQL endpoint settings, prefix bindings, and other preferences.
+					</small><br />
+
+					<button id="flush-active-workspace" class="danger">Remove Workspace Databases</button>
+					<small style="font-size:0.75rem;">
+						Deletes Active Workspace database (IndexedDB) and localStorage. Hard reset.
 					</small>
+					
 				</div>
 			</div>
 			<div class="sidebar-right">
@@ -1308,11 +1325,6 @@ z" />
 		<div id="tab-query" class="tab-panel" role="tabpanel">
 			<div id="query-settings-sidebar" class="sidebar-left">
 				<h3>Settings</h3>
-				<details>
-					<summary>Select Named Graph(s):</summary>
-					<select id="graph-select" multiple style="min-width:200px;"></select>
-				</details>
-				<br />
 				<div id="endpoint-selection-query">
 					<strong>Select DB:</strong><br />
 					<label for="endpoint-radio">
