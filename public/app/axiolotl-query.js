@@ -288,6 +288,9 @@ function getSaveTarget() {
 // Save inferred overlay graph to IndexedDB
 async function runInference() {
   try {
+    clearInferenceConsole?.();
+    setInferenceBusy(true);
+
     const rules = getSelectedRulesFromCheckboxes();
     const { overlayGraph, metrics } = await inferUntilStable(rules);
 
@@ -302,15 +305,13 @@ async function runInference() {
         : 'Inference finished — no new triples.',
       n ? 'success' : 'info'
     );
-
-    if (debuggingConsoleEnabled) {
-      console.info('[runInference] metrics:', metrics);
-    }
   } catch (err) {
     if (debuggingConsoleEnabled) {
       console.error('[run-inference] failed:', err);
     }
     showToast(`Inference error: ${err.message || err}`, 'error');
+  } finally {
+    setInferenceBusy(false);
   }
 }
 
@@ -598,6 +599,7 @@ function initTabs() {
 
 // UI event bindings
 window.addEventListener('DOMContentLoaded', () => {
+  setInferenceBusy(false);
   initTabs();
   document.getElementById('file-upload')?.addEventListener('change', async (e) => {
     for (const file of e.target.files) {
