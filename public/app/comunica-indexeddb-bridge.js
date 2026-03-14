@@ -190,8 +190,8 @@ const applyUpdateWithComunica = async (updateQuery, graph) => {
   // Prefer the CONSTRUCT path for inference.
   if (debuggingConsoleEnabled) {console.warn('[applyUpdateWithComunica] UPDATE against stringSource is a no-op; prefer CONSTRUCT.')};
   const comunica = engine;
-  const datasetText = $rdf.serialize(null, graph, 'http://example.org/', 'text/turtle');
-  const source = { type: 'stringSource', value: datasetText, mediaType: 'text/turtle' };
+  const text = await serializeStore(g, mime);
+  const source = { type: 'stringSource', value: text, mediaType: 'text/turtle' };
   await comunica.queryVoid(updateQuery, {
     sources: [source],
     baseIRI: 'http://example.org/',

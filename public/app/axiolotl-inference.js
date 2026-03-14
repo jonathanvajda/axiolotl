@@ -74,7 +74,9 @@ function appendInferenceConsoleLine(message) {
 
 function setInferenceBusy(isBusy) {
   const spinner = document.getElementById('inference-spinner');
-  if (spinner) spinner.hidden = !isBusy;
+  if (!spinner) return;
+
+  spinner.classList.toggle('is-busy', !!isBusy);
 }
 
 window.appendInferenceConsoleLine = appendInferenceConsoleLine;
@@ -409,23 +411,32 @@ async function inferUntilStable(rules) {
 
   // ---- 3) Seed closures from existing dataset ----
   let totalAdded = 0;
+  let pass = 0;
+  const MAX_PASSES = 100;
+
   const seedSeenBefore = seen.size;
   processQueues();
-  totalAdded += (seen.size - seedSeenBefore);
+  const seedAdded = seen.size - seedSeenBefore;
+  totalAdded += seedAdded;
 
-  if (totalAdded && debuggingConsoleEnabled) {
-    console.info(`[inferUntilStable] Seed closures added ${totalAdded} triples.`);
-  }
+  inferenceInfo(`[inferUntilStable] Seed closures added ${seedAdded} triples.`);
 
-  // ---- 4) Main loop: SPARQL rules, then JS queue expansions ----
   let changed = true;
 
   while (changed) {
+    pass += 1;
+    if (pass > MAX_PASSES) {
+      throw new Error(`[inferUntilStable] Aborted after ${MAX_PASSES} passes. Likely non-stable loop.`);
+    }
+
     changed = false;
+    let passAdded = 0;
+
+    inferenceInfo(`[inferUntilStable] Starting pass ${pass}...`);
 
     const rulesFiltered = rules.filter(r => r !== 'subclassof' && r !== 'subpropertyof');
     if (rules.length !== rulesFiltered.length) {
-      console.info('[inferUntilStable] Skipping SPARQL for subclassof/subpropertyof (handled by JS closures)');
+      inferenceInfo('[inferUntilStable] Skipping SPARQL for subclassof/subpropertyof (handled by JS closures)');
     }
 
     for (const rule of rulesFiltered) {
@@ -434,7 +445,6 @@ async function inferUntilStable(rules) {
 
       const newQuads = await runRuleOnce(rule, rdfjsStore);
 
-      // Batch de-dup before enqueue
       const batch = [];
       const batchSeen = new Set();
       for (const q of newQuads) {
@@ -444,27 +454,40 @@ async function inferUntilStable(rules) {
         batch.push(q);
       }
 
-      const beforeSeenSize = seen.size;
+      const beforeDirect = seen.size;
       enqueue(batch);
+      const directAdded = seen.size - beforeDirect;
+
+      const beforeClosure = seen.size;
       processQueues();
+      const closureAdded = seen.size - beforeClosure;
 
-      const added = seen.size - beforeSeenSize;
-      if (added > 0) {
-        totalAdded += added;
-        changed = true;
+      const ruleAdded = directAdded + closureAdded;
+      passAdded += ruleAdded;
 
-        if (debuggingConsoleEnabled) {
-          console.info(`[inferUntilStable] Rule "${rule}" added ${added} triples.`);
-        }
-      }
+      inferenceInfo(
+        `[inferUntilStable] Pass ${pass}, rule "${rule}": direct=${directAdded}, propagated=${closureAdded}, total=${ruleAdded}`
+      );
+    }
+
+    if (passAdded > 0) {
+      totalAdded += passAdded;
+      changed = true;
+      inferenceInfo(`[inferUntilStable] Completed pass ${pass}: added ${passAdded} triples.`);
+    } else {
+      inferenceInfo(`[inferUntilStable] Completed pass ${pass}: no new triples. Stable.`);
     }
   }
 
-  if (debuggingConsoleEnabled) {
-    console.info(`[inferUntilStable] Completed inference. Total new triples: ${totalAdded}`);
-  }
+  const overlayCount = overlayStore.getQuads(null, null, null, null).length;
+  inferenceInfo(
+    `[inferUntilStable] Completed inference. Passes=${pass}, total new triples=${totalAdded}, overlay triples=${overlayCount}`
+  );
 
-  return { overlayGraph: overlayStore, metrics: { totalAdded } };
+  return {
+    overlayGraph: overlayStore,
+    metrics: { totalAdded, passes: pass, overlayCount }
+  };
 }
 
 /**
