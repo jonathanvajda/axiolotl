@@ -58,6 +58,18 @@ const RDFS_DOMAIN = 'http://www.w3.org/2000/01/rdf-schema#domain';
 const RDFS_RANGE  = 'http://www.w3.org/2000/01/rdf-schema#range';
 const RDF_TYPE    = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 
+// 
+function quadKey(q) {
+  return [
+    q.subject.termType, q.subject.value,
+    q.predicate.termType, q.predicate.value,
+    q.object.termType, q.object.value,
+    q.object.language || '',
+    q.object.datatype?.value || '',
+    q.graph.termType, q.graph.value || ''
+  ].join('¦');
+}
+
 /**
  * Applies a set of inference rules repeatedly until no new triples are added.
  * @param {string[]} rules - List of rule identifiers to apply (e.g. ["inverse", "subclassof"])
@@ -70,14 +82,13 @@ async function inferUntilStable(rules) {
   if (debuggingConsoleEnabled) {console.info('[inferUntilStable] Starting inference over rules:', rules)};
 
   // ---- 0) Load graphs and set up dedupe ----
-  const baseGraph = await loadGraphFromIndexedDB();
-  const seen = new Set(baseGraph.statements.map(s => s.toNT()));
+  const baseStore = await loadDatasetFromIndexedDB();
+  const seen = new Set(baseStore.getQuads(null, null, null, null).map(quadKey));
+  const rdfjsStore = baseStore;
 
-  // We'll keep the overlay as N3 quads during inference (fast), and convert to rdflib at the end
+  // We'll keep the overlay as N3 quads during inference (fast)
   const overlayStore = new N3.Store();
 
-  // Single shared RDF/JS store for Comunica; keep it in sync as we add
-  const rdfjsStore = formulaToRdfjsStore(baseGraph);
   const { DataFactory } = N3;
   const { namedNode, blankNode, literal, quad, defaultGraph } = DataFactory;
 
@@ -125,51 +136,43 @@ async function inferUntilStable(rules) {
   }
 
   // ---- 2) Work queues and enqueue logic ----
-  const workTypes = []; // rdflib Statements: ?s rdf:type ?c
-  const workProps = []; // rdflib Statements: ?s ?p ?o  (p != rdf:type)
+  const workTypes = []; // quads with rdf:type predicate
+  const workProps = []; // other quads
 
-  const enqueue = (stmts) => {
-    for (const s of stmts) {
-      const nt = s.toNT();
-      if (seen.has(nt)) continue;
+  function enqueue(quads) {
+    for (const q of quads) {
+      const key = quadKey(q);
+      if (seen.has(key)) continue;
 
-      // Add to base graph (so future SPARQL sees it)
-      baseGraph.add(s.subject, s.predicate, s.object);
-      seen.add(nt);
-
-      // Add to overlay store
-      const q = quad(toSubject(s.subject), toNamed(s.predicate.value), toObject(s.object), defaultGraph());
-      overlayStore.addQuad(q);
-
-      // Keep shared RDF/JS store in sync (so next CONSTRUCT sees it)
       rdfjsStore.addQuad(q);
+      overlayStore.addQuad(q);
+      seen.add(key);
 
-      // Route to appropriate queue
-      if (s.predicate.value === RDF_TYPE) workTypes.push(s);
-      else workProps.push(s);
+      if (q.predicate.value === RDF_TYPE) workTypes.push(q);
+      else workProps.push(q);
     }
-  };
+  }
 
   // Expansion helpers (JS, fast)
   // expandTypesWithClosure(newTypes)
-  function expandTypesWithClosure(newTypes){
-    const out = [];
-    let _skipped = 0;
-    for (const s of newTypes){
-      const c = s.object.value;
-      const supers = classSupers.get(c);
-      if (!supers) continue;
-      for (const sup of supers){
-        if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(sup)) { _skipped++; continue; }
-        out.push($rdf.st(s.subject, $rdf.sym(RDF_TYPE), $rdf.sym(sup)));
-      }
-    }
-    if (typeof debuggingConsoleEnabled !== 'undefined' && debuggingConsoleEnabled && _skipped){
-      console.warn(`[expandTypesWithClosure] Skipped ${_skipped} non-IRI super-classes`);
-    }
-    return out;
-  };
+  function expandTypesWithClosure(newTypes) {
+  const out = [];
+  for (const q of newTypes) {
+    const c = q.object.value;
+    const supers = classSupers.get(c);
+    if (!supers) continue;
 
+    for (const sup of supers) {
+      out.push(quad(
+        q.subject,
+        namedNode(RDF_TYPE),
+        namedNode(sup),
+        q.graph
+      ));
+    }
+  }
+  return out;
+}
   /**
    * Expand new property assertions via subPropertyOf closure (pure).
    * Adds warning if any super-properties are not absolute IRIs.
@@ -405,7 +408,7 @@ function applyDomainRange(newProps){
   }
 
   // ---- 4) Convert overlayStore -> overlayGraph once (for preview/export) ----
-  const overlayGraph = $rdf.graph();
+  const overlayGraph = N3.Store;
   for (const q of overlayStore.getQuads(null, null, null, null)) {
     const s = q.subject.termType === 'NamedNode' ? $rdf.sym(q.subject.value) : $rdf.blankNode(q.subject.value);
     const p = $rdf.sym(q.predicate.value);
@@ -423,7 +426,7 @@ function applyDomainRange(newProps){
   }
 
   if (debuggingConsoleEnabled) {console.info(`[inferUntilStable] Completed inference. Total new triples: ${totalAdded}`)};
-  return { overlayGraph, metrics: { totalAdded } };
+  return { overlayGraph: overlayStore, metrics: { totalAdded } };
 }
 
 /**
@@ -449,24 +452,6 @@ async function runInferenceOverlay(opt={}) {
   return { overlayGraph, metrics, count: res.count, graphIRI: res.graphIRI };
 }
 
-/**
- * Create a named graph IRI, appending a timestamp and random suffix for uniqueness.
- * Pure; no side effects.
- * @param {string} base
- * @returns {string}
- */
-async function saveOverlayToIndexedDB(overlayGraph, { mode, graphIRI }) {
-  if (!overlayGraph) throw new Error('No overlay graph to save.');
-  const storeGraph = await loadGraphFromIndexedDB();
-  const graphSym = (mode === 'named' && graphIRI) ? $rdf.sym(graphIRI) : undefined;
-
-  overlayGraph.statements.forEach(s => {
-    storeGraph.add(s.subject, s.predicate, s.object, graphSym);
-  });
-
-  await saveGraphToIndexedDB(storeGraph);
-  return { count: overlayGraph.statements.length, graphIRI: graphSym?.value ?? '(default graph)' };
-}
 
 /**
  * De-duplicate a batch and then remove any statements already in the global `seen` set.
@@ -665,22 +650,10 @@ function getConstructQueryForRule(rule) {
  * @param {$rdf.Formula} baseGraph
  * @returns {Promise<$rdf.Statement[]>}
  */
-async function runRuleOnce(rule, baseGraph, rdfjsStore) {
-  // Preferred path: CONSTRUCT
-  if (typeof applyConstructWithComunica === 'function') {
-    const q = getConstructQueryForRule(rule);
-    const g = await applyConstructWithComunica(q, rdfjsStore);
-    return g.statements;
-  }
-
-  // Fallback path: UPDATE on a copy of the graph, then diff
-  if (typeof applyUpdateWithComunica === 'function' && typeof getRuleQuery === 'function') {
-    const before = new Set(baseGraph.statements.map(s => s.toNT()));
-    await applyUpdateWithComunica(getRuleQuery(rule), baseGraph);
-    return baseGraph.statements.filter(s => !before.has(s.toNT()));
-  }
-
-  throw new Error('No inference runner available (need applyConstructWithComunica or applyUpdateWithComunica).');
+async function runRuleOnce(rule, rdfjsStore) {
+  const q = getConstructQueryForRule(rule);
+  if (!q) return [];
+  return await applyConstructWithComunica(q, rdfjsStore);
 }
 
 /** 
@@ -690,53 +663,16 @@ async function runRuleOnce(rule, baseGraph, rdfjsStore) {
 **/
 
 async function applyConstructWithComunica(constructQuery, rdfjsStore) {
-  const comunica = engine;
-
-  const quadStream = await comunica.queryQuads(constructQuery, {
+  const quadStream = await engine.queryQuads(constructQuery, {
     sources: [{ type: 'rdfjsSource', value: rdfjsStore }],
     baseIRI: 'http://example.org/',
-     // Ask Comunica to de-duplicate CONSTRUCT output at the engine level
     distinctConstruct: true,
   });
 
-// Convert RDFJS quads directly into an rdflib graph (no parsing from text)
-  const temp = $rdf.graph();
-
-  return new Promise((resolve, reject) => {
-    quadStream.on('data', q => {
-      // subject
-      const s = (q.subject.termType === 'NamedNode')
-        ? $rdf.sym(q.subject.value)
-        : $rdf.blankNode(q.subject.value);
-
-      // predicate (always a NamedNode)
-      const p = $rdf.sym(q.predicate.value);
-
-      // object
-      let o;
-      if (q.object.termType === 'NamedNode') {
-        o = $rdf.sym(q.object.value);
-      } else if (q.object.termType === 'BlankNode') {
-        o = $rdf.blankNode(q.object.value);
-      } else {
-        // Literal
-        const lang = q.object.language || undefined;
-        const dt   = q.object.datatype ? $rdf.sym(q.object.datatype.value) : undefined;
-        o = lang ? $rdf.literal(q.object.value, lang)
-                 : dt   ? $rdf.literal(q.object.value, undefined, dt)
-                        : $rdf.literal(q.object.value);
-      }
-
-      // graph (undefined means default graph)
-      const g = (q.graph.termType === 'DefaultGraph') ? undefined : $rdf.sym(q.graph.value);
-
-      temp.add(s, p, o, g);
-    });
-    quadStream.on('end', () => {
-      if (debuggingConsoleEnabled) {console.info(`[applyConstructWithComunica] Constructed ${temp.statements.length} statements.`)};
-      resolve(temp);
-    });
-
+  return await new Promise((resolve, reject) => {
+    const quads = [];
+    quadStream.on('data', q => quads.push(q));
+    quadStream.on('end', () => resolve(quads));
     quadStream.on('error', reject);
   });
 }

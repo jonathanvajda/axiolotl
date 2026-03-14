@@ -820,7 +820,7 @@ async function renderOntologyList() {
 
       const warnMissing = !fileName || !dataPath;
       const li = document.createElement('li');
-      li.style.marginLeft = '0.4em';
+      li.style.marginLeft = '1.5em';
       li.style.marginBottom = '0.4em';
       li.innerHTML = `
         <label ${warnMissing ? 'style="color:red;" title="Missing file name"' : ''}>

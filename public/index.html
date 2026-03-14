@@ -1385,29 +1385,28 @@ z" />
 				<br />
 				<br />
 				<br />
-				<br />
 				<hr style="width: 66%;">
 				<br />
 				<br />
 				<div class="danger-zone">
 					<h3 class="danger">Clear Workspace</h3>
 					<button id="clear-active-triples" class="danger">Drop Triples</button>
-					<small style="font-size:0.75rem;">
+					<small>
 						Clears all triples from the default graph and any named graphs.
 					</small><br />
 
 					<button id="clear-saved-queries" class="danger">Clear Saved Queries</button>
-					<small style="font-size:0.75rem;">
+					<small>
 						Clears all user-defined SPARQL queries.
 					</small><br />
 
 					<button id="clear-active-settings" class="danger">Clear User Settings</button>
-					<small style="font-size:0.75rem;">
+					<small>
 						Clears SPARQL endpoint settings, prefix bindings, and other preferences.
 					</small><br />
 
 					<button id="flush-active-workspace" class="danger">Remove Workspace Databases</button>
-					<small style="font-size:0.75rem;">
+					<small>
 						Deletes Active Workspace database (IndexedDB) and localStorage. Hard reset.
 					</small>
 					
@@ -1428,11 +1427,11 @@ z" />
 			<div id="query-settings-sidebar" class="sidebar-left">
 				<h3>Settings</h3>
 				<div id="endpoint-selection-query">
-					<strong>Select DB:</strong><br />
+					<strong>Select DB to Query:</strong><br />
 					<label for="endpoint-radio">
 						<input type="radio" name="query-source" id="endpoint-radio" value="endpoint">
 						SPARQL Endpoint
-					</label><br />
+					</label>
 					<label for="indexeddb-radio">
 						<input type="radio" name="query-source" id="indexeddb-radio" value="indexeddb" checked>
 						Active Workspace
@@ -1445,7 +1444,7 @@ z" />
 					<label>
 						<input type="radio" name="rw-mode" id="mode-read" value="read" checked>
 						Read (regular query)
-					</label><br />
+					</label>
 					<label>
 						<input type="radio" name="rw-mode" id="mode-write" value="write">
 						Write (update query)
@@ -1489,7 +1488,7 @@ z" />
 				<textarea id="sparql-query" rows="10" placeholder="Enter SPARQL query here..."></textarea>
 				<button id="get-all-triples">Get All Triples</button>
 				<button id="run-query" class="primary">Run Query</button>
-				<label for="query-label" style="margin-left: 15em;">Label:</label>
+				<span style="margin-left: 15em;">Label:</span>
 				<input id="query-label" style="width:150px">
 				<button id="save-query-for-later" type="button">Save Query for Later</button>
 			</div>
@@ -1506,7 +1505,7 @@ z" />
 					<br />
 					<br />
 					Load Queries from CSV:<br />
-					<input id="upload-saved-queries-csv" type="file" accept=".csv" style="margin-left: 0.75rem; max-width: 215px; font-size: 0.75rem;">
+					<input id="upload-saved-queries-csv" type="file" accept=".csv" style="margin-left: 0.75rem; max-width: 215px;">
 				</div>
 			</div>
 
@@ -1520,46 +1519,44 @@ z" />
 				<h3>Select Inference Rules:</h3>
 				<div id="rules">
 					<ul id="inference-rule-list" style="list-style: none; padding-left: 0; margin: 5px 5px;">
-					<li style="margin-bottom: 1rem;"><label><input type="checkbox" name="inference-rule" value="inverse" id="rule-inverse" checked>
+					<li><label><input type="checkbox" name="inference-rule" value="inverse" id="rule-inverse" checked>
 						Inverse</label></li>
-					<li style="margin-bottom: 1rem;"><label><input type="checkbox" name="inference-rule" value="symmetric" id="rule-symmetric" checked>
+					<li><label><input type="checkbox" name="inference-rule" value="symmetric" id="rule-symmetric" checked>
 						Symmetric</label></li>
-					<li style="margin-bottom: 1rem;"><label><input type="checkbox" name="inference-rule" value="subpropertyof" id="rule-subpropertyof"
-							checked> SubPropertyOf</label></li>
-					<li style="margin-bottom: 1rem;"><label><input type="checkbox" name="inference-rule" value="transitive" id="rule-transitive" checked>
+					<li><label><input type="checkbox" name="inference-rule" value="subpropertyof" id="rule-subpropertyof"
+							checked> SubPropertyOf</li>
+					<li><label><input type="checkbox" name="inference-rule" value="transitive" id="rule-transitive" checked>
 						Transitive</label></li>
-					<li style="margin-bottom: 1rem;"><label><input type="checkbox" name="inference-rule" value="domain" id="rule-domain" checked>
+					<li><label><input type="checkbox" name="inference-rule" value="domain" id="rule-domain" checked>
 						Domain</label></li>
-					<li style="margin-bottom: 1rem;"><label><input type="checkbox" name="inference-rule" value="range" id="rule-range" checked>
+					<li><label><input type="checkbox" name="inference-rule" value="range" id="rule-range" checked>
 						Range</label></li>
-					<li style="margin-bottom: 1rem;"><label><input type="checkbox" name="inference-rule" value="subclassof" id="rule-subclassof" checked>
+					<li><label><input type="checkbox" name="inference-rule" value="subclassof" id="rule-subclassof" checked>
 						SubClassOf</label></li>
 					</ul>
 				</div>
 				<div id="endpoint-selection-inference">
-					Select DB:<br />
+					<strong>Select DB to Reason Over:</strong><br />
 					<label for="reasoner-source-endpoint"><input type="radio" name="reasoner-source"
-							id="reasoner-source-endpoint" value="endpoint"> SPARQL Endpoint</label><br />
+							id="reasoner-source-endpoint" value="endpoint"> SPARQL Endpoint</label>
 					<label for="reasoner-source-indexeddb"><input type="radio" name="reasoner-source"
 							id="reasoner-source-indexeddb" value="indexeddb" checked> Active Workspace</label>
 				</div>
 			</div>
 			<div id="inference-main" class="mid-section">
 				<h3>Inference Engine: Forward-Chain Reasoning</h3>
-				<button id="run-inference" class="primary">Run Inference</button>
+				<button id="run-inference" class="primary">Run Inference</button><br />
+				Output preview:
 				<textarea id="rdf-preview" rows="10" cols="100" placeholder="Preview of inferred triples..."></textarea>
 			</div>
 			<div id="inference-right-sidebar" class="sidebar-right">
 				<h3>Save Inferred Output</h3>
 				<strong>Triples or Quads:</strong><br />
 				<label><input type="radio" name="save-target" id="save-target-default" checked> Default graph</label>
-				<br />
 				<label><input type="radio" name="save-target" id="save-target-named"> Named graph</label>
-				<br /><br />
-				<hr style="width: 66%;">
-				<br />
 				<button id="save-inferred-to-db">Stash to Active Workspace</button>
-				<br /><br />
+				<br />
+				<hr style="width: 66%;">
 				<strong>Export File:</strong><br />
 				<label for="output-format">Format:</label>
 				<select id="output-format">
@@ -1577,13 +1574,9 @@ z" />
 	</main>
 
 	<footer>
-		<details>
-			<summary><b>User Data Notice</b></summary>Data that a user inputs stays local to the user's computer. This
-			site does not receive data from a user, and therefore no user data is stored on the site. Consequently,
-			reloading the page effectively wipes anything not saved (ontology settings are saved locally across
-			sessions), and users are encouraged to export progress since it cannot be otherwise recovered.
-		</details><br>
-		<p style="text-align:right"><small>Copyright 2025, Jonathan Vajda</small></p>
+		<footer style="margin: 1em;">
+		<details open=""><summary><b>Important User Data Notice</b></summary>By design, any data that a user inputs stays <i>local</i> to the user's device. Ontology settings and data can be saved in the browser ('Save Session' button), but users are encouraged to export their work ('Download RDF' button), since it <i>cannot</i> be otherwise recovered. This is on purpose: I do not harvest your data or process your data. This site does not receive data from a user, and therefore no user data is stored anywhere except locally. If you are interested in storing data on the cloud (on a server), please contact me (jonathan.vajda [at] gmail.com) so I know about your interest and so I can notify you if/when I add that feature.</details><br>
+		<span style="text-align:right"><small>Copyright 2026, Jonathan Vajda</small></span>
 		<div id="build-info" style="text-align:right;"><small></small></div>
 	</footer>
 

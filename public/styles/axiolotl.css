@@ -1,52 +1,96 @@
-/* General page styling */
+/* =========================================================
+   App-scoped layer
+   - Load AFTER skeleton.css and app-base.css
+   - Reuses shared theme tokens before asserting app behavior
+   ========================================================= */
+
+/* ---------- 1) App semantic tokens derived from shared tokens ---------- */
+:root {
+  --app-surface: var(--ont-panel-bg);
+  --app-surface-subtle: color-mix(in srgb, var(--ont-emph-bg) 65%, var(--ont-panel-bg));
+  --app-surface-hover: color-mix(in srgb, var(--ont-accent-soft) 55%, var(--ont-panel-bg));
+
+  --app-header-bg: color-mix(in srgb, var(--ont-accent) 48%, #0f172a);
+  --app-header-text: #ffffff;
+
+  --app-border-soft: var(--ont-border);
+  --app-border-strong: color-mix(in srgb, var(--ont-border) 80%, var(--ont-text));
+
+  --app-shadow-sm: 0 2px 8px color-mix(in srgb, var(--ont-text) 8%, transparent);
+  --app-shadow-md: 0 2px 16px color-mix(in srgb, var(--ont-text) 6%, transparent);
+  --app-shadow-lg: 0 6px 20px color-mix(in srgb, var(--ont-text) 14%, transparent);
+
+  --app-control-bg: color-mix(in srgb, var(--ont-panel-bg) 72%, var(--ont-accent-soft));
+  --app-control-hover: color-mix(in srgb, var(--ont-accent-soft) 65%, var(--ont-panel-bg));
+  --app-control-border: color-mix(in srgb, var(--ont-accent) 18%, var(--ont-border));
+
+  --app-table-head-bg: color-mix(in srgb, var(--ont-accent-soft) 72%, var(--ont-panel-bg));
+  --app-table-head-text: var(--ont-text);
+  --app-table-row-even: color-mix(in srgb, var(--ont-emph-bg) 52%, var(--ont-panel-bg));
+  --app-table-row-odd: var(--ont-panel-bg);
+
+  --app-danger-bg: color-mix(in srgb, #ef4444 10%, var(--ont-panel-bg));
+  --app-danger-border: color-mix(in srgb, #ef4444 30%, var(--ont-border));
+
+  --app-toast-bg: color-mix(in srgb, var(--ont-panel-bg) 18%, #111827);
+  --app-toast-text: #ffffff;
+  --app-toast-success: #166534;
+  --app-toast-error: #991b1b;
+  --app-toast-info: #1e3a5f;
+
+  --app-status-idle-text: color-mix(in srgb, var(--ont-text) 82%, var(--ont-muted));
+  --app-status-idle-bg: color-mix(in srgb, var(--ont-muted) 25%, var(--ont-panel-bg));
+  --app-status-idle-border: color-mix(in srgb, var(--ont-muted) 45%, var(--ont-border));
+
+  --app-status-ok-text: var(--ont-text);
+  --app-status-ok-bg: color-mix(in srgb, #22c55e 26%, var(--ont-panel-bg));
+  --app-status-ok-border: color-mix(in srgb, #22c55e 42%, var(--ont-border));
+
+  --app-query-cell-max: 26rem;
+}
+
+/* ---------- 2) Page shell ---------- */
+
 body {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  background: #e1f3ffd3;
-  color: #222;
-  margin: 0;
   padding: 0 0 2em 0;
 }
 
-/* Header Banner */
 .header {
-  background: #00406e;
-  color: #fff;
+  background: var(--app-header-bg);
+  color: var(--app-header-text);
   font-size: 1.75em;
-  font-weight: bold;
+  font-weight: 700;
   text-align: center;
   letter-spacing: 0.04em;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: var(--app-shadow-sm);
 }
 
-/* Tabs */
-.tabs {
-  display: flex;
-  gap: 0.7em;
-  justify-content: space-around;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
-}
-
-/* Main Content Area */
 main {
   margin: 0 auto;
   padding: 1.5em 2em 2em 2em;
-  background: #f8fbfd;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-soft);
   border-radius: 12px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+  box-shadow: var(--app-shadow-md);
   max-width: 94%;
+}
+
+footer {
+  padding: 2rem;
 }
 
 .tab-content {
   display: none;
 }
+
 .tab-content.active {
   display: grid;
 }
 
+/* ---------- 3) App headings ---------- */
 
 h1 {
-  color: #007acc;
+  color: var(--ont-text);
   text-align: center;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
@@ -55,278 +99,68 @@ h1 {
 }
 
 h3 {
-  color: #007acc;
+  color: var(--ont-text);
   margin-top: 0.5em;
   margin-bottom: 0.5em;
-  font-size: 1.15em;
+  font-size: 2.5rem;
 }
 
-/* Table layout for upload and endpoint */
-table {
-  margin: 1em auto 2em auto;
-  border-collapse: collapse;
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
-  border-radius: 8px;
-  overflow: hidden;
-  min-width: 600px;
-  max-width: 90vw;
-}
-thead td {
-  background: #e0f3ff;
-  color: #007acc;
-  font-size: 1.08em;
-  padding: 0.7em 0.5em;
-  border-bottom: 1px solid #cce6fa;
-}
-td {
-  padding: 0.7em 0.5em;
-  text-align: center;
-  border-bottom: 1px solid #f0f0f0;
-}
-tr:last-child td {
-  border-bottom: none;
+label {
+  font-weight: 400;
+  height: 28px;
 }
 
-/* Inputs and buttons */
-input[type="file"], input[type="textbox"] {
-  font-size: 1em;
-  padding: 0.3em 0.5em;
-  border-radius: 4px;
-  border: 1px solid #b5d6f6;
-  background: #f5faff;
-  margin: 0.2em 0;
-}
+/* ---------- 4) Tabs ---------- */
 
-button {
-  padding: 0.35em 1.1em;
-  font-size: 1em;
-  border-radius: 5px;
-  border: 1px solid #007acc;
-  background: #f5faff;
-  color: #007acc;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-  margin: 0.2em 0.3em;
-}
-
-button.prefix-button {
-  padding: 0.25em .5em;
-  font-size: 0.75em;
-  margin: 0.1em 0.1em;}
-
-button:hover {
-  background: #e0f3ff;
-  color: #005a99;
-}
-
-/* Inference rules checkboxes */
-#rules {
+.tabs {
   display: flex;
-  gap: 1em;
-  flex-wrap: wrap;
-  margin-bottom: 1em;
-}
-#rules label {
-  font-size: 1em;
-  color: #222;
-  background: #f5faff;
-  border-radius: 4px;
-  padding: 0.2em 0.6em;
-  border: 1px solid #e0f3ff;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-#rules label:hover {
-  background: #e0f3ff;
+  gap: 0.7em;
+  justify-content: space-around;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
 }
 
-/* Textarea for RDF preview */
-textarea {
-  font-size: 1rem;
-  border-radius: 4px;
-  border: 1px solid #b5d6f6;
-  padding: 0.5em;
-  background: #fafcff;
-  width: 98%;
-  box-sizing: border-box;
-  margin-bottom: 0.7em;
-  resize: vertical;
-}
-
-.file-upload-row input[type="file"] {
-  width: 45%;
-}
-
-/* Select dropdown */
-select {
-  font-size: 1em;
-  border-radius: 4px;
-  border: 1px solid #b5d6f6;
-  background: #f5faff;
-  padding: 0.3em 0.7em;
-  margin-left: 0.5em;
-}
-
-.danger-zone {
-  font-size:0.75rem;
-  color: #000;
-  background-color: rgba(255, 0, 0, 0.05);
-  padding: 1rem 1rem;
-}
-
-.danger {
-  font-size:0.75rem;
-  color: #000;
-  background-color: rgba(255, 0, 0, 0.05);
-  padding: 0.25rem 0.25rem;
-}
-
-
-/* Responsive for small screens */
-@media (max-width: 700px) {
-  table {
-    min-width: 0;
-    width: 98vw;
-    font-size: 0.98em;
-  }
-  textarea {
-    font-size: 1rem;
-    width: 98vw;
-  }
-  #rules {
-    flex-direction: column;
-    gap: 0.5em;
-  }
-}
-
-#toast-container {
-    position: fixed; right: 16px; bottom: 16px;
-    display: flex; flex-direction: column; gap: 8px; z-index: 9999;
-  }
-  .toast {
-    min-width: 260px; max-width: 420px;
-    padding: 10px 12px; border-radius: 8px;
-    box-shadow: 0 6px 20px rgba(0,0,0,.15);
-    background: #222; color: #fff; font: 14px/1.35 system-ui, sans-serif;
-    display: flex; align-items: flex-start; gap: 10px;
-    opacity: .98; transform: translateY(0); transition: opacity .2s ease, transform .2s ease;
-  }
-  .toast.hide { opacity: 0; transform: translateY(6px); }
-  .toast__icon { font-size: 18px; line-height: 1; }
-  .toast--success { background: #0f5132; }
-  .toast--error   { background: #842029; }
-  .toast--info    { background: #1f2a44; }
-  /* optional: quick button flash */
-  .flash-success { animation: flashSuccess .9s ease; }
-  .flash-error   { animation: flashError .9s ease; }
-  @keyframes flashSuccess {
-    0% { box-shadow: 0 0 0 0 rgba(16,185,129,.4); }
-    100% { box-shadow: 0 0 0 14px rgba(16,185,129,0); }
-  }
-  @keyframes flashError {
-    0% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); }
-    100% { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
-  }
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .toast { transition: none; }
-  .toast.hide { transform: none; }
-}
-
-/* Focus ring for a11y */
-.toast:focus-visible {
-  outline: 2px solid rgba(13,110,253,.6);
-  outline-offset: 2px;
-}
-
-
-/* Decrease font size for all table data cells */
-.query-results-th,
-.query-results-td {
-  vertical-align: top;
-  box-sizing: border-box;
-}
-
-/* Zebra striping */
-.query-results-tr:nth-child(even) {
-  background-color: #f2f2f2;
-}
-
-.query-results-tr:nth-child(odd) {
-  background-color: #ffffff;
-}
-
-/* Make the header row cells bold */
-thead th {
-    font-weight: bold;
-    background-color: #d2d2d2; /* A slightly darker grey for the header */
-}
-
-/* Inner wrapper controls visual width */
-.query-cell {
-  display: block;
-  max-width: 26rem;         /* adjust */
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  font-size: 0.8rem;
-  line-height: 1.35;
-}
-
-/* details version stays capped too */
-.query-cell-details {
-  max-width: 26rem;
-}
-
-.query-cell-summary {
-  display: block;
-  max-width: 26rem;
-  cursor: pointer;
-  list-style: none;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: normal;
-}
-
-/* Headers can wrap too */
-.query-results-th .query-cell {
-  font-weight: 600;
-}
-
-.query-cell-summary::-webkit-details-marker {
-  display: none;
-}
-
-.query-cell-full {
-  margin-top: 0.35rem;
-  max-width: 26rem;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: normal;
-  border-top: 1px solid #e5e7eb;
-}
-
-/* Tab buttons */
 .tab-btn {
   appearance: none;
   border: none;
   background: transparent;
-  padding: .6rem .9rem;
+  padding: 0.6rem 0.9rem;
+  margin: 0;
+  min-height: 0;
+  font-size: 1em;
   font-weight: 500;
-  color: #444;
+  line-height: 1.2;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ont-muted);
   border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
   cursor: pointer;
 }
-.tab-btn:hover { color: #111; }
 
-/* Active state */
-.tab-btn.active {
-  color: #111827;
-  font-weight: 600;
-  border-bottom-color: #3b82f6;
+.tab-btn:hover {
+  color: var(--ont-text);
+  background: transparent;
+  border-color: transparent;
 }
+
+.tab-btn.active {
+  color: var(--ont-text);
+  font-weight: 600;
+  border-bottom-color: var(--ont-accent);
+}
+
+.tab-btn.active:active {
+  transform: none;
+}
+
+.tab-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ont-focus) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* ---------- 5) Three-column tab layout ---------- */
 
 .tab-panel {
   display: none;
@@ -341,10 +175,6 @@ thead th {
   width: 100%;
 }
 
-/* Optional “pressed” look */
-.tab-btn.active:active { transform: none; }
-
-/* Standard three-column tab content */
 .sidebar-left {
   grid-column: 1;
   min-width: 0;
@@ -360,20 +190,6 @@ thead th {
   min-width: 0;
 }
 
-/* Query results row below all 3 columns */
-#query-results {
-  grid-column: 1 / 4;
-  width: 98%;
-  max-width: 100%;
-  overflow-x: auto;
-  background: #fff;
-  border: 1px solid #d9e8f5;
-  border-radius: 8px;
-  padding: 1rem;
-  box-sizing: border-box;
-}
-
-/* Optional: give sidebars a card-like feel */
 .sidebar-left,
 .sidebar-right,
 .mid-section,
@@ -381,7 +197,333 @@ thead th {
   box-sizing: border-box;
 }
 
-/* Make wide results tables scroll instead of breaking the page */
+/* ---------- 6) Tables ---------- */
+
+table {
+  margin: 1em auto 2em auto;
+  border-collapse: collapse;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-soft);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--ont-text) 7%, transparent);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 600px;
+  max-width: 90vw;
+}
+
+thead td,
+thead th {
+  background: var(--app-table-head-bg);
+  color: var(--app-table-head-text);
+  font-size: 1.08em;
+  font-weight: 600;
+  padding: 0.7em 0.5em;
+  text-align-last: center;
+  border-bottom-color: var(--app-border-soft);
+}
+
+td {
+  padding: 0.7em 0.5em;
+  text-align: center;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* ---------- 7) Controls ----------
+   Skeleton already gives baseline sizing/structure.
+   These overrides preserve your app's earlier look/behavior.
+*/
+
+input[type="file"],
+input[type="text"],
+input[type="textbox"],
+input[type="search"],
+input[type="url"],
+textarea,
+select {
+  font-size: 1em;
+  background: var(--app-control-bg);
+  color: var(--ont-text);
+  border-color: var(--app-control-border);
+}
+
+input[type="file"],
+input[type="text"],
+input[type="textbox"],
+input[type="search"],
+input[type="url"] {
+  padding: 0.3em 0.5em;
+}
+
+textarea {
+  background: color-mix(in srgb, var(--ont-panel-bg) 82%, var(--ont-accent-soft));
+  width: 98%;
+  box-sizing: border-box;
+  margin-bottom: 0.7em;
+  resize: vertical;
+}
+
+select {
+  padding: 0.3em 0.7em;
+  margin-left: 0.5em;
+}
+
+input[type="file"]:focus,
+input[type="text"]:focus,
+input[type="textbox"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--ont-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ont-focus) 35%, transparent);
+}
+
+button,
+.button,
+input[type="submit"],
+input[type="reset"],
+input[type="button"] {
+  padding: 0.35em 1.1em;
+  margin: 0.2em 0.3em;
+  font-size: 1.4rem;
+  line-height: 1.2;
+  letter-spacing: normal;
+  text-transform: none;
+  border-radius: 5px;
+  background: var(--app-control-bg);
+  transition:
+    background-color 0.2s,
+    color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+button:hover,
+.button:hover,
+input[type="submit"]:hover,
+input[type="reset"]:hover,
+input[type="button"]:hover {
+  background: var(--app-control-hover);
+  color: var(--ont-link-hover);
+  border-color: var(--ont-link-hover);
+}
+
+button:focus-visible,
+.button:focus-visible,
+input[type="submit"]:focus-visible,
+input[type="reset"]:focus-visible,
+input[type="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ont-focus) 35%, transparent);
+}
+
+button.prefix-button {
+  padding: 0.25em 0.5em;
+  font-size: 0.8em;
+  height:auto;
+  margin: 0.1em 0.1em;
+}
+
+.file-upload-row input[type="file"] {
+  width: 45%;
+}
+
+/* ---------- 8) Inference rule chips ---------- */
+
+#rules {
+  display: flex;
+  gap: 1em;
+  flex-wrap: wrap;
+  margin-bottom: 1em;
+}
+
+#rules label {
+  font-size: 1em;
+  color: var(--ont-text);
+  background: var(--app-control-bg);
+  border-radius: 4px;
+  padding: 0.2em 0.6em;
+  border: 1px solid color-mix(in srgb, var(--ont-border) 75%, var(--ont-accent-soft));
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+#rules label:hover {
+  background: var(--app-control-hover);
+}
+
+/* ---------- 9) Danger blocks ---------- */
+
+.danger-zone,
+.danger {
+  color: var(--ont-text);
+  background-color: var(--app-danger-bg);
+  border: 1px solid var(--app-danger-border);
+  border-radius: var(--ont-radius);
+}
+
+.danger-zone {
+  padding: 1rem;
+}
+
+.danger {
+  padding: 0.25rem;
+}
+
+/* ---------- 10) Toasts ---------- */
+
+#toast-container {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+}
+
+.toast {
+  min-width: 260px;
+  max-width: 420px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  box-shadow: var(--app-shadow-lg);
+  background: var(--app-toast-bg);
+  color: var(--app-toast-text);
+  font: 14px/1.35 var(--ont-font-body);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  opacity: 0.98;
+  transform: translateY(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.hide {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.toast__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.toast--success {
+  background: var(--app-toast-success);
+}
+
+.toast--error {
+  background: var(--app-toast-error);
+}
+
+.toast--info {
+  background: var(--app-toast-info);
+}
+
+.flash-success {
+  animation: flashSuccess 0.9s ease;
+}
+
+.flash-error {
+  animation: flashError 0.9s ease;
+}
+
+@keyframes flashSuccess {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes flashError {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(239, 68, 68, 0);
+  }
+}
+
+.toast:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ont-focus) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* ---------- 11) Query results ---------- */
+
+.query-results-th,
+.query-results-td {
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.query-results-tr:nth-child(even) {
+  background-color: var(--app-table-row-even);
+}
+
+.query-results-tr:nth-child(odd) {
+  background-color: var(--app-table-row-odd);
+}
+
+.query-cell {
+  display: block;
+  max-width: var(--app-query-cell-max);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: 1.25rem;
+  line-height: 1.15;
+}
+
+.query-cell-details {
+  max-width: var(--app-query-cell-max);
+}
+
+.query-cell-summary {
+  display: block;
+  max-width: var(--app-query-cell-max);
+  cursor: pointer;
+  list-style: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.query-results-th .query-cell {
+  font-weight: 600;
+}
+
+.query-cell-summary::-webkit-details-marker {
+  display: none;
+}
+
+.query-cell-full {
+  margin-top: 0.35rem;
+  max-width: var(--app-query-cell-max);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+  border-top: 1px solid var(--ont-border);
+}
+
+#query-results {
+  grid-column: 1 / 4;
+  width: 98%;
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border-soft);
+  border-radius: 8px;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
 #query-results table {
   border-collapse: collapse;
   min-width: 100%;
@@ -392,15 +534,60 @@ thead th {
 /* Better query textarea sizing */
 #sparql-query,
 #rdf-preview {
-  width: 100%;
+  font-size: 1.5rem;
   box-sizing: border-box;
 }
 
-footer {
-  padding: 2rem;
+/* ---------- 12) Status row / badges ---------- */
+
+.status-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-/* Mobile / smaller screens */
+.status-btn {
+  --radius: 999px;
+  --pad-x: 14px;
+  --pad-y: 8px;
+  --font: 14px;
+
+  font-size: var(--font);
+  border-radius: var(--radius);
+  padding: var(--pad-y) var(--pad-x);
+  border: 1px solid transparent;
+  cursor: default;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.status-idle {
+  color: var(--app-status-idle-text);
+  background: var(--app-status-idle-bg);
+  border-color: var(--app-status-idle-border);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ont-text) 8%, transparent);
+}
+
+.status-ok {
+  color: var(--app-status-ok-text);
+  background: var(--app-status-ok-bg);
+  border-color: var(--app-status-ok-border);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.35);
+}
+
+.status-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ont-focus) 45%, transparent);
+  outline-offset: 2px;
+}
+
+/* ---------- 13) Responsive ---------- */
+
 @media (max-width: 900px) {
   .tab-panel.active {
     grid-template-columns: 1fr;
@@ -419,54 +606,31 @@ footer {
   }
 }
 
-/* Optional: focus ring for a11y */
-.tab-btn:focus-visible {
-  outline: 2px solid #0d6efd66;
-  outline-offset: 2px;
+@media (max-width: 700px) {
+  table {
+    min-width: 0;
+    width: 98vw;
+    font-size: 0.98em;
+  }
+
+  textarea {
+    width: 98vw;
+  }
+
+  #rules {
+    flex-direction: column;
+    gap: 0.5em;
+  }
 }
 
-.status-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
+/* ---------- 14) Reduced motion ---------- */
 
-/* Base status button styling */
-.status-btn {
-  --radius: 999px;
-  --pad-x: 14px;
-  --pad-y: 8px;
-  --font: 14px;
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    transition: none;
+  }
 
-  font-size: var(--font);
-  border-radius: var(--radius);
-  padding: var(--pad-y) var(--pad-x);
-  border: 1px solid transparent;
-  cursor: default;
-  user-select: none;
-  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-  white-space: nowrap;
-}
-
-/* OFF state: clearer "off" */
-.status-idle {
-  color: #374151;           /* gray-700 */
-  background: #d1d5db;      /* gray-300 */
-  border-color: #9ca3af;    /* gray-400 */
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
-}
-
-/* ON state: a bit more eye-catching */
-.status-ok {
-  color: #065f46;           /* emerald-800 */
-  background: #86efac;      /* emerald-300 */
-  border-color: #34d399;    /* emerald-400 */
-  box-shadow: inset 0 0 0 1px rgba(16,185,129,0.5);
-}
-
-/* Optional: subtle hover focus */
-.status-btn:focus-visible {
-  outline: 2px solid #94d5c6;
-  outline-offset: 2px;
+  .toast.hide {
+    transform: none;
+  }
 }
