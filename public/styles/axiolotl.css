@@ -355,6 +355,42 @@ button.prefix-button {
   background: var(--app-control-hover);
 }
 
+
+.inference-status-block {
+  margin-top: 0.75rem;
+}
+
+.inference-status-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.inference-console {
+  width: 100%;
+  min-height: 7em; /* about 5 lines */
+  resize: vertical;
+  font-family: monospace;
+  white-space: pre-wrap;
+  overflow-y: auto;
+}
+
+.inference-spinner {
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: inference-spin 0.8s linear infinite;
+}
+
+@keyframes inference-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ---------- 9) Danger blocks ---------- */
 
 .danger-zone,

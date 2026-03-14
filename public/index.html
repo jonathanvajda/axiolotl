@@ -1545,6 +1545,13 @@ z" />
 			</div>
 			<div id="inference-main" class="mid-section">
 				<h3>Inference Engine: Forward-Chain Reasoning</h3>
+				<div class="inference-status-block">
+					<div class="inference-status-head">
+						<span>Inference log</span>
+						<span id="inference-spinner" class="inference-spinner" hidden aria-hidden="true"></span>
+					</div>
+					<textarea id="inference-console" class="inference-console" rows="5" readonly spellcheck="false"></textarea>
+				</div>
 				<button id="run-inference" class="primary">Run Inference</button><br />
 				Output preview:
 				<textarea id="rdf-preview" rows="10" cols="100" placeholder="Preview of inferred triples..."></textarea>

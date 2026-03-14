@@ -2,11 +2,7 @@
 
 // Dependencies
   // comunica-indexeddb-bridge.js
-    //  applyUpdateWithComunica,
-    //  loadGraphFromIndexedDB,
-    //  saveGraphToIndexedDB
-  // rdflib.js
-    // $rdf
+    //  applyUpdateWithComunica
   // semantic-core.js
     // downloadText(filename, text, mime)  
 
@@ -21,9 +17,12 @@ function getSelectedRulesFromCheckboxes() {
 
 // Build adjacency maps from the RDF/JS store (across all graphs)
 function mapFromQuads(store, predIRI) {
+  const { namedNode } = N3.DataFactory;
   const M = new Map();
-  for (const q of store.getQuads(null, predIRI, null, null)) {
-    const a = q.subject.value, b = q.object.value;
+
+  for (const q of store.getQuads(null, namedNode(predIRI), null, null)) {
+    const a = q.subject.value;
+    const b = q.object.value;
     if (!M.has(a)) M.set(a, new Set());
     M.get(a).add(b);
   }
@@ -58,7 +57,52 @@ const RDFS_DOMAIN = 'http://www.w3.org/2000/01/rdf-schema#domain';
 const RDFS_RANGE  = 'http://www.w3.org/2000/01/rdf-schema#range';
 const RDF_TYPE    = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 
-// 
+/**
+ * Clears the Inference Engine console
+ */
+function clearInferenceConsole() {
+  const box = document.getElementById('inference-console');
+  if (box) box.value = '';
+}
+
+function appendInferenceConsoleLine(message) {
+  const box = document.getElementById('inference-console');
+  if (!box) return;
+  box.value += `${message}\n`;
+  box.scrollTop = box.scrollHeight;
+}
+
+function setInferenceBusy(isBusy) {
+  const spinner = document.getElementById('inference-spinner');
+  if (spinner) spinner.hidden = !isBusy;
+}
+
+window.appendInferenceConsoleLine = appendInferenceConsoleLine;
+window.clearInferenceConsole = clearInferenceConsole;
+window.setInferenceBusy = setInferenceBusy;
+
+function inferenceInfo(message) {
+  if (debuggingConsoleEnabled) console.info(message);
+  if (typeof window !== 'undefined' && typeof window.appendInferenceConsoleLine === 'function') {
+    window.appendInferenceConsoleLine(message);
+  }
+}
+
+function inferenceWarn(message) {
+  if (debuggingConsoleEnabled) console.warn(message);
+  if (typeof window !== 'undefined' && typeof window.appendInferenceConsoleLine === 'function') {
+    window.appendInferenceConsoleLine(`WARN: ${message}`);
+  }
+}
+
+function inferenceError(message) {
+  if (debuggingConsoleEnabled) console.error(message);
+  if (typeof window !== 'undefined' && typeof window.appendInferenceConsoleLine === 'function') {
+    window.appendInferenceConsoleLine(`ERROR: ${message}`);
+  }
+}
+
+// set up the key:value structure
 function quadKey(q) {
   return [
     q.subject.termType, q.subject.value,
@@ -70,74 +114,71 @@ function quadKey(q) {
   ].join('¦');
 }
 
+function canBeSubject(term) {
+  return !!term && (term.termType === 'NamedNode' || term.termType === 'BlankNode');
+}
 /**
  * Applies a set of inference rules repeatedly until no new triples are added.
  * @param {string[]} rules - List of rule identifiers to apply (e.g. ["inverse", "subclassof"])
- * @returns {Promise<{ overlayGraph: $rdf.Formula, metrics: Record<string, number> }>} New triples and their counts
+ * @returns {quad} quas 
  * Event-driven: new ABox assertions immediately trigger subclass/subproperty,
  * inverse/symmetric, and domain/range expansions using precomputed TBox closures.
 */
 // axiolotl-inference.js
 async function inferUntilStable(rules) {
-  if (debuggingConsoleEnabled) {console.info('[inferUntilStable] Starting inference over rules:', rules)};
+  if (debuggingConsoleEnabled) {
+    console.info('[inferUntilStable] Starting inference over rules:', rules);
+  }
 
-  // ---- 0) Load graphs and set up dedupe ----
-  const baseStore = await loadDatasetFromIndexedDB();
-  const seen = new Set(baseStore.getQuads(null, null, null, null).map(quadKey));
-  const rdfjsStore = baseStore;
+  const { DataFactory, Store } = N3;
+  const { namedNode, quad } = DataFactory;
 
-  // We'll keep the overlay as N3 quads during inference (fast)
-  const overlayStore = new N3.Store();
+  // ---- 0) Load dataset and set up dedupe ----
+  const baseStore = await loadGraphFromIndexedDB();
+  const rdfjsStore = baseStore;              // mutate in place as closure/rules add quads
+  const overlayStore = new Store();          // only newly inferred quads
+  const seen = new Set(rdfjsStore.getQuads(null, null, null, null).map(quadKey));
 
-  const { DataFactory } = N3;
-  const { namedNode, blankNode, literal, quad, defaultGraph } = DataFactory;
-
-  // Helpers to convert rdflib Statement -> N3 Term (used in enqueue)
-  const toNamed   = iri => namedNode(iri);
-  const toSubject = s => (s.termType === 'NamedNode' ? namedNode(s.value) : blankNode(s.id || s.value));
-  const toObject  = o => (
-    o.termType === 'NamedNode' ? namedNode(o.value) :
-    o.termType === 'BlankNode' ? blankNode(o.id || o.value) :
-    (o.language ? literal(o.value, o.language)
-                : o.datatype ? literal(o.value, namedNode(o.datatype.value))
-                             : literal(o.value))
-  );
-
-  // Build once:
+  // ---- 1) Precompute TBox closures/maps ----
   const subClassEdges = mapFromQuads(rdfjsStore, RDFS_SC);
   const subPropEdges  = mapFromQuads(rdfjsStore, RDFS_SP);
 
-  const classSupers = transitiveClosure(subClassEdges);   // Map<class -> Set<allSuperClasses>>
-  const propSupers  = transitiveClosure(subPropEdges);    // Map<prop  -> Set<allSuperProps>>
+  const classSupers = transitiveClosure(subClassEdges); // Map<class -> Set<allSuperClasses>>
+  const propSupers  = transitiveClosure(subPropEdges);  // Map<prop  -> Set<allSuperProps>>
 
-  // Also cache convenience maps/sets:
   const domainMap = mapFromQuads(rdfjsStore, RDFS_DOMAIN); // Map<prop -> Set<class>>
   const rangeMap  = mapFromQuads(rdfjsStore, RDFS_RANGE);  // Map<prop -> Set<class>>
 
-  // Symmetric/inverse/transitive properties:
-  const symmetricProps  = new Set(rdfjsStore.getQuads(null, RDF_TYPE, OWL_SYM, null).map(q => q.subject.value));
-  const transitiveProps = new Set(rdfjsStore.getQuads(null, RDF_TYPE, OWL_TRANS, null).map(q => q.subject.value));
-  // Make inverseOf two-way:
+  const symmetricProps = new Set(
+    rdfjsStore
+      .getQuads(null, namedNode(RDF_TYPE), namedNode(OWL_SYM), null)
+      .map(q => q.subject.value)
+  );
+
+  const transitiveProps = new Set(
+    rdfjsStore
+      .getQuads(null, namedNode(RDF_TYPE), namedNode(OWL_TRANS), null)
+      .map(q => q.subject.value)
+  );
+
+  // Make owl:inverseOf two-way
   const inversePairs = new Map(); // Map<p -> Set<inv>>
-  for (const q of rdfjsStore.getQuads(null, OWL_INV, null, null)) {
-    const p = q.subject.value, inv = q.object.value;
+  for (const q of rdfjsStore.getQuads(null, namedNode(OWL_INV), null, null)) {
+    const p = q.subject.value;
+    const inv = q.object.value;
+
     if (!inversePairs.has(p)) inversePairs.set(p, new Set());
     if (!inversePairs.has(inv)) inversePairs.set(inv, new Set());
-    inversePairs.get(p).add(inv);
-    inversePairs.get(inv).add(p);
-  }
 
-  for (const q of rdfjsStore.getQuads(null, OWL_INV, null, null)) {
-    const p = q.subject.value, inv = q.object.value;
-    if (!inversePairs.has(p))  inversePairs.set(p,  new Set());
-    if (!inversePairs.has(inv))inversePairs.set(inv,new Set());
     inversePairs.get(p).add(inv);
     inversePairs.get(inv).add(p);
   }
 
   // ---- 2) Work queues and enqueue logic ----
-  const workTypes = []; // quads with rdf:type predicate
-  const workProps = []; // other quads
+  const workTypes = rdfjsStore.getQuads(null, namedNode(RDF_TYPE), null, null).slice();
+  const workProps = rdfjsStore
+    .getQuads(null, null, null, null)
+    .filter(q => q.predicate.value !== RDF_TYPE);
 
   function enqueue(quads) {
     for (const q of quads) {
@@ -153,292 +194,287 @@ async function inferUntilStable(rules) {
     }
   }
 
-  // Expansion helpers (JS, fast)
-  // expandTypesWithClosure(newTypes)
   function expandTypesWithClosure(newTypes) {
-  const out = [];
-  for (const q of newTypes) {
-    const c = q.object.value;
-    const supers = classSupers.get(c);
-    if (!supers) continue;
+    const out = [];
+    let skipped = 0;
 
-    for (const sup of supers) {
-      out.push(quad(
-        q.subject,
-        namedNode(RDF_TYPE),
-        namedNode(sup),
-        q.graph
-      ));
+    for (const q of newTypes) {
+      const c = q.object.value;
+      const supers = classSupers.get(c);
+      if (!supers) continue;
+
+      for (const sup of supers) {
+        if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(sup)) {
+          skipped++;
+          continue;
+        }
+
+        out.push(quad(
+          q.subject,
+          namedNode(RDF_TYPE),
+          namedNode(sup),
+          q.graph
+        ));
+      }
     }
+
+    if (debuggingConsoleEnabled && skipped) {
+      console.warn(`[expandTypesWithClosure] Skipped ${skipped} non-IRI super-classes`);
+    }
+
+    return out;
   }
-  return out;
-}
-  /**
-   * Expand new property assertions via subPropertyOf closure (pure).
-   * Adds warning if any super-properties are not absolute IRIs.
-   */
+
   function expandPropsWithClosure(newProps) {
     const out = [];
-    let _skippedNonIriSuperProps = 0;
+    let skipped = 0;
 
-    for (const s of newProps) {
-      const p = s.predicate.value;
+    for (const q of newProps) {
+      const p = q.predicate.value;
       const supers = propSupers.get(p);
       if (!supers) continue;
 
       for (const sup of supers) {
         if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(sup)) {
-          _skippedNonIriSuperProps++;
+          skipped++;
           continue;
         }
-        out.push($rdf.st(s.subject, $rdf.sym(sup), s.object));
+
+        out.push(quad(
+          q.subject,
+          namedNode(sup),
+          q.object,
+          q.graph
+        ));
       }
     }
 
-    if (typeof debuggingConsoleEnabled !== 'undefined' &&
-        debuggingConsoleEnabled && _skippedNonIriSuperProps) {
-      console.warn(
-        `[expandPropsWithClosure] Skipped ${_skippedNonIriSuperProps} non-IRI super-properties`
-      );
+    if (debuggingConsoleEnabled && skipped) {
+      console.warn(`[expandPropsWithClosure] Skipped ${skipped} non-IRI super-properties`);
     }
 
     return out;
   }
 
-  const applyInverseAndSymmetric = (newProps) => {
+  function applyInverseAndSymmetric(newProps) {
     const out = [];
-    for (const s of newProps) {
-      const p = s.predicate.value;
+
+    for (const q of newProps) {
+      const p = q.predicate.value;
+
+      if (!canBeSubject(q.object)) continue;
+
       if (symmetricProps.has(p)) {
-        out.push($rdf.st(s.object, $rdf.sym(p), s.subject));
+        out.push(quad(
+          q.object,
+          namedNode(p),
+          q.subject,
+          q.graph
+        ));
       }
+
       const invs = inversePairs.get(p);
-      if (invs) for (const inv of invs) {
-        out.push($rdf.st(s.object, $rdf.sym(inv), s.subject));
+      if (invs) {
+        for (const inv of invs) {
+          out.push(quad(
+            q.object,
+            namedNode(inv),
+            q.subject,
+            q.graph
+          ));
+        }
       }
     }
+
     return out;
-  };
-
-  // applyDomainRange(newProps)
-function applyDomainRange(newProps){
-  const out = [];
-  let _skipDom = 0, _skipRng = 0;
-  for (const s of newProps){
-    const p = s.predicate.value;
-    const Ds = domainMap.get(p);
-    if (Ds) for (const d of Ds){
-     if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(d)) { _skipDom++; continue; }
-      out.push($rdf.st(s.subject, $rdf.sym(RDF_TYPE), $rdf.sym(d)));
-    }
-    const Rs = rangeMap.get(p);
-    if (Rs) for (const r of Rs){
-     if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(r)) { _skipRng++; continue; }
-      out.push($rdf.st(s.object,  $rdf.sym(RDF_TYPE), $rdf.sym(r)));
-    }
   }
-  if (typeof debuggingConsoleEnabled !== 'undefined' && debuggingConsoleEnabled){
-    if (typeof debuggingConsoleEnabled !== 'undefined' &&
-        debuggingConsoleEnabled && _skipDom) {console.warn(`[applyDomainRange] Skipped ${_skipDom} domain classes that were not IRIs`);}
-    if (typeof debuggingConsoleEnabled !== 'undefined' &&
-        debuggingConsoleEnabled && _skipRng) {console.warn(`[applyDomainRange] Skipped ${_skipRng} range classes that were not IRIs`);}
-  }
-  return out;
-}
 
-  // Optional: Transitive properties (incremental)
-  const applyTransitiveProps = (newPropsBatch) => {
+  function applyDomainRange(newProps) {
     const out = [];
-    for (const s of newPropsBatch) {
-      const p = s.predicate.value;
-      if (!transitiveProps.has(p)) continue;
-      // x p y & y p z -> x p z
-      for (const yz of rdfjsStore.getQuads(s.object, p, null, null)) {
-        out.push($rdf.st(s.subject, $rdf.sym(p), $rdf.sym(yz.object.value)));
+    let skipDom = 0;
+    let skipRng = 0;
+
+    for (const q of newProps) {
+      const p = q.predicate.value;
+
+      const Ds = domainMap.get(p);
+      if (Ds) {
+        for (const d of Ds) {
+          if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(d)) {
+            skipDom++;
+            continue;
+          }
+
+          out.push(quad(
+            q.subject,
+            namedNode(RDF_TYPE),
+            namedNode(d),
+            q.graph
+          ));
+        }
       }
-      // w p x & x p y -> w p y
-      for (const wx of rdfjsStore.getQuads(null, p, s.subject, null)) {
-        out.push($rdf.st($rdf.sym(wx.subject.value), $rdf.sym(p), s.object));
+
+      const Rs = rangeMap.get(p);
+      if (Rs && canBeSubject(q.object)) {
+        for (const r of Rs) {
+          if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(r)) {
+            skipRng++;
+            continue;
+          }
+
+          out.push(quad(
+            q.object,
+            namedNode(RDF_TYPE),
+            namedNode(r),
+            q.graph
+          ));
+        }
       }
     }
-    return out;
-  };
 
-  const processQueues = () => {
+    if (debuggingConsoleEnabled && skipDom) {
+      console.warn(`[applyDomainRange] Skipped ${skipDom} domain classes that were not IRIs`);
+    }
+    if (debuggingConsoleEnabled && skipRng) {
+      console.warn(`[applyDomainRange] Skipped ${skipRng} range classes that were not IRIs`);
+    }
+
+    return out;
+  }
+
+  function applyTransitiveProps(newPropsBatch) {
+    const out = [];
+
+    for (const q of newPropsBatch) {
+      const p = q.predicate.value;
+      if (!transitiveProps.has(p)) continue;
+
+      const pred = namedNode(p);
+
+      // x p y & y p z -> x p z
+      if (canBeSubject(q.object)) {
+        for (const yz of rdfjsStore.getQuads(q.object, pred, null, q.graph)) {
+          out.push(quad(
+            q.subject,
+            pred,
+            yz.object,
+            q.graph
+          ));
+        }
+      }
+
+      // w p x & x p y -> w p y
+      for (const wx of rdfjsStore.getQuads(null, pred, q.subject, q.graph)) {
+        out.push(quad(
+          wx.subject,
+          pred,
+          q.object,
+          q.graph
+        ));
+      }
+    }
+
+    return out;
+  }
+
+  function processQueues() {
     let progressed = false;
+
     while (workTypes.length || workProps.length) {
       if (workTypes.length) {
         const batch = workTypes.splice(0, workTypes.length);
         const extra = expandTypesWithClosure(batch);
-        if (extra.length) { enqueue(extra); progressed = true; }
+        if (extra.length) {
+          enqueue(extra);
+          progressed = true;
+        }
       }
+
       if (workProps.length) {
         const batch = workProps.splice(0, workProps.length);
         const extra1 = expandPropsWithClosure(batch);
         const extra2 = applyInverseAndSymmetric(batch);
         const extra3 = applyDomainRange(batch);
-        const extra4 = applyTransitiveProps(batch); // optional
+        const extra4 = applyTransitiveProps(batch);
+
         if (extra1.length) { enqueue(extra1); progressed = true; }
         if (extra2.length) { enqueue(extra2); progressed = true; }
         if (extra3.length) { enqueue(extra3); progressed = true; }
         if (extra4.length) { enqueue(extra4); progressed = true; }
       }
     }
+
     return progressed;
-  };
+  }
 
-  // ---- 3) Main loop: run SPARQL rules, then immediately expand via queues ----
+  // ---- 3) Seed closures from existing dataset ----
   let totalAdded = 0;
+  const seedSeenBefore = seen.size;
+  processQueues();
+  totalAdded += (seen.size - seedSeenBefore);
+
+  if (totalAdded && debuggingConsoleEnabled) {
+    console.info(`[inferUntilStable] Seed closures added ${totalAdded} triples.`);
+  }
+
+  // ---- 4) Main loop: SPARQL rules, then JS queue expansions ----
   let changed = true;
-
-  // --- SEED: apply subPropertyOf+ and subClassOf+ over the existing base graph ---
-
-  // Collect existing assertions
-  const seedTypes = [];
-  const seedProps = [];
-  for (const st of baseGraph.statements) {
-    if (st.predicate.value === RDF_TYPE) seedTypes.push(st);
-    else seedProps.push(st);
-  }
-
-  // subPropertyOf+ on all existing property assertions
-  const seededPropLifts = expandPropsWithClosure(seedProps); // uses propSupers inside
-  const { $new: seedPropUnseen } = selectUnseen(seededPropLifts, seen);
-  if (seedPropUnseen.length) {
-    // apply effects
-    for (const s of seedPropUnseen) {
-      baseGraph.add(s.subject, s.predicate, s.object);
-      overlayStore.addQuad(
-        asRdfjsSubject(s.subject.value,   s.subject.termType),
-        asRdfjsPredicate(s.predicate.value, s.predicate.termType),
-        asRdfjsObject(
-          s.object.termType === 'Literal' ? s.object.value : s.object.value,
-          s.object.termType,
-          // rdflib uses .lang or .language; normalize to one
-          (s.object.lang || s.object.language) || undefined,
-          s.object.datatype ? s.object.datatype.value : undefined
-        ),
-        N3.DataFactory.defaultGraph()
-      );
-      rdfjsStore.addQuad(
-        asRdfjsSubject(s.subject.value,   s.subject.termType),
-        asRdfjsPredicate(s.predicate.value, s.predicate.termType),
-        asRdfjsObject(
-          s.object.termType === 'Literal' ? s.object.value : s.object.value,
-          s.object.termType,
-          (s.object.lang || s.object.language) || undefined,
-          s.object.datatype ? s.object.datatype.value : undefined
-        ),
-        N3.DataFactory.defaultGraph()
-      );
-      seen.add(s.toNT());
-    }
-    console.info(`[inferUntilStable] Seeded subPropertyOf+ lifted ${seedPropUnseen.length} triples`);
-  }
-
-  // subClassOf+ on all existing rdf:type assertions
-  const seededTypeLifts = expandTypesWithClosure(seedTypes); // uses classSupers inside
-  const { $new: seedTypeUnseen } = selectUnseen(seededTypeLifts, seen);
-  if (seedTypeUnseen.length) {
-    for (const s of seedTypeUnseen) {
-      baseGraph.add(s.subject, s.predicate, s.object);
-      overlayStore.addQuad(
-        asRdfjsSubject(s.subject.value,   s.subject.termType),
-        asRdfjsPredicate(s.predicate.value, s.predicate.termType),
-        asRdfjsObject(
-          s.object.termType === 'Literal' ? s.object.value : s.object.value,
-          s.object.termType,
-          // rdflib uses .lang or .language; normalize to one
-          (s.object.lang || s.object.language) || undefined,
-          s.object.datatype ? s.object.datatype.value : undefined
-        ),
-        N3.DataFactory.defaultGraph()
-      );
-      rdfjsStore.addQuad(
-        asRdfjsSubject(s.subject.value,   s.subject.termType),
-        asRdfjsPredicate(s.predicate.value, s.predicate.termType),
-        asRdfjsObject(
-          s.object.termType === 'Literal' ? s.object.value : s.object.value,
-          s.object.termType,
-          (s.object.lang || s.object.language) || undefined,
-          s.object.datatype ? s.object.datatype.value : undefined
-        ),
-        N3.DataFactory.defaultGraph()
-      );
-      seen.add(s.toNT());
-    }
-    console.info(`[inferUntilStable] Seeded subClassOf+ lifted ${seedTypeUnseen.length} triples`);
-  }
-
 
   while (changed) {
     changed = false;
 
     const rulesFiltered = rules.filter(r => r !== 'subclassof' && r !== 'subpropertyof');
     if (rules.length !== rulesFiltered.length) {
-       console.info(`[inferUntilStable] Skipping SPARQL for subclassof/subpropertyof (handled by JS closures)`);
-      }
+      console.info('[inferUntilStable] Skipping SPARQL for subclassof/subpropertyof (handled by JS closures)');
+    }
+
     for (const rule of rulesFiltered) {
       const constructQuery = getConstructQueryForRule(rule);
       if (!constructQuery) continue;
 
-      // Run the rule with Comunica over the shared store
-      const newStmts = await runRuleOnce(rule, baseGraph, rdfjsStore);
+      const newQuads = await runRuleOnce(rule, rdfjsStore);
 
-      // Batch de-dup (cheap) then enqueue only unseen
+      // Batch de-dup before enqueue
       const batch = [];
-      const batchNT = new Set();
-      for (const s of newStmts) {
-        const nt = s.toNT();
-        if (!batchNT.has(nt)) { batchNT.add(nt); batch.push(s); }
+      const batchSeen = new Set();
+      for (const q of newQuads) {
+        const key = quadKey(q);
+        if (batchSeen.has(key)) continue;
+        batchSeen.add(key);
+        batch.push(q);
       }
+
       const beforeSeenSize = seen.size;
       enqueue(batch);
-
-      // Process expansions driven by the just-enqueued assertions
-      const progressed = processQueues();
+      processQueues();
 
       const added = seen.size - beforeSeenSize;
       if (added > 0) {
         totalAdded += added;
-        if (debuggingConsoleEnabled) {console.info(`[inferUntilStable] Rule "${rule}" added ${added} triples.`)};
         changed = true;
+
+        if (debuggingConsoleEnabled) {
+          console.info(`[inferUntilStable] Rule "${rule}" added ${added} triples.`);
+        }
       }
     }
   }
 
-  // ---- 4) Convert overlayStore -> overlayGraph once (for preview/export) ----
-  const overlayGraph = N3.Store;
-  for (const q of overlayStore.getQuads(null, null, null, null)) {
-    const s = q.subject.termType === 'NamedNode' ? $rdf.sym(q.subject.value) : $rdf.blankNode(q.subject.value);
-    const p = $rdf.sym(q.predicate.value);
-    let o;
-    if (q.object.termType === 'NamedNode')      o = $rdf.sym(q.object.value);
-    else if (q.object.termType === 'BlankNode') o = $rdf.blankNode(q.object.value);
-    else {
-      const lang = q.object.language || undefined;
-      const dt   = q.object.datatype ? $rdf.sym(q.object.datatype.value) : undefined;
-      o = lang ? $rdf.literal(q.object.value, lang)
-               : dt ? $rdf.literal(q.object.value, undefined, dt)
-                    : $rdf.literal(q.object.value);
-    }
-    overlayGraph.add(s, p, o);
+  if (debuggingConsoleEnabled) {
+    console.info(`[inferUntilStable] Completed inference. Total new triples: ${totalAdded}`);
   }
 
-  if (debuggingConsoleEnabled) {console.info(`[inferUntilStable] Completed inference. Total new triples: ${totalAdded}`)};
   return { overlayGraph: overlayStore, metrics: { totalAdded } };
 }
 
 /**
- * Run inference (until stable) to produce an overlay graph; optionally persist overlay.
- * Uses your existing inferUntilStable(rules).
- * Side-effects only when persist===true.
+ * Run inference (until stable) to produce an overlay dataset; optionally persist overlay.
  * @param {Object} opt
  * @param {string[]} opt.rules
  * @param {'default'|'named'} [opt.targetMode='default']
  * @param {string|null} [opt.graphIRI=null]
  * @param {boolean} [opt.persist=false]
- * @returns {Promise<{overlayGraph:$rdf.Formula, metrics:Object, count?:number, graphIRI?:string}>}
+ * @returns {Promise<{overlayGraph:N3.Store, metrics:Object, count?:number, graphIRI?:string}>}
  */
 async function runInferenceOverlay(opt={}) {
   const { rules=[], targetMode='default', graphIRI=null, persist=false } = opt;
@@ -454,21 +490,20 @@ async function runInferenceOverlay(opt={}) {
 
 
 /**
- * De-duplicate a batch and then remove any statements already in the global `seen` set.
- * Pure function.
- * @param {Array<$rdf.Statement>} stmts  – list of candidate statements
- * @param {Set<string>} seenNT           – global NT strings already present
- * @returns {{ $new: Array<$rdf.Statement>, batchUnique: number }}
+ * De-duplicate a batch and remove quads already present in the global `seen` set.
+ * @param {Array<any>} quads
+ * @param {Set<string>} seenKeys
+ * @returns {{ $new: Array<any>, batchUnique: number }}
  */
-function selectUnseen(stmts, seenNT) {
+function selectUnseen(quads, seenKeys) {
   const batchSet = new Set();
   const uniq = [];
 
-  for (const s of stmts) {
-    const nt = s.toNT();
-    if (batchSet.has(nt)) continue;   // de-dupe inside the batch
-    batchSet.add(nt);
-    if (!seenNT.has(nt)) uniq.push(s); // skip ones already known globally
+  for (const q of quads) {
+    const key = quadKey(q);
+    if (batchSet.has(key)) continue;
+    batchSet.add(key);
+    if (!seenKeys.has(key)) uniq.push(q);
   }
 
   return { $new: uniq, batchUnique: batchSet.size };
@@ -501,10 +536,25 @@ async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, grap
   if (!overlayGraph) throw new Error('Nothing to insert. Run inference first.');
   if (!endpointUrl) throw new Error('Missing endpoint URL.');
 
-  const nt = $rdf.serialize(null, overlayGraph, 'http://example.org/', 'application/n-triples').trim();
+  const { Writer, DataFactory } = N3;
+  const { quad, defaultGraph } = DataFactory;
+
+  // Flatten to triples for INSERT DATA; target graph is controlled by mode/graphIRI.
+  const flattened = overlayGraph
+    .getQuads(null, null, null, null)
+    .map(q => quad(q.subject, q.predicate, q.object, defaultGraph()));
+
+  const nt = await new Promise((resolve, reject) => {
+    const writer = new Writer({ format: 'N-Triples' });
+    writer.addQuads(flattened);
+    writer.end((error, result) => {
+      if (error) reject(error);
+      else resolve((result || '').trim());
+    });
+  });
+
   const open = (mode === 'named' && graphIRI) ? `GRAPH <${graphIRI}> {` : '';
   const close = (mode === 'named' && graphIRI) ? `}` : '';
-
   const update = `INSERT DATA { ${open}\n${nt}\n${close} }`;
 
   const res = await fetch(endpointUrl, {
@@ -517,6 +567,7 @@ async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, grap
     const t = await res.text().catch(() => '');
     throw new Error(`Endpoint responded ${res.status}: ${t || res.statusText}`);
   }
+
   return true;
 }
 
@@ -644,11 +695,10 @@ function getConstructQueryForRule(rule) {
 }
 
 /**
- * Runs one inference rule once and returns only the newly inferred statements.
- * Prefers CONSTRUCT (applyConstructWithComunica) and falls back to UPDATE if needed.
+ * Runs one inference rule once and returns newly inferred quads.
  * @param {string} rule
- * @param {$rdf.Formula} baseGraph
- * @returns {Promise<$rdf.Statement[]>}
+ * @param {N3.Store} rdfjsStore
+ * @returns {Promise<Array<any>>}
  */
 async function runRuleOnce(rule, rdfjsStore) {
   const q = getConstructQueryForRule(rule);
@@ -656,12 +706,12 @@ async function runRuleOnce(rule, rdfjsStore) {
   return await applyConstructWithComunica(q, rdfjsStore);
 }
 
-/** 
-* Convert rdflib.js graph to an RDF/JS source for Comunica.
-* @param {$rdf.Formula} formula - rdflib.js graph
-* @returns {RDF.Source} RDF/JS source for Comunica
-**/
-
+/**
+ * Applies a SPARQL CONSTRUCT query into the rdfjsStore
+ * @param {*} constructQuery 
+ * @param {*} rdfjsStore 
+ * @returns 
+ */
 async function applyConstructWithComunica(constructQuery, rdfjsStore) {
   const quadStream = await engine.queryQuads(constructQuery, {
     sources: [{ type: 'rdfjsSource', value: rdfjsStore }],
