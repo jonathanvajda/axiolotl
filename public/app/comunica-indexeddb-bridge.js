@@ -190,8 +190,8 @@ const applyUpdateWithComunica = async (updateQuery, graph) => {
   // Prefer the CONSTRUCT path for inference.
   if (debuggingConsoleEnabled) {console.warn('[applyUpdateWithComunica] UPDATE against stringSource is a no-op; prefer CONSTRUCT.')};
   const comunica = engine;
-  const datasetText = $rdf.serialize(null, graph, 'http://example.org/', 'text/turtle');
-  const source = { type: 'stringSource', value: datasetText, mediaType: 'text/turtle' };
+  const text = await serializeStore(g, mime);
+  const source = { type: 'stringSource', value: text, mediaType: 'text/turtle' };
   await comunica.queryVoid(updateQuery, {
     sources: [source],
     baseIRI: 'http://example.org/',
@@ -777,58 +777,28 @@ function makeNamedGraphIRI(base='urn:graph:auto') {
  * @param {boolean} [opts.replace=false] - if true and mode==='named', clear target graph before append
  * @returns {Promise<{count:number, graphIRI:string}>}
  */
-async function stashGraphToIndexedDB(
-  graph,
-  mode = 'default',
-  graphIRI = null,
-  autoBase = 'urn:graph:auto',
-  opts = {}
-) {
-  const { dedupe = true, replace = false } = opts;
-  if (!graph) throw new Error('No graph provided');
-
+async function stashGraphToIndexedDB(graph, mode='default', graphIRI=null, autoBase='urn:graph:auto', opts={}) {
   const iri = (mode === 'named') ? (graphIRI || makeNamedGraphIRI(autoBase)) : null;
-  const graphSym = iri ? $rdf.namedNode(iri) : undefined;
+  const graphValue = iri || '';
 
-  // Prepare statements for the target graph (assign .graph = graphSym for named)
-  let prepared = graph.statements.map(st =>
-    new $rdf.Statement(st.subject, st.predicate, st.object, graphSym)
-  );
-
-  // Optional: batch de-dup to avoid inserting exact duplicates
-  if (dedupe) {
-    const seen = new Set();
-    // rdflib Statement#toNT() yields N-Triples; with .graph set, it’s effectively N-Quads
-    prepared = prepared.filter(st => {
-      const key = st.toNT();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }
-
-  // Optional: targeted "replace" for named graph (no full DB load)
-  if (replace && iri) {
-    // implement (or call) a clearNamedGraph(iri) helper that deletes rows where row.graph === iri
-    // await clearNamedGraph(iri);
-    // If you don't have it yet, you can add a filtered delete in indexeddb-triplestore.js
-  }
-
-  // Append to IDB (no read/merge step)
-  await storeTriplesInNamedGraph(prepared);
-
-  // Notify UI so buttons update immediately
-  try {
-    window?.dispatchEvent(new CustomEvent('triples-changed', {
-      detail: { db: 'inferenceDB', store: 'triples', type: 'put' , graphIRI: graphIRI || '(default)'}
+  let prepared;
+  if (typeof graph.getQuads === 'function') {
+    prepared = graph.getQuads(null, null, null, null).map(q => ({
+      subject: q.subject.value,
+      subjectType: q.subject.termType,
+      predicate: q.predicate.value,
+      predicateType: q.predicate.termType,
+      object: q.object.value,
+      objectType: q.object.termType,
+      objectLang: q.object.language || null,
+      objectDatatype: q.object.datatype?.value || null,
+      graph: graphValue || (q.graph.termType === 'DefaultGraph' ? '' : q.graph.value)
     }));
-  } catch {}
-
-  const count = prepared.length;
-  if (debuggingConsoleEnabled) {
-    console.info(`[stashGraphToIndexedDB] Saved ${count} triple(s) into ${iri || '(default graph)'}${replace ? ' (replace)' : ''}`);
+    await storeTriplesInNamedGraph(prepared);
+    return { count: prepared.length, graphIRI: iri || '(default graph)' };
   }
-  return { count, graphIRI: iri || '(default graph)' };
+
+  throw new Error('stashGraphToIndexedDB expected an N3.Store or compatible RDF/JS source');
 }
 
 

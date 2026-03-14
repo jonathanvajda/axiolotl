@@ -56,21 +56,57 @@ const defaultActivePrefixes = ['rdfs', 'owl', 'skos'];
  * window.__lastOverlayGraph exists
  * element with id="rdf-preview" exists
  * getSelectedOutputMime() function exists
- * $rdf.serialize function exists
  * @returns 
  */
-function updatePreviewFromOverlay() {
+async function updatePreviewFromOverlay() {
   const g = window.__lastOverlayGraph;
   const box = document.getElementById('rdf-preview');
   if (!g || !box) return;
+
   try {
-    const mime = getSelectedOutputMime(); // turtle, n-triples, etc.
-    const text = $rdf.serialize(null, g, 'http://example.org/', mime);
+    const mime = getSelectedOutputMime();
+    const text = await serializeStore(g, mime);
     box.value = text;
   } catch (e) {
-    if (debuggingConsoleEnabled) {console.error('[updatePreviewFromOverlay] serialize error:', e);}
+    if (debuggingConsoleEnabled) {
+      console.error('[updatePreviewFromOverlay] serialize error:', e);
+    }
     box.value = `Serialization error: ${e && (e.message || e)}`;
   }
+}
+
+async function serializeStore(store, mime = 'text/turtle') {
+  if (!store || typeof store.getQuads !== 'function') {
+    throw new Error('serializeStore expected an N3.Store or compatible RDF/JS source.');
+  }
+
+  const supported = new Set([
+    'text/turtle',
+    'application/n-triples',
+    'application/n-quads'
+  ]);
+
+  const format = supported.has(mime) ? mime : 'text/turtle';
+
+  return await new Promise((resolve, reject) => {
+    const writer = new N3.Writer({ format });
+    writer.addQuads(store.getQuads(null, null, null, null));
+    writer.end((error, result) => {
+      if (error) reject(error);
+      else resolve(result || '');
+    });
+  });
+}
+
+async function serializeStoreToNTriples(store) {
+  return await new Promise((resolve, reject) => {
+    const writer = new N3.Writer({ format: 'N-Triples' });
+    writer.addQuads(store.getQuads(null, null, null, null));
+    writer.end((error, result) => {
+      if (error) reject(error);
+      else resolve(result || '');
+    });
+  });
 }
 
 /** 
@@ -203,17 +239,20 @@ async function handleRunInference() {
 
     const { overlayGraph, metrics } = await inferUntilStable(selectedRules, baseIRI, overlayIRI);
 
-    // Serialize and display preview
-    const previewText = await serializeTurtle(overlayGraph);
+    window.__lastOverlayGraph = overlayGraph;
+
+    const previewText = await serializeStore(overlayGraph, getSelectedOutputMime());
     document.getElementById('rdf-preview').value = previewText;
 
-    // Save overlay graph
     await stashGraphToIndexedDB(overlayGraph, 'named', overlayIRI);
 
-    // Log metrics
-    if (debuggingConsoleEnabled) {console.info('[handleRunInference] Inference metrics:', metrics);}
+    if (debuggingConsoleEnabled) {
+      console.info('[handleRunInference] Inference metrics:', metrics);
+    }
   } catch (error) {
-    if (debuggingConsoleEnabled) {console.error('[handleRunInference] Failed:', error);}
+    if (debuggingConsoleEnabled) {
+      console.error('[handleRunInference] Failed:', error);
+    }
   }
 }
 
@@ -248,23 +287,33 @@ function getSaveTarget() {
 
 // Save inferred overlay graph to IndexedDB
 async function runInference() {
-try {
+  try {
+    clearInferenceConsole?.();
+    setInferenceBusy(true);
+
     const rules = getSelectedRulesFromCheckboxes();
     const { overlayGraph, metrics } = await inferUntilStable(rules);
-    window.__lastOverlayGraph = overlayGraph;
-    updatePreviewFromOverlay();
 
-    const n = overlayGraph.statements.length;
+    window.__lastOverlayGraph = overlayGraph;
+    await updatePreviewFromOverlay();
+
+    const n = overlayGraph.getQuads(null, null, null, null).length;
+
     showToast(
-      n ? `Inference finished — ${n} triple${n === 1 ? '' : 's'} materialized.` 
+      n
+        ? `Inference finished — ${n} triple${n === 1 ? '' : 's'} materialized.`
         : 'Inference finished — no new triples.',
       n ? 'success' : 'info'
     );
   } catch (err) {
-    if (debuggingConsoleEnabled) {console.error('[run-inference] failed:', err);}
+    if (debuggingConsoleEnabled) {
+      console.error('[run-inference] failed:', err);
+    }
     showToast(`Inference error: ${err.message || err}`, 'error');
+  } finally {
+    setInferenceBusy(false);
   }
-};
+}
 
 // Insert overlay graph into SPARQL endpoint
 async function saveOverlayToIndexedDB(overlayGraph, { mode, graphIRI }) {
@@ -306,25 +355,29 @@ async function insertInferredTriplesIntoEndpoint() {
 };
 
 // Export inferred overlay graph as a file in chosen format
-function exportInferredOverlay() {
+async function exportInferredOverlay() {
   try {
     const g = window.__lastOverlayGraph;
     if (!g) throw new Error('Nothing to export. Run inference first.');
+
     const mime = getSelectedOutputMime();
-    const text = serializeGraph(g, mime);
+    const text = await serializeStore(g, mime);
+
     const ext = ({
       'text/turtle': 'ttl',
       'application/n-triples': 'nt',
-      'application/ld+json': 'jsonld',
-      'application/rdf+xml': 'rdf'
+      'application/n-quads': 'nq'
     })[mime] || 'ttl';
+
     downloadText(`inferred-${timestampUTC()}.${ext}`, text, mime);
     showToast('Download started.', 'success');
   } catch (e) {
-    if (debuggingConsoleEnabled) {console.error(e);}
+    if (debuggingConsoleEnabled) {
+      console.error(e);
+    }
     showToast(e.message || String(e), 'error');
   }
-};
+}
 
 // Dynamically add file + IRI input rows
 function createFileInputRow(index) {
@@ -378,8 +431,12 @@ toggleReasonerButtons();
 document.getElementById('run-inference')?.addEventListener('click', runInference);
 document.getElementById('save-inferred-to-db')?.addEventListener('click', saveInferredTriplesToDB);
 document.getElementById('insert-inferred-to-endpoint')?.addEventListener('click', insertInferredTriplesIntoEndpoint);
-document.getElementById('export-inferred')?.addEventListener('click', exportInferredOverlay);
-document.getElementById('output-format')?.addEventListener('change', updatePreviewFromOverlay);
+document.getElementById('export-inferred')?.addEventListener('click', async () => {
+  await exportInferredOverlay();
+});
+document.getElementById('output-format')?.addEventListener('change', async () => {
+  await updatePreviewFromOverlay();
+});
 
 // Event handler for adding new rows
 document.getElementById('add-file-row').addEventListener('click', addNewFileRow);
@@ -542,6 +599,7 @@ function initTabs() {
 
 // UI event bindings
 window.addEventListener('DOMContentLoaded', () => {
+  setInferenceBusy(false);
   initTabs();
   document.getElementById('file-upload')?.addEventListener('change', async (e) => {
     for (const file of e.target.files) {
@@ -751,12 +809,13 @@ const commitUpdateByMaterialization = async (updateStr, targetMode='default') =>
   if (insQs.length) {
     for (const q of insQs) {
       const ttl = await runConstructPreview(q, 'text/turtle');
-      const overlay = $rdf.graph();
-      await new Promise((resolve, reject) => {
-        $rdf.parse(ttl, overlay, 'http://example.org/', 'text/turtle', err => err ? reject(err) : resolve());
-      });
+
+      const parser = new N3.Parser({ format: 'text/turtle', baseIRI: 'http://example.org/' });
+      const quads = parser.parse(ttl);
+      const overlay = new N3.Store(quads);
+
       await stashGraphToIndexedDB(overlay, targetMode, graphIRI);
-      inserted += overlay.statements.length;
+      inserted += quads.length;
     }
   }
 
@@ -820,7 +879,7 @@ async function renderOntologyList() {
 
       const warnMissing = !fileName || !dataPath;
       const li = document.createElement('li');
-      li.style.marginLeft = '0.4em';
+      li.style.marginLeft = '1.5em';
       li.style.marginBottom = '0.4em';
       li.innerHTML = `
         <label ${warnMissing ? 'style="color:red;" title="Missing file name"' : ''}>
