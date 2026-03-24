@@ -116,6 +116,36 @@ function quadKey(q) {
   ].join('¦');
 }
 
+function quadHasBlankNode(q) {
+  return q.subject.termType === 'BlankNode' ||
+         q.object.termType === 'BlankNode' ||
+         q.graph.termType === 'BlankNode';
+}
+
+function looseQuadKey(q) {
+  const subj =
+    q.subject.termType === 'BlankNode'
+      ? 'BlankNode:_'
+      : `${q.subject.termType}:${q.subject.value}`;
+
+  const obj =
+    q.object.termType === 'BlankNode'
+      ? 'BlankNode:_'
+      : `${q.object.termType}:${q.object.value}:${q.object.language || ''}:${q.object.datatype?.value || ''}`;
+
+  const graph =
+    q.graph.termType === 'BlankNode'
+      ? 'BlankNode:_'
+      : `${q.graph.termType}:${q.graph.value || ''}`;
+
+  return [
+    subj,
+    `${q.predicate.termType}:${q.predicate.value}`,
+    obj,
+    graph
+  ].join('¦');
+}
+
 function canBeSubject(term) {
   return !!term && (term.termType === 'NamedNode' || term.termType === 'BlankNode');
 }
@@ -412,7 +442,7 @@ async function inferUntilStable(rules) {
   // ---- 3) Seed closures from existing dataset ----
   let totalAdded = 0;
   let pass = 0;
-  const MAX_PASSES = 100;
+  const MAX_PASSES = 20;
 
   const seedSeenBefore = seen.size;
   processQueues();
@@ -420,6 +450,11 @@ async function inferUntilStable(rules) {
   totalAdded += seedAdded;
 
   inferenceInfo(`[inferUntilStable] Seed closures added ${seedAdded} triples.`);
+
+  const rulesFiltered = rules.filter(r => r !== 'subclassof' && r !== 'subpropertyof');
+  if (rules.length !== rulesFiltered.length) {
+    inferenceInfo('[inferUntilStable] SPARQL disabled for subclassof/subpropertyof; using JS closures instead.');
+  }
 
   let changed = true;
 
@@ -434,16 +469,18 @@ async function inferUntilStable(rules) {
 
     inferenceInfo(`[inferUntilStable] Starting pass ${pass}...`);
 
-    const rulesFiltered = rules.filter(r => r !== 'subclassof' && r !== 'subpropertyof');
-    if (rules.length !== rulesFiltered.length) {
-      inferenceInfo('[inferUntilStable] Skipping SPARQL for subclassof/subpropertyof (handled by JS closures)');
-    }
-
     for (const rule of rulesFiltered) {
       const constructQuery = getConstructQueryForRule(rule);
       if (!constructQuery) continue;
 
       const newQuads = await runRuleOnce(rule, rdfjsStore);
+
+      const blankCount = newQuads.filter(quadHasBlankNode).length;
+      const looseCount = new Set(newQuads.map(looseQuadKey)).size;
+
+      inferenceInfo(
+        `[inferUntilStable] Pass ${pass}, rule "${rule}": raw=${newQuads.length}, withBlank=${blankCount}, looseUnique=${looseCount}`
+      );
 
       const batch = [];
       const batchSeen = new Set();
@@ -460,19 +497,22 @@ async function inferUntilStable(rules) {
 
       const beforeClosure = seen.size;
       processQueues();
-      const closureAdded = seen.size - beforeClosure;
+      const propagatedAdded = seen.size - beforeClosure;
 
-      const ruleAdded = directAdded + closureAdded;
-      passAdded += ruleAdded;
+      const totalRuleAdded = directAdded + propagatedAdded;
 
       inferenceInfo(
-        `[inferUntilStable] Pass ${pass}, rule "${rule}": direct=${directAdded}, propagated=${closureAdded}, total=${ruleAdded}`
+        `[inferUntilStable] Pass ${pass}, rule "${rule}": direct=${directAdded}, propagated=${propagatedAdded}, total=${totalRuleAdded}`
       );
+
+      if (totalRuleAdded > 0) {
+        passAdded += totalRuleAdded;
+        totalAdded += totalRuleAdded;
+        changed = true;
+      }
     }
 
     if (passAdded > 0) {
-      totalAdded += passAdded;
-      changed = true;
       inferenceInfo(`[inferUntilStable] Completed pass ${pass}: added ${passAdded} triples.`);
     } else {
       inferenceInfo(`[inferUntilStable] Completed pass ${pass}: no new triples. Stable.`);
@@ -480,6 +520,7 @@ async function inferUntilStable(rules) {
   }
 
   const overlayCount = overlayStore.getQuads(null, null, null, null).length;
+
   inferenceInfo(
     `[inferUntilStable] Completed inference. Passes=${pass}, total new triples=${totalAdded}, overlay triples=${overlayCount}`
   );
