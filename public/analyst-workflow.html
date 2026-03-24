@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Analytic Workflow Builder – Wireframe</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --panel-2: #f0f3f8;
+      --border: #cfd6df;
+      --text: #1f2937;
+      --muted: #5b6573;
+      --accent: #3b5b86;
+      --accent-soft: #eaf0f8;
+      --ok: #2f6f44;
+      --warn: #8a5a12;
+      --bad: #8d2f2f;
+      --shadow: 0 10px 24px rgba(0,0,0,0.08);
+      --radius: 14px;
+      --gap: 16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #11161c;
+        --panel: #18202a;
+        --panel-2: #111923;
+        --border: #334155;
+        --text: #e5ebf3;
+        --muted: #a7b0bb;
+        --accent: #8fb3e0;
+        --accent-soft: #20324a;
+        --ok: #79c28c;
+        --warn: #dfb96a;
+        --bad: #ef9a9a;
+        --shadow: 0 12px 26px rgba(0,0,0,0.28);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.4;
+    }
+    .page {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .title-block h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      letter-spacing: 0.01em;
+    }
+    .title-block p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      max-width: 74ch;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .btn, .chip, .fake-input, .fake-select {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+      box-shadow: var(--shadow);
+    }
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .btn.subtle {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: var(--gap);
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .card h2, .card h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+    .fake-input, .fake-select {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      box-shadow: none;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .stat {
+      padding: 12px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+    .stat strong {
+      display: block;
+      font-size: 1.1rem;
+      margin-top: 4px;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 280px 1.25fr 0.95fr;
+      gap: var(--gap);
+      align-items: start;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .section-title p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .muted { color: var(--muted); }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+    .registry-item, .step-card, .run-item, .warning-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-2);
+      padding: 12px;
+    }
+    .registry-item .top,
+    .step-card .top,
+    .run-item .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      background: var(--panel);
+    }
+    .pill.ask { border-color: var(--accent); }
+    .pill.select { border-color: var(--ok); }
+    .pill.construct { border-color: var(--warn); }
+    .pill.update { border-color: var(--bad); }
+    .flow-lines {
+      margin-top: 8px;
+      font-family: var(--mono);
+      font-size: 0.86rem;
+      white-space: pre-wrap;
+      color: var(--muted);
+    }
+
+    .step-card {
+      background: var(--panel);
+    }
+    .step-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .mini-box {
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: var(--panel-2);
+      min-height: 76px;
+    }
+    .mini-box strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.88rem;
+    }
+
+    .preview-box {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: linear-gradient(180deg, transparent, rgba(0,0,0,0.02));
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      overflow: auto;
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: var(--gap);
+      margin-top: 16px;
+    }
+    .status-ok { color: var(--ok); }
+    .status-warn { color: var(--warn); }
+    .status-bad { color: var(--bad); }
+    .trace-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    .trace-table th,
+    .trace-table td {
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      vertical-align: top;
+    }
+    .trace-table th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 1200px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero,
+      .bottom-grid,
+      .meta-grid,
+      .summary-grid,
+      .step-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="title-block">
+        <h1>Analytic Workflow Builder</h1>
+        <p>
+          A staged workspace for loading graph data, managing reusable SPARQL assets,
+          composing conditional pipelines, and running them against an active IndexedDB quadstore.
+        </p>
+      </div>
+      <div class="toolbar">
+        <div class="btn">New Workflow</div>
+        <div class="btn">Open</div>
+        <div class="btn">Save JSON</div>
+        <div class="btn">Export YAML</div>
+        <div class="btn subtle">Validate</div>
+        <div class="btn primary">Run Pipeline</div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="card">
+        <h2>Workspace</h2>
+        <p class="muted">
+          One page for the whole lifecycle: load and inspect data, reuse saved queries, build conditional pipelines,
+          and execute them with a transparent trace and report output.
+        </p>
+        <div class="meta-grid">
+          <div class="field">
+            <label>Workflow ID</label>
+            <div class="fake-input">org-review-pipeline-001</div>
+          </div>
+          <div class="field">
+            <label>Label</label>
+            <div class="fake-input">Analytic Workflow / Playbook</div>
+          </div>
+          <div class="field">
+            <label>Dataset</label>
+            <div class="fake-select">Active IndexedDB Dataset ▾</div>
+          </div>
+          <div class="field">
+            <label>Execution Mode</label>
+            <div class="fake-select">Working Copy + Trace ▾</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Three Main Use Cases</h2>
+        <div class="summary-grid">
+          <div class="stat">
+            <span class="muted">Quality assurance</span>
+            <strong>Review, diagnose, report</strong>
+          </div>
+          <div class="stat">
+            <span class="muted">Analytic follow-up</span>
+            <strong>Follow leads conditionally</strong>
+          </div>
+          <div class="stat">
+            <span class="muted">Data transformation</span>
+            <strong>Expand and enrich RDF</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <aside class="card">
+        <div class="section-title">
+          <div>
+            <h2>1. Data & Query Assets</h2>
+            <p>Load data, inspect stores, and browse reusable query definitions.</p>
+          </div>
+        </div>
+
+        <div class="list">
+          <div class="registry-item">
+            <div class="top"><strong>Data Load</strong><span class="pill">RDF / TriG / JSON-LD</span></div>
+            <div class="muted">Use existing in-browser loaders to ingest files into IndexedDB quadstore or named graphs.</div>
+            <div class="pill-row">
+              <span class="pill">Upload data</span>
+              <span class="pill">Choose graph target</span>
+              <span class="pill">Preview quads</span>
+            </div>
+          </div>
+
+          <div class="registry-item">
+            <div class="top"><strong>Loaded Datasets</strong><span class="pill">3 active</span></div>
+            <div class="muted">Switch dataset, inspect graph count, select default graph or named-graph scope.</div>
+            <div class="pill-row">
+              <span class="pill">customer-risk-demo</span>
+              <span class="pill">qa-ontology-audit</span>
+              <span class="pill">bfo-cco-transform</span>
+            </div>
+          </div>
+
+          <div class="registry-item">
+            <div class="top"><strong>Query Registry</strong><span class="pill">Search + insert</span></div>
+            <div class="fake-input" style="margin:8px 0 10px;">Search queries by label, tag, or type</div>
+            <div class="list">
+              <div class="registry-item">
+                <div class="top"><strong>qa_has_version_iri</strong><span class="pill ask">ASK</span></div>
+                <div class="muted">Top-level compliance check for owl:versionIRI presence.</div>
+              </div>
+              <div class="registry-item">
+                <div class="top"><strong>select_associates</strong><span class="pill select">SELECT</span></div>
+                <div class="muted">Return associates linked to a target individual or organization.</div>
+              </div>
+              <div class="registry-item">
+                <div class="top"><strong>construct_enriched_roles</strong><span class="pill construct">CONSTRUCT</span></div>
+                <div class="muted">Materialize more robust role and process patterns into working graph.</div>
+              </div>
+              <div class="registry-item">
+                <div class="top"><strong>update_rewrite_labels</strong><span class="pill update">UPDATE</span></div>
+                <div class="muted">Normalize or replace shallow patterns before downstream inference.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="card">
+        <div class="section-title">
+          <div>
+            <h2>2. Pipeline Workspace</h2>
+            <p>Build conditional workflows as reusable decision chains or business processes.</p>
+          </div>
+          <div class="pill-row">
+            <span class="pill">+ Add Step</span>
+            <span class="pill">+ Add Branch</span>
+            <span class="pill">Auto-layout</span>
+          </div>
+        </div>
+
+        <div class="preview-box">
+(start) ingest_target_record
+  └─► step_1: qa_has_version_iri [ASK]
+       ├─ true  ─► step_2: qa_check_version_match [ASK]
+       │            ├─ true  ─► step_4: construct_pass_report [CONSTRUCT]
+       │            └─ false ─► step_5: qa_find_missing_metadata [SELECT]
+       └─ false ─► step_3: qa_find_missing_metadata [SELECT]
+
+step_6: select_associates [SELECT]
+  ├─ hasRows ─► step_7: construct_associate_context [CONSTRUCT]
+  └─ noRows  ─► step_8: construct_subject_only_report [CONSTRUCT]
+
+step_9: construct_enriched_roles [CONSTRUCT]
+  ├─ hasQuads ─► step_10: update_rewrite_labels [UPDATE]
+  └─ noQuads  ─► done
+        </div>
+
+        <div class="list" style="margin-top:12px;">
+          <div class="step-card">
+            <div class="top">
+              <strong>Step 1 · Top-level diagnostic check</strong>
+              <span class="pill ask">ASK</span>
+            </div>
+            <div class="muted">Use case fit: QA review / lead triage / transformation gateway.</div>
+            <div class="step-grid">
+              <div class="mini-box">
+                <strong>Query</strong>
+                qa_has_version_iri
+              </div>
+              <div class="mini-box">
+                <strong>Bindings</strong>
+                ontology = ${inputs.subjectGraph}
+              </div>
+              <div class="mini-box">
+                <strong>Branches</strong>
+                if true → step_2<br />
+                if false → step_3
+              </div>
+              <div class="mini-box">
+                <strong>Output / Note</strong>
+                Records top-level disposition into execution trace.
+              </div>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="top">
+              <strong>Step 6 · Follow-up on discovered associates</strong>
+              <span class="pill select">SELECT</span>
+            </div>
+            <div class="muted">Use case fit: analyst lead-following and contextual expansion.</div>
+            <div class="step-grid">
+              <div class="mini-box">
+                <strong>Query</strong>
+                select_associates
+              </div>
+              <div class="mini-box">
+                <strong>Bindings</strong>
+                target = ${vars.subject}<br />
+                org = ${vars.organization}
+              </div>
+              <div class="mini-box">
+                <strong>Branches</strong>
+                hasRows → step_7<br />
+                noRows → step_8
+              </div>
+              <div class="mini-box">
+                <strong>Capture</strong>
+                rowCount → vars.associateCount<br />
+                first ?associate → vars.firstAssociate
+              </div>
+            </div>
+          </div>
+
+          <div class="step-card">
+            <div class="top">
+              <strong>Step 9 · Progressive RDF enrichment</strong>
+              <span class="pill construct">CONSTRUCT</span>
+            </div>
+            <div class="muted">Use case fit: tabular/naive RDF into more robust BFO-CCO semantic structures.</div>
+            <div class="step-grid">
+              <div class="mini-box">
+                <strong>Query</strong>
+                construct_enriched_roles
+              </div>
+              <div class="mini-box">
+                <strong>Effect</strong>
+                Merge constructed quads into working dataset
+              </div>
+              <div class="mini-box">
+                <strong>Branches</strong>
+                hasQuads → step_10<br />
+                noQuads → done
+              </div>
+              <div class="mini-box">
+                <strong>Why this exists</strong>
+                Allows chained inference / transformation without monolithic update logic.
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <aside class="card">
+        <div class="section-title">
+          <div>
+            <h2>3. Inspector & Runner</h2>
+            <p>Configure selected step, validate flow, and run the active pipeline.</p>
+          </div>
+        </div>
+
+        <div class="list">
+          <div class="registry-item">
+            <div class="top"><strong>Selected Step</strong><span class="pill">step_6</span></div>
+            <div class="field">
+              <label>Step Label</label>
+              <div class="fake-input">Follow-up on discovered associates</div>
+            </div>
+            <div class="field" style="margin-top:10px;">
+              <label>Query</label>
+              <div class="fake-select">select_associates ▾</div>
+            </div>
+            <div class="field" style="margin-top:10px;">
+              <label>Branch Logic</label>
+              <div class="fake-select">SELECT → hasRows / noRows ▾</div>
+            </div>
+            <div class="field" style="margin-top:10px;">
+              <label>Error Policy</label>
+              <div class="fake-select">Stop and record failure ▾</div>
+            </div>
+          </div>
+
+          <div class="registry-item">
+            <div class="top"><strong>Pipeline Library</strong><span class="pill">Reusable</span></div>
+            <div class="muted">Manage multiple query pipelines for QA, investigative follow-up, and transformation/inference flows.</div>
+            <div class="pill-row">
+              <span class="pill">qa-review-v2</span>
+              <span class="pill">lead-expansion-alpha</span>
+              <span class="pill">bfo-cco-upgrade-chain</span>
+            </div>
+          </div>
+
+          <div class="registry-item">
+            <div class="top"><strong>Run Controls</strong><span class="pill">Execution</span></div>
+            <div class="field">
+              <label>Data Target</label>
+              <div class="fake-select">qa-ontology-audit ▾</div>
+            </div>
+            <div class="field" style="margin-top:10px;">
+              <label>Run Mode</label>
+              <div class="fake-select">Full pipeline with trace ▾</div>
+            </div>
+            <div class="pill-row" style="margin-top:12px;">
+              <span class="pill">Run</span>
+              <span class="pill">Simulate</span>
+              <span class="pill">Step-through</span>
+            </div>
+          </div>
+
+          <div class="registry-item">
+            <div class="top"><strong>Expected Deliverables</strong><span class="pill">Artifacts</span></div>
+            <div class="muted">What a successful run can emit:</div>
+            <div class="pill-row">
+              <span class="pill">Execution trace</span>
+              <span class="pill">Report graph</span>
+              <span class="pill">TTL export</span>
+              <span class="pill">JSON log</span>
+              <span class="pill">Pass/fail summary</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="bottom-grid">
+      <div class="card">
+        <div class="section-title">
+          <div>
+            <h2>4. Validation</h2>
+            <p>Workflow integrity and authoring feedback before execution.</p>
+          </div>
+        </div>
+        <div class="list">
+          <div class="warning-item"><span class="status-ok">✓</span> All step IDs are unique.</div>
+          <div class="warning-item"><span class="status-ok">✓</span> All query references resolve against the registry.</div>
+          <div class="warning-item"><span class="status-ok">✓</span> Start step is defined and reachable.</div>
+          <div class="warning-item"><span class="status-warn">!</span> step_9 writes to working graph; confirm commit behavior.</div>
+          <div class="warning-item"><span class="status-warn">!</span> step_6 captures row count but no upper bound is configured for expansion.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          <div>
+            <h2>5. Execution Trace</h2>
+            <p>Transparent runtime view: what ran, what returned, and why the next branch was chosen.</p>
+          </div>
+          <span class="pill">Last run: success</span>
+        </div>
+        <table class="trace-table">
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Query</th>
+              <th>Type</th>
+              <th>Result</th>
+              <th>Next</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>step_1</td>
+              <td>qa_has_version_iri</td>
+              <td>ASK</td>
+              <td>true</td>
+              <td>step_2</td>
+            </tr>
+            <tr>
+              <td>step_2</td>
+              <td>qa_check_version_match</td>
+              <td>ASK</td>
+              <td>false</td>
+              <td>step_5</td>
+            </tr>
+            <tr>
+              <td>step_5</td>
+              <td>qa_find_missing_metadata</td>
+              <td>SELECT</td>
+              <td>12 rows</td>
+              <td>step_4</td>
+            </tr>
+            <tr>
+              <td>step_4</td>
+              <td>construct_fail_report</td>
+              <td>CONSTRUCT</td>
+              <td>14 quads merged</td>
+              <td>done</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      This wireframe stages the whole product surface before going deeper into the pipeline builder itself:
+      data-load, query repository, pipeline library, selected-step editor, validation, and execution trace.
+    </p>
+  </div>
+</body>
+</html>
