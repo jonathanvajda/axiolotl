@@ -1562,16 +1562,19 @@ z" />
 				<strong>Triples or Quads:</strong><br />
 				<label><input type="radio" name="save-target" id="save-target-default" checked> Default graph</label>
 				<label><input type="radio" name="save-target" id="save-target-named"> Named graph</label>
+				<div id="name-save-target" style="margin-bottom: 0.5em; display: none">
+					<input type="text" placeholder="Named Graph IRI (leave blank for default)" class="graph-iri" id="iri-for-save-target" style="margin-left: 1rem; width: 80%;">
+				</div>
 				<button id="save-inferred-to-db">Stash to Active Workspace</button>
 				<br />
 				<hr style="width: 66%;">
 				<strong>Export File:</strong><br />
 				<label for="output-format">Format:</label>
 				<select id="output-format">
-					<option value="text/turtle" selected>Turtle</option>
-					<option value="application/n-triples">N-Triples</option>
-					<option value="application/ld+json">JSON-LD</option>
-					<option value="application/rdf+xml">RDF/XML</option>
+					<option value="Turtle">Turtle</option>
+					<option value="n-Triples">n-Triples</option>
+					<option value="N-Quads">N-Quads</option>
+					<option value="TriG">TriG</option>
 				</select>
 				<br />
 				<button id="export-inferred">Download</button>

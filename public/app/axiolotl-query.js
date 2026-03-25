@@ -22,8 +22,6 @@
     //  toastSuccess
     //  toastError
     //  commonSPARQLPrefixes
-    //  commonMIMEType
-    //  getSelectedOutputMime (depends on commonMIMEType)
     //  downloadText
 
 
@@ -279,9 +277,17 @@ function handleDownloadPreview(format = 'text/turtle') {
 // Get user choice of where to save inferred triples
 function getSaveTarget() {
   const isNamed = document.getElementById('save-target-named')?.checked;
+
   if (isNamed) {
-    return { mode: 'named', graphIRI: makeNamedGraphIRI('http://example.org/inferred') };
+    const iriForOverlay = document.getElementById('iri-for-save-target')?.value;
+
+    return {
+      mode: 'named',
+      // Uses iriForOverlay if it has a value, otherwise generates one
+      graphIRI: iriForOverlay?.trim() ? iriForOverlay : makeNamedGraphIRI('http://example.org/inferred')
+    };
   }
+
   return { mode: 'default', graphIRI: null };
 }
 
@@ -366,7 +372,10 @@ async function exportInferredOverlay() {
     const ext = ({
       'text/turtle': 'ttl',
       'application/n-triples': 'nt',
-      'application/n-quads': 'nq'
+      'application/n-quads': 'nq',
+      'application/trig': 'trig',
+      'application/ld+json': 'jsonld',
+      'application/rdf+xml': 'rdf'
     })[mime] || 'ttl';
 
     downloadText(`inferred-${timestampUTC()}.${ext}`, text, mime);
@@ -417,9 +426,7 @@ function addNewFileRow() {
 function toggleReasonerButtons() {
   const useDB = document.getElementById('reasoner-source-indexeddb')?.checked;
   const saveBtn = document.getElementById('save-inferred-to-db');
-  const insertBtn = document.getElementById('insert-inferred-to-endpoint');
   if (saveBtn)   saveBtn.style.display   = useDB ? '' : 'none';
-  if (insertBtn) insertBtn.style.display = useDB ? 'none' : '';
 }
 // run at load + when radios change
 ['reasoner-source-indexeddb','reasoner-source-endpoint'].forEach(id=>{
@@ -430,7 +437,6 @@ toggleReasonerButtons();
 // Event handlers
 document.getElementById('run-inference')?.addEventListener('click', runInference);
 document.getElementById('save-inferred-to-db')?.addEventListener('click', saveInferredTriplesToDB);
-document.getElementById('insert-inferred-to-endpoint')?.addEventListener('click', insertInferredTriplesIntoEndpoint);
 document.getElementById('export-inferred')?.addEventListener('click', async () => {
   await exportInferredOverlay();
 });
@@ -652,6 +658,17 @@ const $writeOpts = document.getElementById('write-options');
   el?.addEventListener('change', ()=>{
     const isWrite = $modeWrite?.checked;
     if ($writeOpts) $writeOpts.style.display = isWrite ? '' : 'none';
+  });
+});
+
+const stashInferenceDefaultGraphMode = document.getElementById('save-target-default');
+const stashInferenceNamedGraphMode = document.getElementById('save-target-named');
+const nameSaveTargetEl = document.getElementById('name-save-target');
+
+[stashInferenceDefaultGraphMode, stashInferenceNamedGraphMode].forEach(el=>{
+  el?.addEventListener('change', ()=>{
+    const namedGraphOptionChosen = stashInferenceNamedGraphMode?.checked;
+    if (nameSaveTargetEl) nameSaveTargetEl.style.display = namedGraphOptionChosen ? 'block' : 'none';
   });
 });
 
@@ -1327,6 +1344,27 @@ function renderQueryError(err) {
     </div>
   `;
   resultsDiv.innerHTML = html;
+}
+
+// Drop-down id="output-format" has values: Turtle, n-Triples, JSON-LD, RDF/XML
+const commonMIMEType = {
+  'Turtle':    'text/turtle',
+  'n-Triples': 'application/n-triples',
+  'JSON-LD':   'application/ld+json',
+  'RDF/XML':   'application/rdf+xml',
+  'N-Quads':   'application/n-quads',
+  'TriG':      'application/trig',
+  'SPARQL Results JSON': 'application/sparql-results+json',
+  'SPARQL Results XML':  'application/sparql-results+xml',
+  'SPARQL Update':      'application/sparql-update',
+  'SPARQL Query':       'application/sparql-query',
+};
+
+// Utility to get selected output MIME type from dropdown
+function getSelectedOutputMime() {
+  const sel = document.getElementById('output-format');
+  const label = sel?.value || 'Turtle';
+  return commonMIMEType[label] || 'text/turtle';
 }
 
 // Make callable from other modules if they need it

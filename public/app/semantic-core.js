@@ -270,27 +270,6 @@ async function handleFileUpload(file) {
   }
 }
 
-// Drop-down id="output-format" has values: Turtle, n-Triples, JSON-LD, RDF/XML
-const commonMIMEType = {
-  'Turtle':    'text/turtle',
-  'n-Triples': 'application/n-triples',
-  'JSON-LD':   'application/ld+json',
-  'RDF/XML':   'application/rdf+xml',
-  'N-Quads':   'application/n-quads',
-  'TriG':      'application/trig',
-  'SPARQL Results JSON': 'application/sparql-results+json',
-  'SPARQL Results XML':  'application/sparql-results+xml',
-  'SPARQL Update':      'application/sparql-update',
-  'SPARQL Query':       'application/sparql-query',
-};
-
-// Utility to get selected output MIME type from dropdown
-function getSelectedOutputMime() {
-  const sel = document.getElementById('output-format');
-  const label = sel?.value || 'Turtle';
-  return commonMIMEType[label] || 'text/turtle';
-}
-
 /**
  * Download text as a file (e.g. Turtle or N-Triples).
  * @param {string} filename

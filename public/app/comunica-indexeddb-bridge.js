@@ -781,24 +781,38 @@ async function stashGraphToIndexedDB(graph, mode='default', graphIRI=null, autoB
   const iri = (mode === 'named') ? (graphIRI || makeNamedGraphIRI(autoBase)) : null;
   const graphValue = iri || '';
 
-  let prepared;
-  if (typeof graph.getQuads === 'function') {
-    prepared = graph.getQuads(null, null, null, null).map(q => ({
-      subject: q.subject.value,
-      subjectType: q.subject.termType,
-      predicate: q.predicate.value,
-      predicateType: q.predicate.termType,
-      object: q.object.value,
-      objectType: q.object.termType,
-      objectLang: q.object.language || null,
-      objectDatatype: q.object.datatype?.value || null,
-      graph: graphValue || (q.graph.termType === 'DefaultGraph' ? '' : q.graph.value)
-    }));
-    await storeTriplesInNamedGraph(prepared);
-    return { count: prepared.length, graphIRI: iri || '(default graph)' };
+  if (!graph || typeof graph.getQuads !== 'function') {
+    throw new Error('stashGraphToIndexedDB expected an N3.Store or compatible RDF/JS source');
   }
 
-  throw new Error('stashGraphToIndexedDB expected an N3.Store or compatible RDF/JS source');
+  const prepared = graph.getQuads(null, null, null, null).map((q, i) => {
+    const row = {
+      subject: q.subject?.value ?? '',
+      subjectType: q.subject?.termType ?? '',
+      predicate: q.predicate?.value ?? '',
+      predicateType: q.predicate?.termType ?? '',
+      object: q.object?.value ?? '',
+      objectType: q.object?.termType ?? '',
+      objectLang: q.object?.language || null,
+      objectDatatype: q.object?.datatype?.value || null,
+      graph: graphValue || (q.graph?.termType === 'DefaultGraph' ? '' : (q.graph?.value ?? ''))
+    };
+
+    if (
+      typeof row.subject !== 'string' ||
+      typeof row.predicate !== 'string' ||
+      typeof row.object !== 'string' ||
+      typeof row.graph !== 'string'
+    ) {
+      console.error('[stashGraphToIndexedDB] Invalid prepared row at index', i, row, q);
+      throw new Error(`Invalid prepared row at index ${i}`);
+    }
+
+    return row;
+  });
+
+  await storeTriplesInNamedGraph(prepared);
+  return { count: prepared.length, graphIRI: iri || '(default graph)' };
 }
 
 

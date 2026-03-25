@@ -442,7 +442,7 @@ async function inferUntilStable(rules) {
   // ---- 3) Seed closures from existing dataset ----
   let totalAdded = 0;
   let pass = 0;
-  const MAX_PASSES = 20;
+  const MAX_PASSES = 30;
 
   const seedSeenBefore = seen.size;
   processQueues();
