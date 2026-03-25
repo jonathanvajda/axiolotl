@@ -17,8 +17,8 @@
       "name": "Find Classes Missing skos:definition",
       "fileName": "q_class-has-skos-definition.rq",
       "location": "./queries/q_class-has-skos-definition.rq",
-      "type": "ask",
-      "description": "Returns true when all classes satisfy the expected skos:definition condition.",
+      "type": "select",
+      "description": "Returns all rows where classes satisfy the expected skos:definition condition.",
       "tags": ["qa", "ontology", "definition"],
       "builtin": true,
       "params": []

@@ -45,6 +45,7 @@ var BUILTIN_PIPELINE_MANIFEST = {
         {
           '@id': 'Event001',
           label: 'Check Ontology for Valid License',
+          stepKind: 'query',
           queryId: 'query:q_ontology_has_dcterms_license_with_url',
           queryType: 'ask',
           comment: 'Top-level license check.',
@@ -54,8 +55,9 @@ var BUILTIN_PIPELINE_MANIFEST = {
         {
           '@id': 'Event002',
           label: 'Check Classes for skos:definition',
+          stepKind: 'query',
           queryId: 'query:q_class_has_skos_definition',
-          queryType: 'select',
+          queryType: 'ask',
           comment: 'Continue here if license check passed.',
           branches: { true: 'Event004', false: 'Event005' },
           onError: { action: 'stop' }
@@ -63,6 +65,7 @@ var BUILTIN_PIPELINE_MANIFEST = {
         {
           '@id': 'Event003',
           label: 'Check Ontology for accessRights',
+          stepKind: 'query',
           queryId: 'query:q_ontology_has_dcterms_accessRights',
           queryType: 'ask',
           comment: 'Alternative branch after license failure.',
@@ -72,6 +75,7 @@ var BUILTIN_PIPELINE_MANIFEST = {
         {
           '@id': 'Event004',
           label: 'Workflow Passed',
+          stepKind: 'terminal',
           action: 'stop',
           result: 'pass',
           comment: 'Sufficient metadata conditions satisfied.'
@@ -79,6 +83,7 @@ var BUILTIN_PIPELINE_MANIFEST = {
         {
           '@id': 'Event005',
           label: 'Definition Issue Found',
+          stepKind: 'terminal',
           action: 'stop',
           result: 'fail',
           comment: 'Class definition criteria failed.'
@@ -86,6 +91,7 @@ var BUILTIN_PIPELINE_MANIFEST = {
         {
           '@id': 'Event006',
           label: 'Metadata Issue Found',
+          stepKind: 'terminal',
           action: 'stop',
           result: 'fail',
           comment: 'License and accessRights branch failed.'
@@ -125,16 +131,47 @@ function getQueryById(queryId) {
   }) || null;
 }
 
+function getBranchKeysForQueryType(queryType) {
+  if (queryType === 'ask') return ['true', 'false'];
+  if (queryType === 'select') return ['hasRows', 'noRows'];
+  if (queryType === 'construct') return ['hasQuads', 'noQuads'];
+  if (queryType === 'update') return ['changed', 'unchanged'];
+  return ['next', 'otherwise'];
+}
+
+function getBranchLabelsForQueryType(queryType) {
+  if (queryType === 'ask') return ['True branch', 'False branch'];
+  if (queryType === 'select') return ['Has rows', 'No rows'];
+  if (queryType === 'construct') return ['Has quads', 'No quads'];
+  if (queryType === 'update') return ['Changed', 'Unchanged'];
+  return ['Primary branch', 'Secondary branch'];
+}
+
 function createDefaultStep() {
   var firstQuery = state.queryManifest.queries[0] || null;
+  var branchKeys = firstQuery ? getBranchKeysForQueryType(firstQuery.type) : ['true', 'false'];
+  var branches = {};
+  branchKeys.forEach(function (key) { branches[key] = ''; });
   return {
     '@id': 'Event' + String(Date.now()).slice(-6),
     label: 'New Step',
+    stepKind: 'query',
     queryId: firstQuery ? firstQuery['@id'] : '',
     queryType: firstQuery ? firstQuery.type : '',
     comment: '',
-    branches: firstQuery && firstQuery.type === 'ask' ? { true: '', false: '' } : {},
+    branches: branches,
     onError: { action: 'stop' }
+  };
+}
+
+function createTerminalStep() {
+  return {
+    '@id': 'Event' + String(Date.now()).slice(-6),
+    label: 'New Terminal Step',
+    stepKind: 'terminal',
+    action: 'stop',
+    result: 'pass',
+    comment: ''
   };
 }
 
@@ -211,13 +248,13 @@ function renderStepList() {
     card.style.borderStyle = step['@id'] === state.selectedStepId ? 'solid' : 'dashed';
 
     var branchSummary = '';
-    if (step.action === 'stop') {
+    if (step.stepKind === 'terminal' || step.action === 'stop') {
       branchSummary = 'Terminal · result=' + (step.result || 'n/a');
-    } else if (step.queryType === 'ask') {
-      branchSummary = 'true → ' + (step.branches && step.branches.true ? step.branches.true : '(unset)') +
-        ' · false → ' + (step.branches && step.branches.false ? step.branches.false : '(unset)');
     } else {
-      branchSummary = 'Branches configured';
+      var keys = getBranchKeysForQueryType(step.queryType);
+      branchSummary = keys.map(function (key) {
+        return key + ' → ' + ((step.branches && step.branches[key]) ? step.branches[key] : '(unset)');
+      }).join(' · ');
     }
 
     card.innerHTML = '' +
@@ -225,7 +262,7 @@ function renderStepList() {
         '<div>' +
           '<strong>' + escapeHtml(step['@id']) + '</strong> · ' + escapeHtml(step.label || '(untitled)') +
           '<div class="muted" style="margin-top:4px;">' +
-            escapeHtml(step.action === 'stop' ? 'STOP' : ((queryDef && queryDef.name) || step.queryId || '(no query)')) +
+            escapeHtml(step.stepKind === 'terminal' ? 'TERMINAL · ' + (step.result || '').toUpperCase() : ((queryDef && queryDef.name) || step.queryId || '(no query)')) +
           '</div>' +
         '</div>' +
         '<div class="muted">' + (index === 0 && pipeline.startStepId === step['@id'] ? 'START' : '') + '</div>' +
@@ -259,7 +296,43 @@ function renderStepList() {
   });
 }
 
+function ensureInspectorControls() {
+  var inspectorGrid = document.querySelector('#inspector > div:nth-of-type(2)');
+  if (!document.getElementById('stepKindSelect')) {
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = '' +
+      '<label for="stepKindSelect">Step Kind</label>' +
+      '<select id="stepKindSelect" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;">' +
+        '<option value="query">Query Step</option>' +
+        '<option value="terminal">Terminal Step</option>' +
+      '</select>';
+    inspectorGrid.insertBefore(wrapper, inspectorGrid.firstChild);
+  }
+  if (!document.getElementById('terminalEditor')) {
+    var terminalWrap = document.createElement('div');
+    terminalWrap.id = 'terminalEditor';
+    terminalWrap.className = 'hidden';
+    terminalWrap.style.border = '1px dashed var(--border)';
+    terminalWrap.style.borderRadius = '8px';
+    terminalWrap.style.padding = '10px';
+    terminalWrap.innerHTML = '' +
+      '<strong style="display:block; margin-bottom:8px;">Terminal Settings</strong>' +
+      '<div>' +
+        '<label for="terminalResultSelect">Result</label>' +
+        '<select id="terminalResultSelect" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;">' +
+          '<option value="pass">Pass</option>' +
+          '<option value="fail">Fail</option>' +
+          '<option value="info">Info</option>' +
+          '<option value="neutral">Neutral</option>' +
+        '</select>' +
+      '</div>';
+    var saveDeleteRow = document.getElementById('saveStepBtn').parentElement;
+    inspectorGrid.insertBefore(terminalWrap, saveDeleteRow);
+  }
+}
+
 function renderInspector() {
+  ensureInspectorControls();
   var pipeline = getActivePipeline();
   var inspector = document.getElementById('inspector');
   if (!pipeline || !state.selectedStepId) {
@@ -275,6 +348,7 @@ function renderInspector() {
 
   inspector.classList.remove('hidden');
 
+  var stepKindSelect = document.getElementById('stepKindSelect');
   var stepIdInput = document.getElementById('stepIdInput');
   var stepLabelInput = document.getElementById('stepLabelInput');
   var stepQuerySelect = document.getElementById('stepQuerySelect');
@@ -288,37 +362,42 @@ function renderInspector() {
   var onErrorActionSelect = document.getElementById('onErrorActionSelect');
   var onErrorTargetWrap = document.getElementById('onErrorTargetWrap');
   var onErrorTargetSelect = document.getElementById('onErrorTargetSelect');
+  var terminalEditor = document.getElementById('terminalEditor');
+  var terminalResultSelect = document.getElementById('terminalResultSelect');
 
+  stepKindSelect.value = step.stepKind || (step.action === 'stop' ? 'terminal' : 'query');
   stepIdInput.value = step['@id'] || '';
   stepLabelInput.value = step.label || '';
   stepCommentInput.value = step.comment || '';
+  terminalResultSelect.value = step.result || 'pass';
 
   populateQueryOptions(stepQuerySelect, step.queryId || '');
   stepQueryTypeInput.value = step.queryType || '';
-
-  populateStepTargetOptions(branchTrueSelect, pipeline, step['@id'], step.branches && step.branches.true ? step.branches.true : '');
-  populateStepTargetOptions(branchFalseSelect, pipeline, step['@id'], step.branches && step.branches.false ? step.branches.false : '');
-  populateStepTargetOptions(onErrorTargetSelect, pipeline, step['@id'], step.onError && step.onError.targetStepId ? step.onError.targetStepId : '');
-
   onErrorActionSelect.value = step.onError && step.onError.action ? step.onError.action : 'stop';
   onErrorTargetWrap.classList.toggle('hidden', onErrorActionSelect.value !== 'goto');
 
-  if (step.action === 'stop') {
+  if (stepKindSelect.value === 'terminal') {
+    terminalEditor.classList.remove('hidden');
     branchEditor.classList.add('hidden');
     stepQuerySelect.disabled = true;
     stepQueryTypeInput.value = 'terminal';
+    onErrorActionSelect.disabled = true;
+    onErrorTargetWrap.classList.add('hidden');
   } else {
+    terminalEditor.classList.add('hidden');
     stepQuerySelect.disabled = false;
-    if (step.queryType === 'ask') {
-      branchTrueLabel.textContent = 'True branch';
-      branchFalseLabel.textContent = 'False branch';
-      branchEditor.classList.remove('hidden');
-    } else {
-      branchTrueLabel.textContent = 'Primary branch';
-      branchFalseLabel.textContent = 'Secondary branch';
-      branchEditor.classList.remove('hidden');
-    }
+    onErrorActionSelect.disabled = false;
+
+    var labels = getBranchLabelsForQueryType(step.queryType);
+    var keys = getBranchKeysForQueryType(step.queryType);
+    branchTrueLabel.textContent = labels[0];
+    branchFalseLabel.textContent = labels[1];
+    populateStepTargetOptions(branchTrueSelect, pipeline, step['@id'], step.branches && step.branches[keys[0]] ? step.branches[keys[0]] : '');
+    populateStepTargetOptions(branchFalseSelect, pipeline, step['@id'], step.branches && step.branches[keys[1]] ? step.branches[keys[1]] : '');
+    branchEditor.classList.remove('hidden');
   }
+
+  populateStepTargetOptions(onErrorTargetSelect, pipeline, step['@id'], step.onError && step.onError.targetStepId ? step.onError.targetStepId : '');
 }
 
 function populateQueryOptions(selectEl, selectedValue) {
@@ -411,13 +490,18 @@ function validatePipeline(pipeline, queryManifest) {
       stepIds.add(step['@id']);
     }
 
-    if (step.action !== 'stop' && step.queryId && !queryIds.has(step.queryId)) {
+    if (step.stepKind !== 'terminal' && step.queryId && !queryIds.has(step.queryId)) {
       issues.push({ severity: 'error', message: 'Missing query reference for step ' + step['@id'] + ': ' + step.queryId });
     }
 
-    if (step.queryType === 'ask' && step.action !== 'stop') {
-      if (!step.branches || typeof step.branches.true !== 'string' || typeof step.branches.false !== 'string') {
-        issues.push({ severity: 'error', message: 'ASK step ' + step['@id'] + ' must define true and false branches.' });
+    if (step.stepKind === 'terminal') {
+      if (!step.result) {
+        issues.push({ severity: 'warning', message: 'Terminal step ' + step['@id'] + ' has no result value.' });
+      }
+    } else {
+      var keys = getBranchKeysForQueryType(step.queryType);
+      if (!step.branches || typeof step.branches[keys[0]] !== 'string' || typeof step.branches[keys[1]] !== 'string') {
+        issues.push({ severity: 'error', message: 'Step ' + step['@id'] + ' must define both branch targets for query type ' + step.queryType + '.' });
       }
     }
 
@@ -457,26 +541,38 @@ function saveSelectedStep() {
   if (stepIndex < 0) return;
 
   var existingStep = pipeline.steps[stepIndex];
-  var queryId = existingStep.action === 'stop' ? '' : document.getElementById('stepQuerySelect').value;
-  var queryDef = queryId ? getQueryById(queryId) : null;
-
   var updatedStep = deepClone(existingStep);
+  var stepKind = document.getElementById('stepKindSelect').value;
+
   updatedStep['@id'] = document.getElementById('stepIdInput').value.trim();
   updatedStep.label = document.getElementById('stepLabelInput').value.trim();
   updatedStep.comment = document.getElementById('stepCommentInput').value.trim();
+  updatedStep.stepKind = stepKind;
 
-  if (updatedStep.action !== 'stop') {
+  if (stepKind === 'terminal') {
+    updatedStep.action = 'stop';
+    updatedStep.result = document.getElementById('terminalResultSelect').value;
+    delete updatedStep.queryId;
+    delete updatedStep.queryType;
+    delete updatedStep.branches;
+    delete updatedStep.onError;
+  } else {
+    var queryId = document.getElementById('stepQuerySelect').value;
+    var queryDef = queryId ? getQueryById(queryId) : null;
+    var queryType = queryDef ? queryDef.type : '';
+    var branchKeys = getBranchKeysForQueryType(queryType);
+
+    delete updatedStep.action;
+    delete updatedStep.result;
     updatedStep.queryId = queryId;
-    updatedStep.queryType = queryDef ? queryDef.type : '';
-    updatedStep.branches = updatedStep.branches || {};
-    updatedStep.branches.true = document.getElementById('branchTrueSelect').value;
-    updatedStep.branches.false = document.getElementById('branchFalseSelect').value;
-  }
-
-  var onErrorAction = document.getElementById('onErrorActionSelect').value;
-  updatedStep.onError = { action: onErrorAction };
-  if (onErrorAction === 'goto') {
-    updatedStep.onError.targetStepId = document.getElementById('onErrorTargetSelect').value;
+    updatedStep.queryType = queryType;
+    updatedStep.onError = { action: document.getElementById('onErrorActionSelect').value };
+    if (updatedStep.onError.action === 'goto') {
+      updatedStep.onError.targetStepId = document.getElementById('onErrorTargetSelect').value;
+    }
+    updatedStep.branches = {};
+    updatedStep.branches[branchKeys[0]] = document.getElementById('branchTrueSelect').value;
+    updatedStep.branches[branchKeys[1]] = document.getElementById('branchFalseSelect').value;
   }
 
   pipeline.steps[stepIndex] = updatedStep;
@@ -533,11 +629,11 @@ function deleteSelectedStep() {
   render();
 }
 
-function addStepToActivePipeline() {
+function addStepToActivePipeline(kind) {
   var pipeline = deepClone(getActivePipeline());
   if (!pipeline) return;
 
-  var newStep = createDefaultStep();
+  var newStep = kind === 'terminal' ? createTerminalStep() : createDefaultStep();
   pipeline.steps = (pipeline.steps || []).concat([newStep]);
 
   if (!pipeline.startStepId) {
@@ -582,9 +678,21 @@ function initTabs() {
   });
 }
 
+function ensureAddButtons() {
+  var addStepBtn = document.getElementById('addStepBtn');
+  if (!document.getElementById('addTerminalStepBtn')) {
+    var btn = document.createElement('button');
+    btn.id = 'addTerminalStepBtn';
+    btn.textContent = '+ Add Terminal';
+    addStepBtn.parentElement.insertBefore(btn, addStepBtn.nextSibling);
+  }
+}
+
 function initEvents() {
+  ensureAddButtons();
   document.getElementById('newPipelineBtn').addEventListener('click', addNewPipeline);
-  document.getElementById('addStepBtn').addEventListener('click', addStepToActivePipeline);
+  document.getElementById('addStepBtn').addEventListener('click', function () { addStepToActivePipeline('query'); });
+  document.getElementById('addTerminalStepBtn').addEventListener('click', function () { addStepToActivePipeline('terminal'); });
   document.getElementById('saveStepBtn').addEventListener('click', saveSelectedStep);
   document.getElementById('deleteStepBtn').addEventListener('click', deleteSelectedStep);
   document.getElementById('closeInspectorBtn').addEventListener('click', function () {
@@ -595,11 +703,21 @@ function initEvents() {
 
   document.getElementById('stepQuerySelect').addEventListener('change', function () {
     var queryDef = getQueryById(document.getElementById('stepQuerySelect').value);
-    document.getElementById('stepQueryTypeInput').value = queryDef ? queryDef.type : '';
+    var queryType = queryDef ? queryDef.type : '';
+    document.getElementById('stepQueryTypeInput').value = queryType;
+    var labels = getBranchLabelsForQueryType(queryType);
+    document.getElementById('branchTrueLabel').textContent = labels[0];
+    document.getElementById('branchFalseLabel').textContent = labels[1];
   });
 
   document.getElementById('onErrorActionSelect').addEventListener('change', function () {
     document.getElementById('onErrorTargetWrap').classList.toggle('hidden', this.value !== 'goto');
+  });
+
+  document.addEventListener('change', function (event) {
+    if (event.target && event.target.id === 'stepKindSelect') {
+      renderInspector();
+    }
   });
 
   document.getElementById('validatePipelineBtn').addEventListener('click', function () {

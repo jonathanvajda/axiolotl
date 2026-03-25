@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Analytic Workflow Builder – Clean Layout</title>
+  <!-- Public CSS -->
+	<link rel="stylesheet" href="./styles/skeleton.css" />
+	<!-- App Global CSS -->
+	<script>
+		(function () {
+		const APPBASE_CSS_SOURCES = [
+			/*"./styles/app-base.css", /* local dev copy first */
+			"https://jonathanvajda.github.io/OntoEagle/styles/app-base.css",
+			"https://jonathanvajda.github.io/table-nova/styles/app-base.css",
+		];
+
+		function loadCss(href) {
+			return new Promise((resolve, reject) => {
+			const link = document.createElement("link");
+			link.rel = "stylesheet";
+			link.href = href;
+
+			link.onload = () => resolve(href);
+			link.onerror = () => reject(new Error("CSS failed: " + href));
+
+			document.head.appendChild(link);
+			});
+		}
+
+		function showFailure(msg) {
+			console.error(msg);
+			// Optional user-visible banner
+			const style = document.createElement("style");
+			style.textContent =
+			".asset-fail-banner{position:fixed;left:0;right:0;top:0;z-index:9999;" +
+			"padding:.5rem .75rem;font:14px system-ui;background:#ffe8e8;color:#400;" +
+			"border-bottom:1px solid rgba(0,0,0,.2)}";
+			document.head.appendChild(style);
+
+			const div = document.createElement("div");
+			div.className = "asset-fail-banner";
+			div.textContent = msg;
+			document.body ? document.body.prepend(div) : document.addEventListener("DOMContentLoaded", () => document.body.prepend(div));
+		}
+
+		(async () => {
+			for (const href of APPBASE_CSS_SOURCES) {
+			try { await loadCss(href); return; } catch (_) {}
+			}
+			showFailure("Failed to load app base CSS from all sources.");
+		})();
+		})();
+	</script>
+	<script>
+		(function () {
+		const HEADER_CSS_SOURCES = [
+			/*"./styles/site-header.css", /* local dev copy first */
+			"https://jonathanvajda.github.io/OntoEagle/styles/site-header.css",
+			"https://jonathanvajda.github.io/table-nova/styles/site-header.css",
+		];
+
+		function loadCss(href) {
+			return new Promise((resolve, reject) => {
+			const link = document.createElement("link");
+			link.rel = "stylesheet";
+			link.href = href;
+
+			link.onload = () => resolve(href);
+			link.onerror = () => reject(new Error("CSS failed: " + href));
+
+			document.head.appendChild(link);
+			});
+		}
+
+		function showFailure(msg) {
+			console.error(msg);
+			// Optional user-visible banner
+			const style = document.createElement("style");
+			style.textContent =
+			".asset-fail-banner{position:fixed;left:0;right:0;top:0;z-index:9999;" +
+			"padding:.5rem .75rem;font:14px system-ui;background:#ffe8e8;color:#400;" +
+			"border-bottom:1px solid rgba(0,0,0,.2)}";
+			document.head.appendChild(style);
+
+			const div = document.createElement("div");
+			div.className = "asset-fail-banner";
+			div.textContent = msg;
+			document.body ? document.body.prepend(div) : document.addEventListener("DOMContentLoaded", () => document.body.prepend(div));
+		}
+
+		(async () => {
+			for (const href of HEADER_CSS_SOURCES) {
+			try { await loadCss(href); return; } catch (_) {}
+			}
+			showFailure("Failed to load header CSS from all sources.");
+		})();
+		})();
+	</script>
+
+
+	<!-- App Local CSS -->
+
+	<link rel="stylesheet" href="./styles/playbook.css">
+</head>
+<body>
+<div class="page">
+
+<div class="header">
+  <div>
+    <h2 style="margin:0;">Analytic Workflow Builder</h2>
+    <small class="muted">Build, manage, and run conditional query pipelines</small>
+  </div>
+  <div>
+    <button id="savePipelineBtn">Save</button>
+    <button id="exportPipelineBtn">Export</button>
+    <button class="primary" id="runPipelineBtn">Run</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="pipelines">Pipelines</div>
+  <div class="tab" data-tab="data">Data</div>
+  <div class="tab" data-tab="queries">Queries</div>
+  <div class="tab" data-tab="run">Run</div>
+</div>
+
+<!-- PIPELINES -->
+<div id="pipelines" class="tab-content">
+  <div class="layout">
+
+    <!-- LEFT: Pipeline list -->
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px;">
+        <strong>Pipelines</strong>
+        <button id="newPipelineBtn">+ New</button>
+      </div>
+      <div id="pipelineList"></div>
+    </div>
+
+    <!-- CENTER: Steps -->
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
+        <div>
+          <strong id="activePipelineTitle">Workflow Steps</strong>
+          <div class="muted" id="activePipelineMeta" style="font-size:0.9rem; margin-top:4px;"></div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="validatePipelineBtn">Validate</button>
+          <button id="addStepBtn">+ Add Step</button>
+        </div>
+      </div>
+
+      <div id="stepList"></div>
+    </div>
+
+    <!-- RIGHT: Inspector -->
+    <div id="inspector" class="panel hidden">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px;">
+        <strong>Step Inspector</strong>
+        <button id="closeInspectorBtn">Close</button>
+      </div>
+
+      <div style="display:grid; gap:10px;">
+        <div>
+          <label for="stepIdInput">Step ID</label>
+          <input id="stepIdInput" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;" />
+        </div>
+
+        <div>
+          <label for="stepLabelInput">Label</label>
+          <input id="stepLabelInput" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;" />
+        </div>
+
+        <div>
+          <label for="stepQuerySelect">Query</label>
+          <select id="stepQuerySelect" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;"></select>
+        </div>
+
+        <div>
+          <label for="stepQueryTypeInput">Query Type</label>
+          <input id="stepQueryTypeInput" readonly style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; background:#f3f4f6;" />
+        </div>
+
+        <div>
+          <label for="stepCommentInput">Comment</label>
+          <textarea id="stepCommentInput" rows="3" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;"></textarea>
+        </div>
+
+        <div id="branchEditor" class="hidden" style="border:1px dashed var(--border); border-radius:8px; padding:10px;">
+          <strong style="display:block; margin-bottom:8px;">Branching</strong>
+          <div style="display:grid; gap:8px;">
+            <div>
+              <label for="branchTrueSelect" id="branchTrueLabel">True branch</label>
+              <select id="branchTrueSelect" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;"></select>
+            </div>
+            <div>
+              <label for="branchFalseSelect" id="branchFalseLabel">False branch</label>
+              <select id="branchFalseSelect" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;"></select>
+            </div>
+          </div>
+        </div>
+
+        <div style="border:1px dashed var(--border); border-radius:8px; padding:10px;">
+          <strong style="display:block; margin-bottom:8px;">On Error</strong>
+          <div>
+            <label for="onErrorActionSelect">Error Action</label>
+            <select id="onErrorActionSelect" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;">
+              <option value="stop">Stop</option>
+              <option value="goto">Goto Step</option>
+            </select>
+          </div>
+          <div id="onErrorTargetWrap" class="hidden" style="margin-top:8px;">
+            <label for="onErrorTargetSelect">Target Step</label>
+            <select id="onErrorTargetSelect" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;"></select>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="saveStepBtn" class="primary">Save Step</button>
+          <button id="deleteStepBtn">Delete Step</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottom-drawer">
+    <div style="display:flex; gap:8px; margin-bottom:10px;">
+      <button id="showValidationBtn">Validation</button>
+      <button id="showPipelineJsonBtn">Pipeline JSON</button>
+    </div>
+    <div id="validationPanel"></div>
+    <pre id="pipelineJsonPanel" class="hidden" style="margin:0; white-space:pre-wrap; font-size:0.86rem; overflow:auto;"></pre>
+  </div>
+</div>
+
+<!-- DATA -->
+<div id="data" class="tab-content hidden">
+  <div class="panel">
+    <strong>Data Management</strong>
+    <p class="muted">Load RDF into IndexedDB and inspect graphs.</p>
+    <button>Upload RDF</button>
+    <button>View Graphs</button>
+  </div>
+</div>
+
+<!-- QUERIES -->
+<div id="queries" class="tab-content hidden">
+  <div class="panel">
+    <strong>Query Registry</strong>
+    <div id="queryRegistryList"></div>
+  </div>
+</div>
+
+<!-- RUN -->
+<div id="run" class="tab-content hidden">
+  <div class="panel">
+    <strong>Run Pipeline</strong>
+    <p>Select dataset and execute pipeline.</p>
+    <button class="primary">Run</button>
+  </div>
+
+  <div class="bottom-drawer">
+    <strong>Execution Trace</strong>
+    <p class="muted">Appears after run</p>
+  </div>
+</div>
+
+</div>
+
+<script src="./app/playbook-builder-main.js"></script>
+
+</body>
+</html>
