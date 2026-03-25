@@ -1,0 +1,38 @@
+{
+  "version": "1.0.0",
+  "queries": [
+    {
+      "@id": "query:q_ontology_has_dcterms_license_with_url",
+      "name": "Check Ontology for Valid License",
+      "fileName": "q_ontology-has-dcterms-license-with-url.rq",
+      "location": "./queries/q_ontology-has-dcterms-license-with-cc0-or-ccby3-or-higher-URL.rq",
+      "type": "ask",
+      "description": "Returns true when the ontology has a dcterms:license value that is a valid URL/IRI.",
+      "tags": ["qa", "ontology", "license"],
+      "builtin": true,
+      "params": []
+    },
+    {
+      "@id": "query:q_class_has_skos_definition",
+      "name": "Find Classes Missing skos:definition",
+      "fileName": "q_class-has-skos-definition.rq",
+      "location": "./queries/q_class-has-skos-definition.rq",
+      "type": "ask",
+      "description": "Returns true when all classes satisfy the expected skos:definition condition.",
+      "tags": ["qa", "ontology", "definition"],
+      "builtin": true,
+      "params": []
+    },
+    {
+      "@id": "query:q_ontology_has_dcterms_accessRights",
+      "name": "Check Ontology for accessRights",
+      "fileName": "q_ontology-has-dcterms-accessRights.rq",
+      "location": "./queries/q_ontology-has-dcterms-accessRights.rq",
+      "type": "ask",
+      "description": "Returns true when the ontology has dcterms:accessRights.",
+      "tags": ["qa", "ontology", "metadata"],
+      "builtin": true,
+      "params": []
+    }
+  ]
+}

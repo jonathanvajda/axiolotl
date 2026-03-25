@@ -1,0 +1,77 @@
+{
+  "version": "1.0.0",
+  "pipelines": [
+    {
+      "@id": "pipeline:ontology_metadata_review_basic",
+      "name": "Ontology Metadata Review - Basic",
+      "description": "Checks for license, then class definitions, then access rights.",
+      "builtin": true,
+      "startStepId": "Event001",
+      "steps": [
+        {
+          "@id": "Event001",
+          "label": "Check Ontology for Valid License",
+          "queryId": "query:q_ontology_has_dcterms_license_with_url",
+          "queryType": "ask",
+          "comment": "Top-level metadata check for license.",
+          "branches": {
+            "true": "Event002",
+            "false": "Event003"
+          },
+          "onError": {
+            "action": "stop"
+          }
+        },
+        {
+          "@id": "Event002",
+          "label": "Check Classes for skos:definition",
+          "queryId": "query:q_class_has_skos_definition",
+          "queryType": "ask",
+          "comment": "If license passes, continue with class definition review.",
+          "branches": {
+            "true": "Event004",
+            "false": "Event005"
+          },
+          "onError": {
+            "action": "stop"
+          }
+        },
+        {
+          "@id": "Event003",
+          "label": "Check Ontology for accessRights",
+          "queryId": "query:q_ontology_has_dcterms_accessRights",
+          "queryType": "ask",
+          "comment": "If license fails, inspect another metadata field.",
+          "branches": {
+            "true": "Event004",
+            "false": "Event006"
+          },
+          "onError": {
+            "action": "stop"
+          }
+        },
+        {
+          "@id": "Event004",
+          "label": "Pass / Continue",
+          "action": "stop",
+          "result": "pass",
+          "comment": "Workflow reached a satisfactory condition."
+        },
+        {
+          "@id": "Event005",
+          "label": "Definition Issue Found",
+          "action": "stop",
+          "result": "fail",
+          "comment": "Workflow found an issue with class definitions."
+        },
+        {
+          "@id": "Event006",
+          "label": "License and accessRights Issue Found",
+          "action": "stop",
+          "result": "fail",
+          "comment": "Workflow found multiple metadata issues."
+        }
+      ]
+    }
+  ]
+}

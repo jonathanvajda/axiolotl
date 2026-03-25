@@ -1,0 +1,82 @@
+{
+  "@id": "pipeline:ontology_metadata_review_basic",
+  "name": "Ontology Metadata Review - Basic",
+  "startStepId": "Event001",
+  "steps": [
+    {
+      "@id": "Event001",
+      "query": {
+        "name": "Check Ontology for Valid License",
+        "location": "./queries/q_ontology-has-dcterms-license-with-url.rq",
+        "type": "ask",
+        "comment": ""
+      },
+      "rules": {
+        "ask": {
+          "true": {
+            "goto": "Event002"
+          },
+          "false": {
+            "goto": "Event003"
+          }
+        }
+      }
+    },
+    {
+      "@id": "Event002",
+      "query": {
+        "name": "Check Classes for skos:definition",
+        "location": "./queries/q_class-has-skos-definition.rq",
+        "type": "ask",
+        "comment": ""
+      },
+      "rules": {
+        "ask": {
+          "true": {
+            "goto": "Event004"
+          },
+          "false": {
+            "goto": "Event005"
+          }
+        }
+      }
+    },
+    {
+      "@id": "Event003",
+      "query": {
+        "name": "Check Ontology for accessRights",
+        "location": "./queries/q_ontology-has-dcterms-accessRights.rq",
+        "type": "ask",
+        "comment": ""
+      },
+      "rules": {
+        "ask": {
+          "true": {
+            "goto": "Event004"
+          },
+          "false": {
+            "goto": "Event006"
+          }
+        }
+      }
+    },
+    {
+      "@id": "Event004",
+      "action": "stop",
+      "result": "pass",
+      "comment": "All relevant checks passed in this branch."
+    },
+    {
+      "@id": "Event005",
+      "action": "stop",
+      "result": "fail",
+      "comment": "Class definition issue found."
+    },
+    {
+      "@id": "Event006",
+      "action": "stop",
+      "result": "fail",
+      "comment": "License and accessRights issue found."
+    }
+  ]
+}
