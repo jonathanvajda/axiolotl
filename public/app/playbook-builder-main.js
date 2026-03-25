@@ -1,4 +1,3 @@
-
 var BUILTIN_QUERY_MANIFEST = {
   version: '1.0.0',
   queries: [
@@ -106,7 +105,13 @@ var state = {
   pipelineManifest: BUILTIN_PIPELINE_MANIFEST,
   activePipelineId: BUILTIN_PIPELINE_MANIFEST.pipelines[0]['@id'],
   selectedStepId: null,
-  view: 'validation'
+  view: 'validation',
+  queryPicker: {
+    isOpen: false,
+    search: '',
+    type: '',
+    selectedQueryId: null
+  }
 };
 
 function deepClone(value) {
@@ -147,14 +152,37 @@ function getBranchLabelsForQueryType(queryType) {
   return ['Primary branch', 'Secondary branch'];
 }
 
-function createDefaultStep() {
+function getBranchLabelForIndex(queryType, index) {
+  var labels = getBranchLabelsForQueryType(queryType);
+  return labels[index] || ('Branch ' + String(index + 1));
+}
+
+function getBranchKeyForIndex(queryType, index) {
+  var keys = getBranchKeysForQueryType(queryType);
+  return keys[index] || null;
+}
+
+function slugifyStepLabel(text) {
+  return String(text || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40);
+}
+
+function createDefaultStep(labelText) {
   var firstQuery = state.queryManifest.queries[0] || null;
   var branchKeys = firstQuery ? getBranchKeysForQueryType(firstQuery.type) : ['true', 'false'];
   var branches = {};
-  branchKeys.forEach(function (key) { branches[key] = ''; });
+
+  branchKeys.forEach(function (key) {
+    branches[key] = '';
+  });
+
   return {
     '@id': 'Event' + String(Date.now()).slice(-6),
-    label: 'New Step',
+    label: labelText || 'New Query Step',
     stepKind: 'query',
     queryId: firstQuery ? firstQuery['@id'] : '',
     queryType: firstQuery ? firstQuery.type : '',
@@ -164,13 +192,13 @@ function createDefaultStep() {
   };
 }
 
-function createTerminalStep() {
+function createTerminalStep(labelText, resultValue) {
   return {
     '@id': 'Event' + String(Date.now()).slice(-6),
-    label: 'New Terminal Step',
+    label: labelText || 'New Terminal Step',
     stepKind: 'terminal',
     action: 'stop',
-    result: 'pass',
+    result: resultValue || 'pass',
     comment: ''
   };
 }
@@ -398,6 +426,226 @@ function renderInspector() {
   }
 
   populateStepTargetOptions(onErrorTargetSelect, pipeline, step['@id'], step.onError && step.onError.targetStepId ? step.onError.targetStepId : '');
+
+  renderSelectedQuerySummary(step);
+
+  var picker = document.getElementById('inlineQueryPicker');
+  var toggleBtn = document.getElementById('toggleQueryPickerBtn');
+  if (picker && toggleBtn) {
+    picker.classList.toggle('hidden', !state.queryPicker.isOpen);
+    toggleBtn.textContent = state.queryPicker.isOpen ? 'Hide Query Browser' : 'Browse Queries';
+  }
+  toggleInlineQueryPicker(false);
+}
+
+function filterQueries(queryManifest, searchText, typeFilter) {
+  var q = String(searchText || '').trim().toLowerCase();
+  var t = String(typeFilter || '').trim().toLowerCase();
+
+  return (queryManifest.queries || []).filter(function (queryDef) {
+    if (t && String(queryDef.type || '').toLowerCase() !== t) {
+      return false;
+    }
+
+    if (!q) return true;
+
+    var haystack = [
+      queryDef.name,
+      queryDef['@id'],
+      queryDef.description,
+      queryDef.fileName,
+      queryDef.location
+    ].join(' ').toLowerCase();
+
+    return haystack.indexOf(q) >= 0;
+  });
+}
+
+function toggleInlineQueryPicker(forceOpen) {
+  var picker = document.getElementById('inlineQueryPicker');
+  var button = document.getElementById('toggleQueryPickerBtn');
+  if (!picker || !button) return;
+
+  if (typeof forceOpen === 'boolean') {
+    state.queryPicker.isOpen = forceOpen;
+  } else {
+    state.queryPicker.isOpen = !state.queryPicker.isOpen;
+  }
+
+  picker.classList.toggle('hidden', !state.queryPicker.isOpen);
+  button.textContent = state.queryPicker.isOpen ? 'Hide Query Browser' : 'Browse Queries';
+
+  if (state.queryPicker.isOpen) {
+    renderQueryPicker();
+  }
+}
+
+function renderSelectedQuerySummary(step) {
+  var display = document.getElementById('stepQueryDisplay');
+  var meta = document.getElementById('selectedQueryMeta');
+  var hiddenSelect = document.getElementById('stepQuerySelect');
+
+  if (!display || !meta) return;
+
+  if (!step || step.stepKind === 'terminal') {
+    display.value = '';
+    meta.textContent = 'Terminal step: no query selected.';
+    if (hiddenSelect) hiddenSelect.value = '';
+    return;
+  }
+
+  var queryDef = step.queryId ? getQueryById(step.queryId) : null;
+
+  if (!queryDef) {
+    display.value = '';
+    meta.textContent = 'No query selected.';
+    if (hiddenSelect) hiddenSelect.value = '';
+    return;
+  }
+
+  display.value = queryDef.name || queryDef['@id'] || '';
+  meta.innerHTML =
+    '<strong>' + escapeHtml((queryDef.type || '').toUpperCase()) + '</strong>' +
+    ' · ' + escapeHtml(queryDef.location || '') +
+    (queryDef.description
+      ? '<div style="margin-top:4px;">' + escapeHtml(queryDef.description) + '</div>'
+      : '');
+
+  if (hiddenSelect) hiddenSelect.value = queryDef['@id'];
+}
+
+function renderQueryPicker() {
+  var listHost = document.getElementById('queryPickerList');
+  var detailHost = document.getElementById('queryPickerDetail');
+  var searchInput = document.getElementById('querySearchInput');
+  var typeFilter = document.getElementById('queryTypeFilter');
+
+  if (!listHost || !detailHost) return;
+
+  if (searchInput) searchInput.value = state.queryPicker.search || '';
+  if (typeFilter) typeFilter.value = state.queryPicker.type || '';
+
+  var filtered = filterQueries(
+    state.queryManifest,
+    state.queryPicker.search,
+    state.queryPicker.type
+  );
+
+  listHost.innerHTML = '';
+
+  if (!filtered.length) {
+    listHost.innerHTML = '<div class="muted">No queries match the current filter.</div>';
+  } else {
+    filtered.forEach(function (queryDef) {
+      var item = document.createElement('div');
+      item.className = 'step';
+      item.style.cursor = 'pointer';
+      item.style.borderStyle = queryDef['@id'] === state.queryPicker.selectedQueryId ? 'solid' : 'dashed';
+
+      item.innerHTML =
+        '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
+          '<div>' +
+            '<strong>' + escapeHtml(queryDef.name || queryDef['@id']) + '</strong>' +
+            '<div class="muted" style="margin-top:4px;">' + escapeHtml(queryDef['@id']) + '</div>' +
+          '</div>' +
+          '<div class="muted">' + escapeHtml((queryDef.type || '').toUpperCase()) + '</div>' +
+        '</div>' +
+        (queryDef.description
+          ? '<div class="muted" style="margin-top:8px;">' + escapeHtml(queryDef.description) + '</div>'
+          : '');
+
+      item.addEventListener('click', function () {
+        state.queryPicker.selectedQueryId = queryDef['@id'];
+        renderQueryPicker();
+      });
+
+      listHost.appendChild(item);
+    });
+  }
+
+  var selected = state.queryPicker.selectedQueryId
+    ? getQueryById(state.queryPicker.selectedQueryId)
+    : null;
+
+  if (!selected) {
+    detailHost.innerHTML = '<div class="muted">Select a query to preview it.</div>';
+    return;
+  }
+
+  detailHost.innerHTML =
+    '<div style="border:1px dashed var(--border); border-radius:8px; padding:10px;">' +
+      '<strong style="display:block; margin-bottom:8px;">Selected Query</strong>' +
+      '<div><strong>Name:</strong> ' + escapeHtml(selected.name || '') + '</div>' +
+      '<div style="margin-top:6px;"><strong>ID:</strong> ' + escapeHtml(selected['@id'] || '') + '</div>' +
+      '<div style="margin-top:6px;"><strong>Type:</strong> ' + escapeHtml((selected.type || '').toUpperCase()) + '</div>' +
+      '<div style="margin-top:6px;"><strong>File:</strong> ' + escapeHtml(selected.fileName || '') + '</div>' +
+      '<div style="margin-top:6px;"><strong>Location:</strong> ' + escapeHtml(selected.location || '') + '</div>' +
+      '<div style="margin-top:6px;"><strong>Description:</strong><br>' + escapeHtml(selected.description || '(none)') + '</div>' +
+      '<div style="margin-top:10px;">' +
+        '<button type="button" id="previewQueryTextBtn">Preview Query Text</button>' +
+      '</div>' +
+      '<pre id="queryTextPreview" class="hidden" style="margin-top:10px; white-space:pre-wrap; font-size:0.85rem; border:1px solid var(--border); border-radius:8px; padding:10px; background:#f8fafc;"></pre>' +
+    '</div>';
+
+  var previewBtn = document.getElementById('previewQueryTextBtn');
+  if (previewBtn) {
+    previewBtn.addEventListener('click', async function () {
+      var pre = document.getElementById('queryTextPreview');
+      if (!pre) return;
+
+      if (!selected.location) {
+        pre.textContent = 'No query location available.';
+        pre.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        var response = await fetch(selected.location);
+        if (!response.ok) {
+          throw new Error('Could not load query file: ' + response.status);
+        }
+        var text = await response.text();
+        pre.textContent = text;
+        pre.classList.remove('hidden');
+      } catch (err) {
+        pre.textContent = err && err.message ? err.message : String(err);
+        pre.classList.remove('hidden');
+      }
+    });
+  }
+}
+
+function applySelectedQueryToCurrentStep() {
+  var pipeline = deepClone(getActivePipeline());
+  if (!pipeline || !state.selectedStepId || !state.queryPicker.selectedQueryId) return;
+
+  var step = getStepById(pipeline, state.selectedStepId);
+  if (!step || step.stepKind === 'terminal') return;
+
+  var queryDef = getQueryById(state.queryPicker.selectedQueryId);
+  if (!queryDef) return;
+
+  var nextQueryType = queryDef.type || '';
+  var nextBranchKeys = getBranchKeysForQueryType(nextQueryType);
+  var oldBranches = step.branches || {};
+  var oldKeys = Object.keys(oldBranches);
+  var newBranches = {};
+
+  nextBranchKeys.forEach(function (key, index) {
+    newBranches[key] = oldBranches[key] || oldBranches[oldKeys[index]] || '';
+  });
+
+  step.queryId = queryDef['@id'];
+  step.queryType = nextQueryType;
+  step.branches = newBranches;
+
+  pipeline.steps = (pipeline.steps || []).map(function (item) {
+    return item['@id'] === step['@id'] ? step : item;
+  });
+
+  replaceActivePipeline(pipeline);
+  state.queryPicker.isOpen = false;
+  render();
 }
 
 function populateQueryOptions(selectEl, selectedValue) {
@@ -710,6 +958,38 @@ function initEvents() {
     document.getElementById('branchFalseLabel').textContent = labels[1];
   });
 
+  document.getElementById('toggleQueryPickerBtn').addEventListener('click', function () {
+    var pipeline = getActivePipeline();
+    if (!pipeline || !state.selectedStepId) return;
+
+    var step = getStepById(pipeline, state.selectedStepId);
+    if (!step || step.stepKind === 'terminal') return;
+
+    if (!state.queryPicker.selectedQueryId) {
+      state.queryPicker.selectedQueryId = step.queryId || null;
+    }
+
+    toggleInlineQueryPicker();
+  });
+
+  document.getElementById('cancelQueryPickerBtn').addEventListener('click', function () {
+    toggleInlineQueryPicker(false);
+  });
+
+  document.getElementById('applyQueryPickerBtn').addEventListener('click', function () {
+    applySelectedQueryToCurrentStep();
+  });
+
+  document.getElementById('querySearchInput').addEventListener('input', function () {
+    state.queryPicker.search = this.value;
+    renderQueryPicker();
+  });
+
+  document.getElementById('queryTypeFilter').addEventListener('change', function () {
+    state.queryPicker.type = this.value;
+    renderQueryPicker();
+  });
+
   document.getElementById('onErrorActionSelect').addEventListener('change', function () {
     document.getElementById('onErrorTargetWrap').classList.toggle('hidden', this.value !== 'goto');
   });
@@ -750,6 +1030,8 @@ function initEvents() {
     URL.revokeObjectURL(url);
   });
 }
+
+
 
 initTabs();
 initEvents();

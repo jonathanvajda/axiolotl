@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Analytic Workflow Builder – Clean Layout</title>
   <!-- Public CSS -->
-	<link rel="stylesheet" href="./styles/skeleton.css" />
+	<!--<link rel="stylesheet" href="./styles/skeleton.css" />-->
 	<!-- App Global CSS -->
-	<script>
+	<!--<script>
 		(function () {
 		const APPBASE_CSS_SOURCES = [
 			/*"./styles/app-base.css", /* local dev copy first */
@@ -51,8 +51,8 @@
 			showFailure("Failed to load app base CSS from all sources.");
 		})();
 		})();
-	</script>
-	<script>
+	</script>-->
+	<!--<script>
 		(function () {
 		const HEADER_CSS_SOURCES = [
 			/*"./styles/site-header.css", /* local dev copy first */
@@ -96,7 +96,7 @@
 			showFailure("Failed to load header CSS from all sources.");
 		})();
 		})();
-	</script>
+	</script>-->
 
 
 	<!-- App Local CSS -->
@@ -173,8 +173,53 @@
         </div>
 
         <div>
-          <label for="stepQuerySelect">Query</label>
-          <select id="stepQuerySelect" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;"></select>
+          <label>Query</label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input
+              id="stepQueryDisplay"
+              readonly
+              style="flex:1; width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; background:#f3f4f6;"
+            />
+            <button type="button" id="toggleQueryPickerBtn">Browse Queries</button>
+          </div>
+          <div id="selectedQueryMeta" class="muted" style="margin-top:8px; font-size:0.9rem;"></div>
+
+          <!-- Optional hidden fallback if you still want to keep the old JS alive temporarily -->
+          <select id="stepQuerySelect" class="hidden" style="display:none;"></select>
+        </div>
+
+        <div id="inlineQueryPicker" class="hidden" style="border:1px dashed var(--border); border-radius:8px; padding:10px;">
+          <strong style="display:block; margin-bottom:8px;">Query Browser</strong>
+
+          <div style="display:grid; gap:8px;">
+            <input
+              id="querySearchInput"
+              type="text"
+              placeholder="Search queries by name, id, description, or file"
+              style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;"
+            />
+
+            <select
+              id="queryTypeFilter"
+              style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px;"
+            >
+              <option value="">All types</option>
+              <option value="ask">ASK</option>
+              <option value="select">SELECT</option>
+              <option value="construct">CONSTRUCT</option>
+              <option value="update">UPDATE</option>
+            </select>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px;">
+            <div id="queryPickerList"></div>
+            <div id="queryPickerDetail"></div>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button type="button" id="applyQueryPickerBtn" class="primary">Use Selected Query</button>
+            <button type="button" id="cancelQueryPickerBtn">Close Browser</button>
+          </div>
         </div>
 
         <div>
