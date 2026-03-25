@@ -1,82 +1,72 @@
 {
   "@id": "pipeline:ontology_metadata_review_basic",
   "name": "Ontology Metadata Review - Basic",
+  "description": "Checks license, then definitions, then access rights.",
+  "builtin": true,
   "startStepId": "Event001",
   "steps": [
     {
       "@id": "Event001",
-      "query": {
-        "name": "Check Ontology for Valid License",
-        "location": "./queries/q_ontology-has-dcterms-license-with-url.rq",
-        "type": "ask",
-        "comment": ""
+      "label": "Check Ontology for Valid License",
+      "queryId": "query:q_ontology_has_dcterms_license_with_url",
+      "queryType": "ask",
+      "comment": "Top-level license check.",
+      "branches": {
+        "true": "Event002",
+        "false": "Event003"
       },
-      "rules": {
-        "ask": {
-          "true": {
-            "goto": "Event002"
-          },
-          "false": {
-            "goto": "Event003"
-          }
-        }
+      "onError": {
+        "action": "stop"
       }
     },
     {
       "@id": "Event002",
-      "query": {
-        "name": "Check Classes for skos:definition",
-        "location": "./queries/q_class-has-skos-definition.rq",
-        "type": "ask",
-        "comment": ""
+      "label": "Check Classes for skos:definition",
+      "queryId": "query:q_class_has_skos_definition",
+      "queryType": "ask",
+      "comment": "Only continue here if license check passed.",
+      "branches": {
+        "true": "Event004",
+        "false": "Event005"
       },
-      "rules": {
-        "ask": {
-          "true": {
-            "goto": "Event004"
-          },
-          "false": {
-            "goto": "Event005"
-          }
-        }
+      "onError": {
+        "action": "stop"
       }
     },
     {
       "@id": "Event003",
-      "query": {
-        "name": "Check Ontology for accessRights",
-        "location": "./queries/q_ontology-has-dcterms-accessRights.rq",
-        "type": "ask",
-        "comment": ""
+      "label": "Check Ontology for accessRights",
+      "queryId": "query:q_ontology_has_dcterms_accessRights",
+      "queryType": "ask",
+      "comment": "Alternative branch after license failure.",
+      "branches": {
+        "true": "Event004",
+        "false": "Event006"
       },
-      "rules": {
-        "ask": {
-          "true": {
-            "goto": "Event004"
-          },
-          "false": {
-            "goto": "Event006"
-          }
-        }
+      "onError": {
+        "action": "stop"
       }
     },
     {
       "@id": "Event004",
+      "label": "Workflow Passed",
       "action": "stop",
       "result": "pass",
-      "comment": "All relevant checks passed in this branch."
+      "comment": "Sufficient metadata conditions satisfied."
     },
     {
       "@id": "Event005",
+      "label": "Definition Issue Found",
       "action": "stop",
       "result": "fail",
-      "comment": "Class definition issue found."
+      "comment": "Class definition criteria failed."
     },
     {
       "@id": "Event006",
+      "label": "Metadata Issue Found",
       "action": "stop",
       "result": "fail",
-      "comment": "License and accessRights issue found."
+      "comment": "License and accessRights branch failed."
     }
   ]
 }
