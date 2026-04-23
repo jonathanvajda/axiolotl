@@ -370,7 +370,7 @@ button.prefix-button {
 
 .inference-console {
   width: 100%;
-  min-height: 7em; /* about 5 lines */
+  min-height: 12em;
   resize: vertical;
   font-family: monospace;
   white-space: pre-wrap;
@@ -581,6 +581,7 @@ button.prefix-button {
 /* Better query textarea sizing */
 #sparql-query,
 #rdf-preview {
+  min-height: 12em;
   font-size: 1.5rem;
   box-sizing: border-box;
 }

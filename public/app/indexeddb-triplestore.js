@@ -457,35 +457,70 @@ async function initTripleStore() {
 
 /**
  * Adds RDF triples to the IndexedDB triple store.
- * @param {Array} triples - Array of rdflib.js triple objects.
+ * Accepts either:
+ *  1) term-based quads/statements (subject.value, predicate.value, etc.)
+ *  2) already-flattened row objects (subject, predicate, object, graph as strings)
+ * @param {Array} triples
  */
 async function storeTriplesInNamedGraph(triples) {
   try {
-    if (debuggingConsoleEnabled) { console.info(`[storeTriplesInNamedGraph] Adding ${triples.length} triples to IndexedDB`); }
+    if (debuggingConsoleEnabled) {
+      console.info(`[storeTriplesInNamedGraph] Adding ${triples.length} triples to IndexedDB`);
+    }
+
     const db = await initTripleStore();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
+
     for (const t of triples) {
-      await store.put({
-        subject: t.subject.value,
-        subjectType: t.subject.termType,          // "NamedNode" | "BlankNode"
-        predicate: t.predicate.value,
-        predicateType: t.predicate.termType,      // should be "NamedNode"
-        object: t.object.value,
-        objectType: t.object.termType,            // "NamedNode" | "BlankNode" | "Literal"
-        objectLang: t.object.lang || null,
-        objectDatatype: t.object.datatype?.value || null,
-        graph: normalizeIriString(t.graph?.value || t.why?.value || '')
-      });
+      const row = {
+        subject: typeof t.subject === 'string' ? t.subject : (t.subject?.value ?? ''),
+        subjectType: t.subjectType ?? t.subject?.termType ?? '',
+        predicate: typeof t.predicate === 'string' ? t.predicate : (t.predicate?.value ?? ''),
+        predicateType: t.predicateType ?? t.predicate?.termType ?? '',
+        object: typeof t.object === 'string' ? t.object : (t.object?.value ?? ''),
+        objectType: t.objectType ?? t.object?.termType ?? '',
+        objectLang: t.objectLang ?? t.object?.lang ?? t.object?.language ?? null,
+        objectDatatype: t.objectDatatype ?? t.object?.datatype?.value ?? null,
+        graph: normalizeIriString(
+          typeof t.graph === 'string'
+            ? t.graph
+            : (t.graph?.value || t.why?.value || '')
+        )
+      };
+
+      // Cheap defensive check so the real bad row is obvious
+      if (
+        typeof row.subject !== 'string' ||
+        typeof row.predicate !== 'string' ||
+        typeof row.object !== 'string' ||
+        typeof row.graph !== 'string'
+      ) {
+        console.error('[storeTriplesInNamedGraph] Invalid row:', row, t);
+        throw new Error('Invalid triple row for IndexedDB storage.');
+      }
+
+      await store.put(row);
     }
+
     await tx.done;
-    try { window?.dispatchEvent(new CustomEvent('triples-changed', { detail: { db: DB_NAME, store: STORE_NAME, type: 'put' } })); } catch { }
-    if (debuggingConsoleEnabled) { console.info('[storeTriplesInNamedGraph] Triples successfully stored.'); }
+
+    try {
+      window?.dispatchEvent(new CustomEvent('triples-changed', {
+        detail: { db: DB_NAME, store: STORE_NAME, type: 'put' }
+      }));
+    } catch {}
+
+    if (debuggingConsoleEnabled) {
+      console.info('[storeTriplesInNamedGraph] Triples successfully stored.');
+    }
   } catch (error) {
-    if (debuggingConsoleEnabled) { console.error('[storeTriplesInNamedGraph] Error storing triples:', error); }
+    if (debuggingConsoleEnabled) {
+      console.error('[storeTriplesInNamedGraph] Error storing triples:', error);
+    }
     throw error;
   }
-};
+}
 
 /**
  * Retrieves all triples from the triple store.
