@@ -111,6 +111,7 @@
 	<!-- App Local CSS -->
 
 	<link rel="stylesheet" href="./styles/axiolotl.css">
+	<link rel="stylesheet" href="./styles/sviz.css">
 
 </head>
 
@@ -1493,16 +1494,43 @@ z" />
 				</div>
 
 				<textarea id="sparql-query" rows="10" placeholder="Enter SPARQL query here..."></textarea>
-				<button id="get-all-triples">Get All Triples</button>
-				<button id="run-query" class="primary">Run Query</button>
-				<span style="margin-left: 15em;">Label:</span>
-				<input id="query-label" style="width:150px">
-				<button id="save-query-for-later" type="button">Save Query for Later</button>
+				<div class="query-action-row">
+					<button id="get-all-triples">Get All Triples</button>
+					<button id="run-query" class="primary">Run Query</button>
+					<div class="query-viz-actions" aria-label="Visualization actions">
+						<button id="svizRenderBtn" type="button">Render Diagram</button>
+						<button id="svizToggleDiagramBtn" type="button" hidden>Hide Diagram</button>
+						<label class="sviz-check query-viz-option">
+							<input id="svizShowPrefixes" type="checkbox" checked>
+							<span>Prefixes</span>
+						</label>
+						<label class="sviz-check query-viz-option">
+							<input id="svizAttachFilters" type="checkbox">
+							<span>Attach filters</span>
+						</label>
+					</div>
+				</div>
+
+				<div id="query-diagram" class="sviz-panel" aria-label="SPARQL query diagram" hidden>
+					<section class="sviz-meta" aria-label="Query metadata">
+						<div><strong>Query type:</strong> <span id="svizQueryType">-</span></div>
+						<div><strong>Triples (WHERE):</strong> <span id="svizTripleCount">0</span></div>
+					</section>
+					<div class="sviz-diagram-wrap">
+						<div id="svizDiagram" class="sviz-diagram" role="img" aria-label="SPARQL graph diagram"></div>
+					</div>
+					<section id="svizPrefixes" class="sviz-prefixes" aria-label="Prefixes"></section>
+				</div>
 			</div>
 
 			<div id="saved-queries-sidebar" class="sidebar-right">
-				<h3>Saved Queries</h3>
-				<ul id="saved-query-list"style="list-style: none; padding-left: 0; margin: 0"></ul>
+				<h3>Query Library</h3>
+				<div class="query-library-save">
+					<label for="query-label">Label</label>
+					<input id="query-label">
+					<button id="save-query-for-later" type="button">Save Query for Later</button>
+				</div>
+				<ul id="saved-query-list" style="list-style: none; padding-left: 0; margin: 0"></ul>
 				<br />
 				<hr style="width: 66%;">
 				<br />
@@ -1606,6 +1634,8 @@ z" />
 	<script src="./app/idb.min.js"></script>
 	<script src="./app/rdflib.min.js"></script>
 	<script src="./app/comunica-browser.js"></script>
+	<script src="./app/vendor/cytoscape.min.js"></script>
+	<script src="./app/vendor/sparqljs.umd.js"></script>
 
 	<!-- Header JS -->
 	<script>
@@ -1656,6 +1686,7 @@ z" />
 	<script src="./app/comunica-indexeddb-bridge.js"></script>
 	<script src="./app/semantic-core.js"></script>
 	<script src="./app/axiolotl-query.js"></script>
+	<script type="module" src="./app/sparql-ui.js"></script>
 	<script>
 		document.addEventListener('DOMContentLoaded', () => {
 			fetch('build-info.json')
