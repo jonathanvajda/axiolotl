@@ -149,6 +149,65 @@ async function loadGraphFromIndexedDB() {
 }
 
 /**
+ * Converts an RDF/JS term from N3.js into the rdflib.js term shape used by
+ * the existing workspace storage path.
+ * @param {any} term - RDF/JS term.
+ * @returns {any} rdflib.js term.
+ */
+function rdfjsTermToRdflibTerm(term) {
+  if (!term) return undefined;
+
+  if (term.termType === 'NamedNode') {
+    return $rdf.sym(term.value);
+  }
+
+  if (term.termType === 'BlankNode') {
+    return $rdf.blankNode(String(term.value || '').replace(/^_:/, ''));
+  }
+
+  if (term.termType === 'Literal') {
+    if (term.language) {
+      return $rdf.literal(term.value, term.language);
+    }
+
+    const datatype = term.datatype?.value;
+    return datatype
+      ? $rdf.literal(term.value, undefined, $rdf.sym(datatype))
+      : $rdf.literal(term.value);
+  }
+
+  throw new Error(`Unsupported RDF/JS term type: ${term.termType}`);
+}
+
+/**
+ * Parses N-Triples with N3.js. rdflib.js does not accept the
+ * application/n-triples media type in this browser build.
+ * @param {string} rdfText - Raw N-Triples text.
+ * @param {$rdf.Formula} targetGraph - The rdflib graph to populate.
+ * @param {string} graphIRI - Optional named graph IRI.
+ * @returns {number} Number of parsed statements.
+ */
+function parseNTriplesIntoNamedGraph(rdfText, targetGraph, graphIRI) {
+  const parser = new N3.Parser({
+    format: 'N-Triples',
+    baseIRI: 'http://example.org/'
+  });
+  const quads = parser.parse(rdfText);
+  const graphSym = graphIRI ? $rdf.sym(graphIRI) : undefined;
+
+  quads.forEach(q => {
+    targetGraph.add(
+      rdfjsTermToRdflibTerm(q.subject),
+      rdfjsTermToRdflibTerm(q.predicate),
+      rdfjsTermToRdflibTerm(q.object),
+      graphSym
+    );
+  });
+
+  return quads.length;
+}
+
+/**
  * Parses RDF content and adds statements to a target graph under a given named graph.
  * @param {string} rdfText - The raw RDF content.
  * @param {$rdf.Formula} targetGraph - The rdflib graph to populate.
@@ -157,6 +216,20 @@ async function loadGraphFromIndexedDB() {
  * @returns {Promise<void>}
  */
 const parseIntoNamedGraph = async (rdfText, targetGraph, graphIRI, mimeType) => {
+  if (mimeType === 'application/n-triples') {
+    try {
+      const count = parseNTriplesIntoNamedGraph(rdfText, targetGraph, graphIRI);
+      if (debuggingConsoleEnabled) {console.info(
+        `[parseIntoNamedGraph] Added ${count} N-Triples statements to ` +
+        (graphIRI ? `graph <${graphIRI}>` : 'the default graph')
+      )};
+      return;
+    } catch (err) {
+      if (debuggingConsoleEnabled) {console.error('[parseIntoNamedGraph] Error parsing N-Triples with N3.js:', err)};
+      throw err;
+    }
+  }
+
   return new Promise((resolve, reject) => {
     const tmp = $rdf.graph();
     $rdf.parse(rdfText, tmp, 'http://example.org/', mimeType, err => {
@@ -723,6 +796,12 @@ function detectRdfMimeByName(filename='') {
  */
 async function parseRdfTextToGraph(text, mime='text/turtle', baseIRI='http://example.org/') {
   const g = $rdf.graph();
+
+  if (mime === 'application/n-triples') {
+    parseNTriplesIntoNamedGraph(text, g, null);
+    return g;
+  }
+
   await new Promise((res, rej) => $rdf.parse(text, g, baseIRI, mime, err => err ? rej(err) : res()));
   return g;
 }
