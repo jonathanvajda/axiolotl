@@ -1,0 +1,192 @@
+/* SPARQL Visualizer (sviz-*) — app-scoped styles only */
+
+.sviz-header__title {
+  margin: 0;
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.sviz-header__subtitle {
+  margin: 0.4rem 0 0;
+  color: var(--ont-text);
+  opacity: 0.65;
+}
+
+.sviz-main {
+  padding: 1rem 0 1.5rem;
+}
+
+.sviz-panel {
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--ont-bg);
+}
+
+.sviz-label {
+  font-weight: 600;
+}
+
+.sviz-textarea {
+  min-height: 40rem;
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  resize: vertical;
+}
+
+.sviz-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.sviz-settings {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sviz-check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0;
+}
+
+.sviz-meta {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  color: var(--ont-text);
+  opacity: 0.75;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.sviz-diagram-wrap {
+  /* display: grid;*/
+  place-items: stretch;
+}
+
+.sviz-diagram {
+  /* Embed-friendly constraints */
+  width: 100%;
+  max-width: 50vw;
+  height: 60vh;
+  max-height: 60vh;
+  background-color: var(--ont-panel-bg);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 8px;
+}
+
+.sviz-prefixes {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  max-height: 10rem;
+  overflow: auto;
+}
+
+.sviz-prefix-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+
+.sviz-prefix-key {
+  font-weight: 700;
+  min-width: 6rem;
+}
+
+.sviz-prefix-val {
+  overflow-wrap: anywhere;
+  color: var(--ont-text);
+}
+
+.sviz-footer {
+  border-top: 1px solid rgba(0,0,0,0.08);
+  padding: 0.75rem 0;
+  color: var(--ont-text);
+}
+
+/* Toast */
+.sviz-toast-region {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  z-index: 9999;
+}
+
+.sviz-toast {
+  border: 1px solid rgba(0,0,0,0.10);
+  background: var(--ont-bg);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  max-width: 22rem;
+}
+
+.sviz-toast--success { border-left: 6px solid #2ecc71; }
+.sviz-toast--error   { border-left: 6px solid #e74c3c; }
+.sviz-toast--info    { border-left: 6px solid #3498db; }
+
+/* Axiolotl query-tab embed */
+.query-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.75rem 0;
+}
+
+.query-viz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-left: clamp(1.25rem, 4vw, 3rem);
+}
+
+.query-viz-option {
+  min-height: 32px;
+  height: auto;
+  margin: 0;
+}
+
+#query-diagram {
+  margin-top: 0.75rem;
+}
+
+#query-diagram .sviz-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  border-top: 0;
+}
+
+#query-diagram .sviz-diagram {
+  max-width: 100%;
+  height: 42vh;
+  max-height: 32rem;
+}
+
+.query-library-save {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+
+.query-library-save label {
+  height: auto;
+  margin: 0;
+  font-weight: 600;
+}
+
+.query-library-save input {
+  width: 100%;
+  box-sizing: border-box;
+}
