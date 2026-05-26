@@ -1395,6 +1395,28 @@ z" />
 				<br />
 				<hr style="width: 66%;">
 				<br />
+				<div class="workspace-export-panel">
+					<h3>Export Data</h3>
+					<label for="workspace-export-scope">Data:</label>
+					<select id="workspace-export-scope">
+						<option value="default">Default graph</option>
+						<option value="named">Named graphs</option>
+						<option value="all">All graphs</option>
+					</select>
+					<div class="workspace-export-actions">
+						<label for="workspace-export-format">Format:</label>
+						<select id="workspace-export-format">
+							<option value="text/turtle">Turtle</option>
+							<option value="application/n-triples">N-Triples</option>
+							<option value="application/ld+json">JSON-LD</option>
+						</select>
+						<button id="download-active-workspace" type="button">Download Data</button>
+						<small id="workspace-export-hint">
+							Default graph exports support Turtle, N-Triples, and JSON-LD.
+						</small>
+					</div>
+				</div>
+				<br />
 				<br />
 				<div class="danger-zone">
 					<h3 class="danger">Clear Workspace</h3>
@@ -1681,12 +1703,12 @@ z" />
 	<!-- App JS --> 
 
 	<!-- Internal JS -->
-	<script src="./app/indexeddb-triplestore.js"></script>
-	<script src="./app/axiolotl-inference.js"></script>
-	<script src="./app/comunica-indexeddb-bridge.js"></script>
-	<script src="./app/semantic-core.js"></script>
-	<script src="./app/axiolotl-query.js"></script>
-	<script type="module" src="./app/sparql-ui.js"></script>
+	<script src="./app/indexeddb-triplestore.js?v=20260526-update-parser"></script>
+	<script src="./app/axiolotl-inference.js?v=20260526-update-parser"></script>
+	<script src="./app/comunica-indexeddb-bridge.js?v=20260526-update-parser"></script>
+	<script src="./app/semantic-core.js?v=20260526-update-parser"></script>
+	<script src="./app/axiolotl-query.js?v=20260526-update-parser"></script>
+	<script type="module" src="./app/sparql-ui.js?v=20260526-update-parser"></script>
 	<script>
 		document.addEventListener('DOMContentLoaded', () => {
 			fetch('build-info.json')

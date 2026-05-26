@@ -107,6 +107,147 @@ async function serializeStoreToNTriples(store) {
   });
 }
 
+function getWorkspaceExportOptions() {
+  return {
+    scope: document.getElementById('workspace-export-scope')?.value || 'default',
+    mime: document.getElementById('workspace-export-format')?.value || 'text/turtle',
+  };
+}
+
+function getWorkspaceExportFormats(scope) {
+  if (scope === 'default') {
+    return [
+      ['text/turtle', 'Turtle'],
+      ['application/n-triples', 'N-Triples'],
+      ['application/ld+json', 'JSON-LD'],
+    ];
+  }
+
+  return [
+    ['application/trig', 'TriG'],
+    ['application/n-quads', 'N-Quads'],
+    ['application/ld+json', 'JSON-LD'],
+  ];
+}
+
+function syncWorkspaceExportFormatOptions() {
+  const scope = document.getElementById('workspace-export-scope')?.value || 'default';
+  const formatSelect = document.getElementById('workspace-export-format');
+  const hint = document.getElementById('workspace-export-hint');
+  if (!formatSelect) return;
+
+  const previous = formatSelect.value;
+  const formats = getWorkspaceExportFormats(scope);
+  formatSelect.innerHTML = formats
+    .map(([value, label]) => `<option value="${value}">${label}</option>`)
+    .join('');
+  formatSelect.value = formats.some(([value]) => value === previous) ? previous : formats[0][0];
+
+  if (hint) {
+    hint.textContent = scope === 'default'
+      ? 'Default graph exports support Turtle, N-Triples, and JSON-LD.'
+      : 'Named graph exports support TriG, N-Quads, and JSON-LD.';
+  }
+}
+
+async function handleDownloadActiveWorkspace() {
+  try {
+    const { scope, mime } = getWorkspaceExportOptions();
+    const store = await getWorkspaceExportStore(scope);
+    const text = await serializeWorkspaceExportStore(store, mime);
+    const count = store.getQuads(null, null, null, null).length;
+
+    if (!count) {
+      showToast('No triples found for that export scope.', 'info');
+      return;
+    }
+
+    downloadText(
+      `active-workspace-${scope}-${timestampUTC()}.${workspaceExportExtension(mime)}`,
+      text,
+      mime
+    );
+    showToast(`Downloaded ${count} triple${count === 1 ? '' : 's'}.`, 'success');
+  } catch (err) {
+    if (debuggingConsoleEnabled) {
+      console.error('[handleDownloadActiveWorkspace] failed:', err);
+    }
+    showToast(err.message || String(err), 'error');
+  }
+}
+
+async function getWorkspaceExportStore(scope) {
+  const store = await loadGraphFromIndexedDB();
+  if (scope === 'all') return store;
+
+  const { Store, DataFactory } = N3;
+  const { defaultGraph } = DataFactory;
+  const scoped = new Store();
+  const quads = scope === 'default'
+    ? store.getQuads(null, null, null, defaultGraph())
+    : store.getQuads(null, null, null, null).filter(q => q.graph.termType !== 'DefaultGraph');
+
+  scoped.addQuads(quads);
+  return scoped;
+}
+
+async function serializeWorkspaceExportStore(store, mime) {
+  if (mime === 'application/ld+json') {
+    const nq = await serializeWorkspaceWithN3(store, 'application/n-quads');
+    return await serializeJsonLdFromNQuads(nq);
+  }
+
+  return await serializeWorkspaceWithN3(store, mime);
+}
+
+async function serializeWorkspaceWithN3(store, mime) {
+  const formatByMime = {
+    'text/turtle': 'Turtle',
+    'application/n-triples': 'N-Triples',
+    'application/n-quads': 'N-Quads',
+    'application/trig': 'TriG',
+  };
+  const format = formatByMime[mime];
+  if (!format) throw new Error(`Unsupported workspace export format: ${mime}`);
+
+  return await new Promise((resolve, reject) => {
+    const writer = new N3.Writer({ format });
+    writer.addQuads(store.getQuads(null, null, null, null));
+    writer.end((error, result) => {
+      if (error) reject(error);
+      else resolve(result || '');
+    });
+  });
+}
+
+async function serializeJsonLdFromNQuads(nquads) {
+  const jsonld = globalThis.jsonld;
+  if (jsonld && typeof jsonld.fromRDF === 'function') {
+    const expanded = await jsonld.fromRDF(nquads, { format: 'application/n-quads' });
+    return JSON.stringify(expanded, null, 2);
+  }
+
+  return JSON.stringify(nquadsToSimpleJsonLd(nquads), null, 2);
+}
+
+function nquadsToSimpleJsonLd(nquads) {
+  return nquads
+    .split(/\r?\n/u)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => ({ '@value': line }));
+}
+
+function workspaceExportExtension(mime) {
+  return ({
+    'text/turtle': 'ttl',
+    'application/n-triples': 'nt',
+    'application/n-quads': 'nq',
+    'application/trig': 'trig',
+    'application/ld+json': 'jsonld',
+  })[mime] || 'rdf';
+}
+
 /** 
 * Get/set active prefixes from localStorage
 * Assumes:
@@ -793,7 +934,12 @@ document.getElementById('query-results').addEventListener('click', function (eve
  */
 const commitUpdateByMaterialization = async (updateStr, targetMode='default') => {
   const previews = makePreviewConstructs(updateStr);
-  if (!previews.length) throw new Error('Unsupported UPDATE shape for commit.');
+  if (!previews.length) {
+    const detail = typeof describeUpdateShape === 'function'
+      ? describeUpdateShape(updateStr)
+      : { bodyPreview: String(updateStr ?? '').slice(0, 160) };
+    throw new Error(`Unsupported UPDATE shape for commit. Parsed first keyword: ${detail.firstKeyword || '(none)'}. Body preview: ${detail.bodyPreview || detail.textPreview || '(empty)'}`);
+  }
 
   // We separate delete-like vs insert-like by their labels
   const delQs = previews.filter(p=>/deleted/i.test(p.label)).map(p=>p.query);
@@ -1090,6 +1236,13 @@ async function handleUploadSavedQueriesCsv(file) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  syncWorkspaceExportFormatOptions();
+  document.getElementById('workspace-export-scope')
+    ?.addEventListener('change', syncWorkspaceExportFormatOptions);
+
+  document.getElementById('download-active-workspace')
+    ?.addEventListener('click', handleDownloadActiveWorkspace);
+
   document.getElementById('save-query-for-later')
     ?.addEventListener('click', handleSaveQueryForLater);
 
@@ -1396,9 +1549,14 @@ document.getElementById('run-query').onclick = async () => {
   // ---- small local helper for preview rendering (pure string builder)
   const makePreviewHtml = (sections) => {
     // sections: Array<{label:string, text:string}>
-    const esc = (s) => s; // caller passes plain text for <pre>; no HTML needed
+    const esc = (s) => String(s ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
     const blocks = sections.map(({ label, text }) =>
-      `\n<h4 style="margin:.6em 0;">${label}</h4>\n<pre style="white-space:pre-wrap">${esc(text)}</pre>`
+      `\n<h4 style="margin:.6em 0;">${esc(label)}</h4>\n<pre style="white-space:pre-wrap">${esc(text)}</pre>`
     );
     return blocks.join('\n');
   };

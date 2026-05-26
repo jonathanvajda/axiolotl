@@ -331,6 +331,39 @@ button.prefix-button {
   width: 45%;
 }
 
+.workspace-export-panel {
+  margin-bottom: 0.5rem;
+}
+
+.workspace-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.6rem;
+  margin-top: 1rem;
+}
+
+.workspace-export-actions label {
+  flex-basis: 100%;
+  height: auto;
+  margin-bottom: -0.2rem;
+}
+
+.workspace-export-actions select {
+  margin-left: 0;
+  min-width: 11rem;
+}
+
+.workspace-export-actions button {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.workspace-export-actions small {
+  color: var(--ont-muted);
+  line-height: 1.35;
+}
+
 /* ---------- 8) Inference rule chips ---------- */
 
 #rules {

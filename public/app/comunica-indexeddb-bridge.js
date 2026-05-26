@@ -566,9 +566,18 @@ function buildQuery(prefixes, queryText) {
  */
 const runConstructPreview = async (constructQuery, format='text/turtle') => {
   if (debuggingConsoleEnabled) {console.info('[runConstructPreview] Executing CONSTRUCT preview...')};
-  const store = loadGraphFromIndexedDB();
+  const store = await loadGraphFromIndexedDB();
   const res = await engine.query(constructQuery, { sources:[{ type:'rdfjsSource', value: store }] });
-  if (!res || !res.quadStream) return '';
+  if (!res) return '';
+
+  if (typeof engine.resultToString === 'function') {
+    const mime = format === 'application/n-triples' ? 'application/n-triples' : 'text/turtle';
+    const serialized = await engine.resultToString(res, mime);
+    if (serialized?.data) return await collectStreamText(serialized.data);
+  }
+
+  if (!res.quadStream) return '';
+
   const { Writer } = N3;                              // available in your build
   const writer = new Writer({ format: format === 'application/n-triples' ? 'N-Triples' : 'Turtle' });
   return await new Promise((resolve, reject) => {
@@ -577,6 +586,17 @@ const runConstructPreview = async (constructQuery, format='text/turtle') => {
     res.quadStream.on('end', () => writer.end((err, str) => err ? reject(err) : resolve(str)));
   });
 };
+
+async function collectStreamText(stream) {
+  return await new Promise((resolve, reject) => {
+    let text = '';
+    stream.on('data', chunk => {
+      text += String(chunk);
+    });
+    stream.on('end', () => resolve(text));
+    stream.on('error', reject);
+  });
+}
 
 // Execute a SPARQL query on a remote SPARQL endpoint
 async function runQueryOnEndpoint(endpoint, query) {
@@ -606,7 +626,7 @@ async function runQueryOnEndpoint(endpoint, query) {
  * @returns {Array<{label:string, query:string}>}
  */
 const makePreviewConstructs = (updateStr) => {
-  const s = String(updateStr ?? '').replace(/^\s*#.*$/mg,'').trim();
+  const { prologue, body: s } = splitSparqlPrologue(updateStr);
   const out = [];
 
   // INSERT DATA { GRAPH <g>? { ... } }
@@ -615,10 +635,10 @@ const makePreviewConstructs = (updateStr) => {
   const mInsertData = s.match(/^INSERT\s+DATA\s*\{([\s\S]+)\}\s*;?\s*$/i);
   if (mInsertData) {
     const body = mInsertData[1];
-    // Fallback: show the raw body as CONSTRUCT by wrapping as template+WHERE { body }.
+    // INSERT DATA has no WHERE pattern, so construct the constant template once.
     out.push({
       label: 'Triples that would be inserted',
-      query: `CONSTRUCT { ${body} } WHERE { ${body} }`
+      query: `${prologue}\nCONSTRUCT { ${body} } WHERE {}`
     });
     return out;
   }
@@ -629,39 +649,206 @@ const makePreviewConstructs = (updateStr) => {
     const P = mDeleteWhere[1];
     out.push({
       label: 'Triples that would be deleted',
-      query: `CONSTRUCT { ${P} } WHERE { ${P} }`
+      query: `${prologue}\nCONSTRUCT { ${P} } WHERE { ${P} }`
     });
     return out;
   }
 
   // DELETE { T } INSERT { U } WHERE { P }
-  const mDelIns = s.match(/^DELETE\s*\{([\s\S]+?)\}\s*INSERT\s*\{([\s\S]+?)\}\s*WHERE\s*\{([\s\S]+?)\}\s*;?\s*$/i);
-  if (mDelIns) {
-    const T = mDelIns[1], U = mDelIns[2], P = mDelIns[3];
-    out.push({ label:'Triples that would be deleted', query:`CONSTRUCT { ${T} } WHERE { ${P} }` });
-    out.push({ label:'Triples that would be inserted', query:`CONSTRUCT { ${U} } WHERE { ${P} }` });
+  const deleteInsert = parseDeleteInsertWhereUpdate(s);
+  if (deleteInsert) {
+    out.push({ label:'Triples that would be deleted', query:`${prologue}\nCONSTRUCT { ${deleteInsert.deleteTemplate} } WHERE { ${deleteInsert.wherePattern} }` });
+    out.push({ label:'Triples that would be inserted', query:`${prologue}\nCONSTRUCT { ${deleteInsert.insertTemplate} } WHERE { ${deleteInsert.wherePattern} }` });
     return out;
   }
 
   // INSERT { T } WHERE { P }
-  const mInsert = s.match(/^INSERT\s*\{([\s\S]+?)\}\s*WHERE\s*\{([\s\S]+?)\}\s*;?\s*$/i);
-  if (mInsert) {
-    const T = mInsert[1], P = mInsert[2];
-    out.push({ label:'Triples that would be inserted', query:`CONSTRUCT { ${T} } WHERE { ${P} }` });
+  const insertWhere = parseInsertWhereUpdate(s);
+  if (insertWhere) {
+    out.push({ label:'Triples that would be inserted', query:`${prologue}\nCONSTRUCT { ${insertWhere.insertTemplate} } WHERE { ${insertWhere.wherePattern} }` });
     return out;
   }
 
   // DELETE { T } WHERE { P }
-  const mDelete = s.match(/^DELETE\s*\{([\s\S]+?)\}\s*WHERE\s*\{([\s\S]+?)\}\s*;?\s*$/i);
-  if (mDelete) {
-    const T = mDelete[1], P = mDelete[2];
-    out.push({ label:'Triples that would be deleted', query:`CONSTRUCT { ${T} } WHERE { ${P} }` });
+  const deleteWhere = parseDeleteWhereUpdate(s);
+  if (deleteWhere) {
+    out.push({ label:'Triples that would be deleted', query:`${prologue}\nCONSTRUCT { ${deleteWhere.deleteTemplate} } WHERE { ${deleteWhere.wherePattern} }` });
     return out;
   }
 
-  if (debuggingConsoleEnabled) {console.info('[makePreviewConstructs] No supported preview pattern matched.')};
+  if (debuggingConsoleEnabled) {
+    console.info('[makePreviewConstructs] No supported preview pattern matched.', describeUpdateShape(updateStr));
+  }
   return out;
 };
+
+function describeUpdateShape(updateStr) {
+  const { prologue, body } = splitSparqlPrologue(updateStr);
+  const firstKeyword = body.match(/^([A-Za-z]+)/)?.[1] || '';
+  return {
+    prologueLength: prologue.length,
+    firstKeyword,
+    bodyPreview: body.slice(0, 160),
+    textPreview: String(updateStr ?? '').slice(0, 160),
+  };
+}
+
+function splitSparqlPrologue(queryText) {
+  const text = stripSparqlComments(String(queryText ?? '')).trim();
+  const prologueMatch = text.match(/^((?:\s*(?:PREFIX\s+[\w-]*:\s*<[^>]+>|BASE\s*<[^>]+>)\s*)*)/i);
+  const prologue = (prologueMatch?.[1] || '').trim();
+  const body = text.slice(prologueMatch?.[0]?.length || 0).trim();
+  return { prologue, body };
+}
+
+function stripSparqlComments(queryText) {
+  let out = '';
+  let quote = null;
+  let inIri = false;
+  let escaped = false;
+
+  for (let i = 0; i < queryText.length; i += 1) {
+    const ch = queryText[i];
+
+    if (quote) {
+      out += ch;
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (inIri) {
+      out += ch;
+      if (ch === '>') inIri = false;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      out += ch;
+      continue;
+    }
+
+    if (ch === '<') {
+      inIri = true;
+      out += ch;
+      continue;
+    }
+
+    if (ch === '#') {
+      while (i < queryText.length && queryText[i] !== '\n') i += 1;
+      if (i < queryText.length) out += queryText[i];
+      continue;
+    }
+
+    out += ch;
+  }
+
+  return out;
+}
+
+function parseInsertWhereUpdate(updateBody) {
+  const cursor = consumeKeyword(updateBody, 0, 'INSERT');
+  if (cursor < 0) return null;
+  const insertBlock = readBraceBlock(updateBody, cursor);
+  if (!insertBlock) return null;
+  const whereCursor = consumeKeyword(updateBody, insertBlock.end, 'WHERE');
+  if (whereCursor < 0) return null;
+  const whereBlock = readBraceBlock(updateBody, whereCursor);
+  if (!whereBlock || hasTrailingUpdateText(updateBody, whereBlock.end)) return null;
+  return { insertTemplate: insertBlock.content, wherePattern: whereBlock.content };
+}
+
+function parseDeleteWhereUpdate(updateBody) {
+  const cursor = consumeKeyword(updateBody, 0, 'DELETE');
+  if (cursor < 0) return null;
+  const deleteBlock = readBraceBlock(updateBody, cursor);
+  if (!deleteBlock) return null;
+  const whereCursor = consumeKeyword(updateBody, deleteBlock.end, 'WHERE');
+  if (whereCursor < 0) return null;
+  const whereBlock = readBraceBlock(updateBody, whereCursor);
+  if (!whereBlock || hasTrailingUpdateText(updateBody, whereBlock.end)) return null;
+  return { deleteTemplate: deleteBlock.content, wherePattern: whereBlock.content };
+}
+
+function parseDeleteInsertWhereUpdate(updateBody) {
+  const cursor = consumeKeyword(updateBody, 0, 'DELETE');
+  if (cursor < 0) return null;
+  const deleteBlock = readBraceBlock(updateBody, cursor);
+  if (!deleteBlock) return null;
+  const insertCursor = consumeKeyword(updateBody, deleteBlock.end, 'INSERT');
+  if (insertCursor < 0) return null;
+  const insertBlock = readBraceBlock(updateBody, insertCursor);
+  if (!insertBlock) return null;
+  const whereCursor = consumeKeyword(updateBody, insertBlock.end, 'WHERE');
+  if (whereCursor < 0) return null;
+  const whereBlock = readBraceBlock(updateBody, whereCursor);
+  if (!whereBlock || hasTrailingUpdateText(updateBody, whereBlock.end)) return null;
+  return {
+    deleteTemplate: deleteBlock.content,
+    insertTemplate: insertBlock.content,
+    wherePattern: whereBlock.content,
+  };
+}
+
+function consumeKeyword(text, start, keyword) {
+  const rest = text.slice(start).trimStart();
+  const skipped = text.length - start - rest.length;
+  const pattern = new RegExp(`^${keyword}\\b`, 'i');
+  const match = rest.match(pattern);
+  return match ? start + skipped + match[0].length : -1;
+}
+
+function readBraceBlock(text, start) {
+  const open = text.indexOf('{', start);
+  if (open < 0) return null;
+
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+
+  for (let i = open; i < text.length; i += 1) {
+    const ch = text[i];
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+
+    if (ch === '{') depth += 1;
+    if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return {
+          content: text.slice(open + 1, i),
+          end: i + 1,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function hasTrailingUpdateText(text, start) {
+  return !/^;?\s*$/u.test(text.slice(start));
+}
 
 function isUpdateQuery(q) {
   if (debuggingConsoleEnabled) {console.info('[isUpdateQuery] Checking if query is UPDATE...');}
