@@ -22,6 +22,8 @@ const DEFAULT_QUERY_OPTIONS = Object.freeze({
   resultForm: 'select',
 });
 
+let browserComunicaEngine = null;
+
 /**
  * @typedef {'default'|'named'|'union'} AxiolotlGraphScope
  * @typedef {'select'|'ask'|'construct'} AxiolotlResultForm
@@ -132,20 +134,16 @@ export function getAllInconsistencySelectQueries(options = {}) {
  * @returns {Promise<{ id: string, rows: Record<string, any>[] }>}
  */
 export async function runInconsistencySelect(id, rdfjsStore, options = {}) {
-  const queryEngine = options.engine || globalThis.engine;
-  if (!queryEngine || typeof queryEngine.queryBindings !== 'function') {
-    throw new Error('runInconsistencySelect requires a Comunica engine with queryBindings.');
+  const queryEngine = resolveComunicaEngine(options.engine);
+  if (!queryEngine || !hasSupportedSelectEngineApi(queryEngine)) {
+    throw new Error('runInconsistencySelect requires a Comunica engine with queryBindings or query/resultToString.');
   }
 
   const query = getInconsistencyQuery(id, { ...options, resultForm: 'select' });
   console.info(`[axiolotl-inconsistency] Running ${id}`);
 
   try {
-    const bindingsStream = await queryEngine.queryBindings(query, {
-      sources: [{ type: 'rdfjsSource', value: rdfjsStore }],
-      baseIRI: options.baseIRI || 'http://example.org/',
-    });
-    const rows = await collectBindings(bindingsStream);
+    const rows = await runSelectWithComunica(queryEngine, query, rdfjsStore, options);
     console.info(`[axiolotl-inconsistency] ${id} returned ${rows.length} row(s).`);
     return { id, rows };
   } catch (error) {
@@ -580,6 +578,54 @@ async function collectBindings(bindingsStream) {
   });
 }
 
+function hasSupportedSelectEngineApi(queryEngine) {
+  return typeof queryEngine.queryBindings === 'function' ||
+    (typeof queryEngine.query === 'function' && typeof queryEngine.resultToString === 'function');
+}
+
+function resolveComunicaEngine(engineCandidate) {
+  if (engineCandidate) return engineCandidate;
+  if (globalThis.engine) return globalThis.engine;
+
+  if (browserComunicaEngine) return browserComunicaEngine;
+
+  if (globalThis.Comunica && typeof globalThis.Comunica.QueryEngine === 'function') {
+    browserComunicaEngine = new globalThis.Comunica.QueryEngine();
+    return browserComunicaEngine;
+  }
+
+  return null;
+}
+
+async function runSelectWithComunica(queryEngine, query, rdfjsStore, options) {
+  const queryOptions = {
+    sources: [{ type: 'rdfjsSource', value: rdfjsStore }],
+    baseIRI: options.baseIRI || 'http://example.org/',
+  };
+
+  if (typeof queryEngine.queryBindings === 'function') {
+    const bindingsStream = await queryEngine.queryBindings(query, queryOptions);
+    return await collectBindings(bindingsStream);
+  }
+
+  const result = await queryEngine.query(query, queryOptions);
+  const asJson = await queryEngine.resultToString(result, 'application/sparql-results+json');
+  const jsonText = await collectTextStream(asJson.data);
+  const parsed = JSON.parse(jsonText || '{}');
+  return parsed.results?.bindings || [];
+}
+
+async function collectTextStream(stream) {
+  return await new Promise((resolve, reject) => {
+    let text = '';
+    stream.on('data', chunk => {
+      text += String(chunk);
+    });
+    stream.on('end', () => resolve(text));
+    stream.on('error', reject);
+  });
+}
+
 function bindingsToObject(bindings) {
   if (bindings && typeof bindings.entries === 'function') {
     return Object.fromEntries(Array.from(bindings.entries()).map(([key, value]) => [String(key), value]));
@@ -641,4 +687,3 @@ const api = Object.freeze({
 if (typeof globalThis !== 'undefined') {
   globalThis.AxiolotlInconsistency = api;
 }
-
