@@ -8,8 +8,11 @@ import {
   listInconsistencyCoverage,
   listInconsistencyQueries,
   normalizeQueryOptions,
+  runInconsistencySelect,
   scopedWhere,
 } from './axiolotl-inconsistency.js';
+import { Readable } from 'node:stream';
+import { jest } from '@jest/globals';
 
 describe('axiolotl-inconsistency query registry', () => {
   test('registers the expected low-hanging-fruit checks', () => {
@@ -135,3 +138,46 @@ describe('coverage documentation and construct adapter', () => {
   });
 });
 
+describe('Comunica select runner compatibility', () => {
+  test('supports engines that expose query and resultToString instead of queryBindings', async () => {
+    const json = JSON.stringify({
+      head: { vars: ['x'] },
+      results: { bindings: [{ x: { type: 'uri', value: 'http://example.org/x' } }] },
+    });
+    const engine = {
+      query: jest.fn(async () => ({ type: 'bindings' })),
+      resultToString: jest.fn(async () => ({ data: Readable.from([json]) })),
+    };
+
+    const result = await runInconsistencySelect('disjointWithTypeOverlap', {}, { engine });
+
+    expect(result.rows).toEqual([{ x: { type: 'uri', value: 'http://example.org/x' } }]);
+    expect(engine.query).toHaveBeenCalledTimes(1);
+    expect(engine.resultToString).toHaveBeenCalledWith({ type: 'bindings' }, 'application/sparql-results+json');
+  });
+
+  test('creates a browser Comunica QueryEngine when no global engine is exposed', async () => {
+    const originalComunica = globalThis.Comunica;
+    const originalEngine = globalThis.engine;
+    const json = JSON.stringify({ head: { vars: [] }, results: { bindings: [] } });
+    const query = jest.fn(async () => ({ type: 'bindings' }));
+    const resultToString = jest.fn(async () => ({ data: Readable.from([json]) }));
+
+    try {
+      delete globalThis.engine;
+      globalThis.Comunica = {
+        QueryEngine: jest.fn(() => ({ query, resultToString })),
+      };
+
+      const result = await runInconsistencySelect('disjointWithTypeOverlap', {});
+
+      expect(result.rows).toEqual([]);
+      expect(globalThis.Comunica.QueryEngine).toHaveBeenCalledTimes(1);
+      expect(query).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.Comunica = originalComunica;
+      if (originalEngine === undefined) delete globalThis.engine;
+      else globalThis.engine = originalEngine;
+    }
+  });
+});
