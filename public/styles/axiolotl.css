@@ -355,6 +355,61 @@ button.prefix-button {
   background: var(--app-control-hover);
 }
 
+#consistency-rule-options {
+  margin-top: 0.75rem;
+}
+
+#consistency-rule-list label,
+.sidebar-note {
+  font-size: 1em;
+}
+
+#consistency-rule-list label {
+  color: var(--ont-text);
+  background: var(--app-control-bg);
+  border-radius: 4px;
+  padding: 0.2em 0.6em;
+  border: 1px solid color-mix(in srgb, var(--ont-border) 75%, var(--ont-accent-soft));
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+#consistency-rule-list label:hover {
+  background: var(--app-control-hover);
+}
+
+#consistency-rule-list label.is-disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.sidebar-note {
+  color: var(--ont-muted);
+  line-height: 1.35;
+  margin: 0.45rem 0;
+}
+
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-left: 0.25rem;
+  border: 1px solid var(--app-control-border);
+  border-radius: 50%;
+  color: var(--ont-text);
+  background: var(--app-control-bg);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: help;
+}
+
+.help-icon:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ont-focus) 35%, transparent);
+}
+
 
 .inference-status-block {
   margin-top: 0.75rem;

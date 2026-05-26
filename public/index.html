@@ -1551,24 +1551,48 @@ z" />
 		<!-- Reasoner Tab -->
 		<div id="tab-inference" class="tab-panel" role="tabpanel">
 			<div id="inference-left-sidebar" class="sidebar-left">
-				<h3>Select Inference Rules:</h3>
-				<div id="rules">
+				<h3>Reasoning Task</h3>
+				<label for="inference-task-mode">Mode</label>
+				<select id="inference-task-mode" aria-label="Select reasoning task">
+					<option value="materialize" selected>Materialize</option>
+					<option value="consistency">Check consistency</option>
+				</select>
+
+				<div id="materialization-rule-panel">
+					<h3>Select Inference Rules:</h3>
+					<div id="rules">
 					<ul id="inference-rule-list" style="list-style: none; padding-left: 0; margin: 5px 5px;">
-					<li><label><input type="checkbox" name="inference-rule" value="inverse" id="rule-inverse" checked>
+					<li><label title="Materialize inverse property assertions from owl:inverseOf."><input type="checkbox" name="inference-rule" value="inverse" id="rule-inverse" checked>
 						Inverse</label></li>
-					<li><label><input type="checkbox" name="inference-rule" value="symmetric" id="rule-symmetric" checked>
+					<li><label title="Materialize reverse assertions for owl:SymmetricProperty."><input type="checkbox" name="inference-rule" value="symmetric" id="rule-symmetric" checked>
 						Symmetric</label></li>
 					<li><label><input type="checkbox" name="inference-rule" value="subpropertyof" id="rule-subpropertyof"
-							checked> SubPropertyOf</li>
-					<li><label><input type="checkbox" name="inference-rule" value="transitive" id="rule-transitive" checked>
+							checked> SubPropertyOf</label></li>
+					<li><label title="Materialize transitive property closures."><input type="checkbox" name="inference-rule" value="transitive" id="rule-transitive" checked>
 						Transitive</label></li>
-					<li><label><input type="checkbox" name="inference-rule" value="domain" id="rule-domain" checked>
+					<li><label title="Materialize subject rdf:type assertions from rdfs:domain."><input type="checkbox" name="inference-rule" value="domain" id="rule-domain" checked>
 						Domain</label></li>
-					<li><label><input type="checkbox" name="inference-rule" value="range" id="rule-range" checked>
+					<li><label title="Materialize object rdf:type assertions from rdfs:range."><input type="checkbox" name="inference-rule" value="range" id="rule-range" checked>
 						Range</label></li>
-					<li><label><input type="checkbox" name="inference-rule" value="subclassof" id="rule-subclassof" checked>
+					<li><label title="Materialize superclass rdf:type assertions from rdfs:subClassOf."><input type="checkbox" name="inference-rule" value="subclassof" id="rule-subclassof" checked>
 						SubClassOf</label></li>
 					</ul>
+					</div>
+				</div>
+
+				<div id="consistency-rule-panel" hidden>
+					<h3>Consistency Profile</h3>
+					<label for="consistency-profile">Profile</label>
+					<select id="consistency-profile" aria-label="Select consistency profile">
+						<option value="axiolotl" selected>Axiolotl maximum</option>
+						<option value="owl2-el">OWL2 EL</option>
+						<option value="owl2-dl">OWL2 full</option>
+						<option value="direct-abox">Direct ABox only</option>
+					</select>
+					<span id="consistency-profile-help" class="help-icon" tabindex="0"
+						role="img" aria-label="Profile help"
+						title="Axiolotl maximum includes every implemented check, including heuristics. OWL2 EL is ELK-like. OWL2 full is Pellet/HermiT-like, limited to checks implemented in Axiolotl. Direct ABox only avoids heuristic missing-type checks.">?</span>
+					<div id="consistency-rule-options"></div>
 				</div>
 				<div id="endpoint-selection-inference">
 					<strong>Select DB to Reason Over:</strong><br />
@@ -1579,7 +1603,7 @@ z" />
 				</div>
 			</div>
 			<div id="inference-main" class="mid-section">
-				<h3>Inference Engine: Forward-Chain Reasoning</h3>
+				<h3 id="inference-task-heading">Inference Engine: Forward-Chain Reasoning</h3>
 				<div class="inference-status-block">
 					<div class="inference-status-head">
 						<span>Inference log</span>
@@ -1589,8 +1613,8 @@ z" />
 					<textarea id="inference-console" class="inference-console" rows="7" readonly spellcheck="false"></textarea>
 				</div>
 				<button id="run-inference" class="primary">Run Inference</button><br />
-				Output preview:
-				<textarea id="rdf-preview" rows="10" cols="100" placeholder="Preview of inferred triples..."></textarea>
+				<span id="inference-output-label">Output preview:</span>
+				<textarea id="rdf-preview" rows="10" cols="100" placeholder="Preview of inferred triples or consistency results..."></textarea>
 			</div>
 			<div id="inference-right-sidebar" class="sidebar-right">
 				<h3>Save Inferred Output</h3>
@@ -1687,6 +1711,7 @@ z" />
 	<script src="./app/semantic-core.js"></script>
 	<script src="./app/axiolotl-query.js"></script>
 	<script type="module" src="./app/sparql-ui.js"></script>
+	<script type="module" src="./app/axiolotl-ui.js"></script>
 	<script>
 		document.addEventListener('DOMContentLoaded', () => {
 			fetch('build-info.json')
