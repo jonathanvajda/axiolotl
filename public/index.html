@@ -1573,24 +1573,78 @@ z" />
 		<!-- Reasoner Tab -->
 		<div id="tab-inference" class="tab-panel" role="tabpanel">
 			<div id="inference-left-sidebar" class="sidebar-left">
-				<h3>Select Inference Rules:</h3>
-				<div id="rules">
+				<h3>Mode</h3>
+				<select id="inference-task-mode" aria-label="Select reasoning task">
+					<option value="materialize" selected>Materialize</option>
+					<option value="consistency">Check consistency</option>
+				</select>
+
+				<div id="materialization-rule-panel">
+					<h3>Materialization</h3>
+					<select id="materialization-profile" aria-label="Select materialization profile">
+						<option value="axiolotl-rl-core" selected>Axiolotl RL-style core</option>
+						<option value="custom">Custom rules</option>
+					</select>
+					<span id="materialization-profile-help" class="help-icon" tabindex="0"
+						role="img" aria-label="Materialization profile help"
+						title="Axiolotl RL-style core is a forward-chaining subset inspired by OWL RL/RDFS entailment. It is useful, recursive, and deterministic, but not a complete OWL 2 RL reasoner.">?</span>
+					<div id="materialization-rule-hint" class="sidebar-note"></div>
+					<h3>Rules</h3>
+					<div id="rules">
 					<ul id="inference-rule-list" style="list-style: none; padding-left: 0; margin: 5px 5px;">
-					<li><label><input type="checkbox" name="inference-rule" value="inverse" id="rule-inverse" checked>
+					<li><label title="Materialize inverse property assertions from owl:inverseOf."><input type="checkbox" name="inference-rule" value="inverse" id="rule-inverse" checked>
 						Inverse</label></li>
-					<li><label><input type="checkbox" name="inference-rule" value="symmetric" id="rule-symmetric" checked>
+					<li><label title="Materialize reverse assertions for owl:SymmetricProperty."><input type="checkbox" name="inference-rule" value="symmetric" id="rule-symmetric" checked>
 						Symmetric</label></li>
 					<li><label><input type="checkbox" name="inference-rule" value="subpropertyof" id="rule-subpropertyof"
-							checked> SubPropertyOf</li>
-					<li><label><input type="checkbox" name="inference-rule" value="transitive" id="rule-transitive" checked>
+							checked> SubPropertyOf</label></li>
+					<li><label title="Materialize transitive property closures."><input type="checkbox" name="inference-rule" value="transitive" id="rule-transitive" checked>
 						Transitive</label></li>
-					<li><label><input type="checkbox" name="inference-rule" value="domain" id="rule-domain" checked>
+					<li><label title="Materialize subject rdf:type assertions from rdfs:domain."><input type="checkbox" name="inference-rule" value="domain" id="rule-domain" checked>
 						Domain</label></li>
-					<li><label><input type="checkbox" name="inference-rule" value="range" id="rule-range" checked>
+					<li><label title="Materialize object rdf:type assertions from rdfs:range."><input type="checkbox" name="inference-rule" value="range" id="rule-range" checked>
 						Range</label></li>
-					<li><label><input type="checkbox" name="inference-rule" value="subclassof" id="rule-subclassof" checked>
+					<li><label title="Materialize superclass rdf:type assertions from rdfs:subClassOf."><input type="checkbox" name="inference-rule" value="subclassof" id="rule-subclassof" checked>
 						SubClassOf</label></li>
+					<li><label title="Materialize type assertions across owl:equivalentClass."><input type="checkbox" name="inference-rule" value="equivalentclass" id="rule-equivalentclass" checked>
+						EquivalentClass</label></li>
+					<li><label title="Materialize property assertions across owl:equivalentProperty."><input type="checkbox" name="inference-rule" value="equivalentproperty" id="rule-equivalentproperty" checked>
+						EquivalentProperty</label></li>
+					<li><label title="Materialize owl:sameAs symmetry, transitivity, and subject/object replacement."><input type="checkbox" name="inference-rule" value="sameas" id="rule-sameas" checked>
+						SameAs</label></li>
+					<li><label title="Materialize owl:sameAs between object values of owl:FunctionalProperty."><input type="checkbox" name="inference-rule" value="functional" id="rule-functional" checked>
+						Functional</label></li>
+					<li><label title="Materialize owl:sameAs between subjects of owl:InverseFunctionalProperty."><input type="checkbox" name="inference-rule" value="inversefunctional" id="rule-inversefunctional" checked>
+						InverseFunctional</label></li>
+					<li><label title="Materialize property assertions from owl:hasValue restrictions."><input type="checkbox" name="inference-rule" value="hasvalue" id="rule-hasvalue" checked>
+						HasValue</label></li>
+					<li><label title="Recognize classes from matching owl:hasValue restrictions."><input type="checkbox" name="inference-rule" value="hasvalueclass" id="rule-hasvalueclass" checked>
+						HasValue Class</label></li>
+					<li><label title="Materialize filler types from owl:allValuesFrom restrictions."><input type="checkbox" name="inference-rule" value="allvaluesfrom" id="rule-allvaluesfrom" checked>
+						AllValuesFrom</label></li>
+					<li><label title="Recognize classes from matching owl:someValuesFrom restrictions."><input type="checkbox" name="inference-rule" value="somevaluesfromclass" id="rule-somevaluesfromclass" checked>
+						SomeValuesFrom Class</label></li>
+					<li><label title="Recognize classes from owl:intersectionOf member type coverage."><input type="checkbox" name="inference-rule" value="intersectionof" id="rule-intersectionof" checked>
+						IntersectionOf</label></li>
+					<li><label title="Materialize binary owl:propertyChainAxiom consequences."><input type="checkbox" name="inference-rule" value="propertychain" id="rule-propertychain" checked>
+						Property Chain</label></li>
 					</ul>
+					</div>
+				</div>
+
+				<div id="consistency-rule-panel" hidden>
+					<h3>Consistency Profile</h3>
+					<label for="consistency-profile">Profile</label>
+					<select id="consistency-profile" aria-label="Select consistency profile">
+						<option value="axiolotl" selected>Axiolotl maximum</option>
+						<option value="owl2-el">OWL2 EL</option>
+						<option value="owl2-dl">OWL2 full</option>
+						<option value="direct-abox">Direct ABox only</option>
+					</select>
+					<span id="consistency-profile-help" class="help-icon" tabindex="0"
+						role="img" aria-label="Profile help"
+						title="Axiolotl maximum includes every implemented check, including heuristics. OWL2 EL is ELK-like. OWL2 full is Pellet/HermiT-like, limited to checks implemented in Axiolotl. Direct ABox only avoids heuristic missing-type checks.">?</span>
+					<div id="consistency-rule-options"></div>
 				</div>
 				<div id="endpoint-selection-inference">
 					<strong>Select DB to Reason Over:</strong><br />
@@ -1601,7 +1655,7 @@ z" />
 				</div>
 			</div>
 			<div id="inference-main" class="mid-section">
-				<h3>Inference Engine: Forward-Chain Reasoning</h3>
+				<h3 id="inference-task-heading">Inference Engine: Forward-Chain Reasoning</h3>
 				<div class="inference-status-block">
 					<div class="inference-status-head">
 						<span>Inference log</span>
@@ -1611,8 +1665,8 @@ z" />
 					<textarea id="inference-console" class="inference-console" rows="7" readonly spellcheck="false"></textarea>
 				</div>
 				<button id="run-inference" class="primary">Run Inference</button><br />
-				Output preview:
-				<textarea id="rdf-preview" rows="10" cols="100" placeholder="Preview of inferred triples..."></textarea>
+				<span id="inference-output-label">Output preview:</span>
+				<textarea id="rdf-preview" rows="10" cols="100" placeholder="Preview of inferred triples or consistency results..."></textarea>
 			</div>
 			<div id="inference-right-sidebar" class="sidebar-right">
 				<h3>Save Inferred Output</h3>
@@ -1703,12 +1757,13 @@ z" />
 	<!-- App JS --> 
 
 	<!-- Internal JS -->
-	<script src="./app/indexeddb-triplestore.js?v=20260526-update-parser"></script>
-	<script src="./app/axiolotl-inference.js?v=20260526-update-parser"></script>
-	<script src="./app/comunica-indexeddb-bridge.js?v=20260526-update-parser"></script>
-	<script src="./app/semantic-core.js?v=20260526-update-parser"></script>
-	<script src="./app/axiolotl-query.js?v=20260526-update-parser"></script>
-	<script type="module" src="./app/sparql-ui.js?v=20260526-update-parser"></script>
+	<script src="./app/indexeddb-triplestore.js"></script>
+	<script src="./app/axiolotl-inference.js"></script>
+	<script src="./app/comunica-indexeddb-bridge.js"></script>
+	<script src="./app/semantic-core.js"></script>
+	<script src="./app/axiolotl-query.js"></script>
+	<script type="module" src="./app/sparql-ui.js"></script>
+	<script type="module" src="./app/axiolotl-ui.js"></script>
 	<script>
 		document.addEventListener('DOMContentLoaded', () => {
 			fetch('build-info.json')
