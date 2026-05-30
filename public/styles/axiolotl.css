@@ -371,10 +371,13 @@ button.prefix-button {
   gap: 1em;
   flex-wrap: wrap;
   margin-bottom: 1em;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
 #rules label {
-  font-size: 1em;
+  font-size: 0.95em;
   color: var(--ont-text);
   background: var(--app-control-bg);
   border-radius: 4px;
@@ -384,8 +387,26 @@ button.prefix-button {
   transition: background-color 0.2s, border-color 0.2s;
 }
 
+#inference-left-sidebar h3 {
+  font-size: 1.7rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+#inference-left-sidebar select {
+  width: calc(100% - 0.5rem);
+  max-width: 18rem;
+  margin-left: 0;
+  margin-bottom: 0.35rem;
+}
+
 #rules label:hover {
   background: var(--app-control-hover);
+}
+
+#rules label.is-disabled {
+  cursor: default;
+  opacity: 0.72;
 }
 
 #consistency-rule-options {

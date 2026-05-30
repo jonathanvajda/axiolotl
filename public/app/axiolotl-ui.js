@@ -53,12 +53,47 @@ const CONSISTENCY_PROFILES = Object.freeze({
   },
 });
 
+const MATERIALIZATION_PROFILES = Object.freeze({
+  'axiolotl-rl-core': {
+    label: 'Axiolotl RL-style core',
+    help: 'Forward-chaining materialization over useful RDFS/OWL RL-style rules. Recursive to fixpoint. Still not complete OWL 2 RL: datatype validation, inconsistency rules, arbitrary-length property chains, and some list/cardinality cases remain outside this materialization profile.',
+    editable: false,
+    rules: [
+      'inverse',
+      'symmetric',
+      'subpropertyof',
+      'transitive',
+      'domain',
+      'range',
+      'subclassof',
+      'equivalentclass',
+      'equivalentproperty',
+      'sameas',
+      'functional',
+      'inversefunctional',
+      'hasvalue',
+      'hasvalueclass',
+      'allvaluesfrom',
+      'somevaluesfromclass',
+      'intersectionof',
+      'propertychain',
+    ],
+  },
+  custom: {
+    label: 'Custom rules',
+    help: 'Choose exactly which materialization rules to run. This is useful for targeted debugging and performance experiments.',
+    editable: true,
+    rules: 'preserve',
+  },
+});
+
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', initAxiolotlInferenceUi);
 }
 
 function initAxiolotlInferenceUi() {
   const modeSelect = document.getElementById('inference-task-mode');
+  const materializationProfileSelect = document.getElementById('materialization-profile');
   const profileSelect = document.getElementById('consistency-profile');
   const runButton = document.getElementById('run-inference');
 
@@ -66,6 +101,7 @@ function initAxiolotlInferenceUi() {
   syncInferenceTaskUi();
 
   modeSelect?.addEventListener('change', syncInferenceTaskUi);
+  materializationProfileSelect?.addEventListener('change', syncInferenceTaskUi);
   profileSelect?.addEventListener('change', syncInferenceTaskUi);
   runButton?.addEventListener('click', handleConsistencyRunClick, true);
 }
@@ -73,6 +109,8 @@ function initAxiolotlInferenceUi() {
 function syncInferenceTaskUi() {
   const mode = getInferenceTaskMode();
   const isConsistency = mode === 'consistency';
+  const materializationProfile = getMaterializationProfile();
+  const materializationProfileConfig = MATERIALIZATION_PROFILES[materializationProfile] || MATERIALIZATION_PROFILES['axiolotl-rl-core'];
   const profile = getConsistencyProfile();
   const profileConfig = CONSISTENCY_PROFILES[profile] || CONSISTENCY_PROFILES.axiolotl;
 
@@ -81,8 +119,30 @@ function syncInferenceTaskUi() {
   setText('inference-task-heading', isConsistency ? 'Inference Engine: Consistency Checks' : 'Inference Engine: Forward-Chain Reasoning');
   setText('run-inference', isConsistency ? 'Check Consistency' : 'Run Inference');
   setText('inference-output-label', isConsistency ? 'Consistency report:' : 'Output preview:');
-  setHelpText(profileConfig.help);
+  setMaterializationHelpText(materializationProfileConfig.help);
+  setConsistencyHelpText(profileConfig.help);
+  syncMaterializationCheckboxes(materializationProfileConfig);
   syncConsistencyCheckboxes(profileConfig);
+}
+
+function syncMaterializationCheckboxes(profileConfig) {
+  const checkboxes = Array.from(document.querySelectorAll('input[name="inference-rule"]'));
+  const enabledIds = profileConfig.rules === 'preserve'
+    ? null
+    : new Set(profileConfig.rules);
+
+  for (const checkbox of checkboxes) {
+    if (enabledIds) checkbox.checked = enabledIds.has(checkbox.value);
+    checkbox.disabled = !profileConfig.editable;
+    checkbox.closest('label')?.classList.toggle('is-disabled', checkbox.disabled);
+  }
+
+  setText(
+    'materialization-rule-hint',
+    profileConfig.editable
+      ? 'Toggle rules for a custom materialization pass.'
+      : 'This profile locks the currently implemented RL-style materialization subset.'
+  );
 }
 
 function renderConsistencyOptions() {
@@ -122,8 +182,8 @@ function syncConsistencyCheckboxes(profileConfig) {
   setText(
     'consistency-rule-hint',
     profileConfig.editable
-      ? 'Toggle the Axiolotl checks to run. For best results, materialize type-producing rules before checking.'
-      : 'This profile uses a fixed preset. Switch to Axiolotl maximum to toggle individual checks.'
+      ? 'Toggle the Axiolotl checks to run. The selected materialization profile runs in memory before these checks.'
+      : 'This profile uses a fixed preset. The selected materialization profile runs in memory before these checks.'
   );
 }
 
@@ -151,7 +211,19 @@ async function handleConsistencyRunClick(event) {
       throw new Error('No consistency checks selected.');
     }
 
+    const materializationRules = getSelectedMaterializationRules();
+    appendInferenceConsoleLine?.(
+      `[checkConsistency] Materializing first with ${materializationRules.length} rule(s): ${materializationRules.join(', ')}`
+    );
+
+    const { overlayGraph, metrics } = await materializeForConsistency(materializationRules);
+    appendInferenceConsoleLine?.(
+      `[checkConsistency] Materialization complete. Added ${metrics.totalAdded} triple(s) over ${metrics.passes} pass(es).`
+    );
+
     const rdfjsStore = await loadGraphFromIndexedDB();
+    addOverlayQuadsToStore(rdfjsStore, overlayGraph);
+
     const results = [];
 
     for (const id of selectedChecks) {
@@ -183,6 +255,28 @@ async function handleConsistencyRunClick(event) {
 function getSelectedConsistencyChecks() {
   return Array.from(document.querySelectorAll('input[name="consistency-rule"]:checked'))
     .map(input => input.value);
+}
+
+function getSelectedMaterializationRules() {
+  return Array.from(document.querySelectorAll('input[name="inference-rule"]:checked'))
+    .map(input => input.value);
+}
+
+async function materializeForConsistency(rules) {
+  if (typeof globalThis.inferUntilStable !== 'function') {
+    throw new Error('inferUntilStable is not available for consistency pre-materialization.');
+  }
+
+  return await globalThis.inferUntilStable(rules);
+}
+
+function addOverlayQuadsToStore(store, overlayGraph) {
+  if (!store || typeof store.addQuad !== 'function') return;
+  if (!overlayGraph || typeof overlayGraph.getQuads !== 'function') return;
+
+  for (const quad of overlayGraph.getQuads(null, null, null, null)) {
+    store.addQuad(quad);
+  }
 }
 
 function formatConsistencyReport(results) {
@@ -229,6 +323,10 @@ function getConsistencyProfile() {
   return document.getElementById('consistency-profile')?.value || 'axiolotl';
 }
 
+function getMaterializationProfile() {
+  return document.getElementById('materialization-profile')?.value || 'axiolotl-rl-core';
+}
+
 function setHidden(id, hidden) {
   const element = document.getElementById(id);
   if (element) element.hidden = !!hidden;
@@ -239,8 +337,15 @@ function setText(id, text) {
   if (element) element.textContent = text;
 }
 
-function setHelpText(text) {
+function setConsistencyHelpText(text) {
   const help = document.getElementById('consistency-profile-help');
+  if (!help) return;
+  help.title = text;
+  help.setAttribute('aria-label', text);
+}
+
+function setMaterializationHelpText(text) {
+  const help = document.getElementById('materialization-profile-help');
   if (!help) return;
   help.title = text;
   help.setAttribute('aria-label', text);

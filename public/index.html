@@ -1573,15 +1573,23 @@ z" />
 		<!-- Reasoner Tab -->
 		<div id="tab-inference" class="tab-panel" role="tabpanel">
 			<div id="inference-left-sidebar" class="sidebar-left">
-				<h3>Reasoning Task</h3>
-				<label for="inference-task-mode">Mode</label>
+				<h3>Mode</h3>
 				<select id="inference-task-mode" aria-label="Select reasoning task">
 					<option value="materialize" selected>Materialize</option>
 					<option value="consistency">Check consistency</option>
 				</select>
 
 				<div id="materialization-rule-panel">
-					<h3>Select Inference Rules:</h3>
+					<h3>Materialization</h3>
+					<select id="materialization-profile" aria-label="Select materialization profile">
+						<option value="axiolotl-rl-core" selected>Axiolotl RL-style core</option>
+						<option value="custom">Custom rules</option>
+					</select>
+					<span id="materialization-profile-help" class="help-icon" tabindex="0"
+						role="img" aria-label="Materialization profile help"
+						title="Axiolotl RL-style core is a forward-chaining subset inspired by OWL RL/RDFS entailment. It is useful, recursive, and deterministic, but not a complete OWL 2 RL reasoner.">?</span>
+					<div id="materialization-rule-hint" class="sidebar-note"></div>
+					<h3>Rules</h3>
 					<div id="rules">
 					<ul id="inference-rule-list" style="list-style: none; padding-left: 0; margin: 5px 5px;">
 					<li><label title="Materialize inverse property assertions from owl:inverseOf."><input type="checkbox" name="inference-rule" value="inverse" id="rule-inverse" checked>
@@ -1598,6 +1606,28 @@ z" />
 						Range</label></li>
 					<li><label title="Materialize superclass rdf:type assertions from rdfs:subClassOf."><input type="checkbox" name="inference-rule" value="subclassof" id="rule-subclassof" checked>
 						SubClassOf</label></li>
+					<li><label title="Materialize type assertions across owl:equivalentClass."><input type="checkbox" name="inference-rule" value="equivalentclass" id="rule-equivalentclass" checked>
+						EquivalentClass</label></li>
+					<li><label title="Materialize property assertions across owl:equivalentProperty."><input type="checkbox" name="inference-rule" value="equivalentproperty" id="rule-equivalentproperty" checked>
+						EquivalentProperty</label></li>
+					<li><label title="Materialize owl:sameAs symmetry, transitivity, and subject/object replacement."><input type="checkbox" name="inference-rule" value="sameas" id="rule-sameas" checked>
+						SameAs</label></li>
+					<li><label title="Materialize owl:sameAs between object values of owl:FunctionalProperty."><input type="checkbox" name="inference-rule" value="functional" id="rule-functional" checked>
+						Functional</label></li>
+					<li><label title="Materialize owl:sameAs between subjects of owl:InverseFunctionalProperty."><input type="checkbox" name="inference-rule" value="inversefunctional" id="rule-inversefunctional" checked>
+						InverseFunctional</label></li>
+					<li><label title="Materialize property assertions from owl:hasValue restrictions."><input type="checkbox" name="inference-rule" value="hasvalue" id="rule-hasvalue" checked>
+						HasValue</label></li>
+					<li><label title="Recognize classes from matching owl:hasValue restrictions."><input type="checkbox" name="inference-rule" value="hasvalueclass" id="rule-hasvalueclass" checked>
+						HasValue Class</label></li>
+					<li><label title="Materialize filler types from owl:allValuesFrom restrictions."><input type="checkbox" name="inference-rule" value="allvaluesfrom" id="rule-allvaluesfrom" checked>
+						AllValuesFrom</label></li>
+					<li><label title="Recognize classes from matching owl:someValuesFrom restrictions."><input type="checkbox" name="inference-rule" value="somevaluesfromclass" id="rule-somevaluesfromclass" checked>
+						SomeValuesFrom Class</label></li>
+					<li><label title="Recognize classes from owl:intersectionOf member type coverage."><input type="checkbox" name="inference-rule" value="intersectionof" id="rule-intersectionof" checked>
+						IntersectionOf</label></li>
+					<li><label title="Materialize binary owl:propertyChainAxiom consequences."><input type="checkbox" name="inference-rule" value="propertychain" id="rule-propertychain" checked>
+						Property Chain</label></li>
 					</ul>
 					</div>
 				</div>
