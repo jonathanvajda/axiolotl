@@ -43,6 +43,7 @@
   <script src="https://cdn.jsdelivr.net/npm/n3@1.17.3/browser/n3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsonld@8.3.2/dist/jsonld.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/rdflib@2.2.13/dist/rdflib.min.js"></script>
+  <script src="./app/shared/format-registry/browser-global.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -54,7 +55,7 @@
         <div class="row-3">
           <div>
             <label>Graph file (TTL, NT/NQ, JSON-LD, RDF/XML)</label>
-            <input id="file" type="file" accept=".ttl,.nt,.nq,.trig,.json,.jsonld,.rdf,.owl,.xml,.n3,.ttl.gz,.nt.gz" />
+            <input id="file" type="file" accept=".ttl,.turtle,.n3,.nt,.ntriples,.nq,.nquads,.trig,.json,.jsonld,.json-ld,.rdf,.owl,.xml,.ttl.gz,.nt.gz" />
           </div>
           <div>
             <label>Format (optional override)</label>
@@ -62,6 +63,8 @@
               <option value="auto">Auto-detect</option>
               <option value="text/turtle">Turtle / N3</option>
               <option value="application/n-triples">N-Triples / N-Quads</option>
+              <option value="application/n-quads">N-Quads</option>
+              <option value="application/trig">TriG</option>
               <option value="application/ld+json">JSON-LD</option>
               <option value="application/rdf+xml">RDF/XML</option>
             </select>
@@ -196,6 +199,9 @@
 
   // --- Parsing helpers ---
   function detectFormatByName(name) {
+    const detected = window.FormatRegistry?.getSupportedMimeTypeForFilename?.(name);
+    if (detected?.ok && detected.value.category === 'rdf') return detected.value.mimeType;
+
     if (!name) return 'auto';
     const n = name.toLowerCase();
     if (n.endsWith('.ttl') || n.endsWith('.n3') || n.endsWith('.trig')) return 'text/turtle';
@@ -254,11 +260,12 @@
     }
 
     // Turtle / N3 / TriG / N-Triples / N-Quads
-    if (fmt === 'text/turtle' || fmt === 'application/n-triples' || fmt === 'auto') {
+    if (fmt === 'text/turtle' || fmt === 'application/n-triples' || fmt === 'application/n-quads' || fmt === 'application/trig' || fmt === 'auto') {
       // Try N3 first; it can parse most text syntaxes except RDF/XML
       try {
         log(`Parsing as ${fmt==='text/turtle' ? 'Turtle/N3' : (fmt==='application/n-triples' ? 'N-Triples/N-Quads' : 'Turtle/N3 (auto)')}…`);
-        const parser = new N3.Parser({ format: fmt==='application/n-triples' ? 'N-Triples' : undefined, baseIRI: baseIRI || undefined });
+        const n3Format = window.FormatRegistry?.getN3ParserFormatForMimeType?.(fmt);
+        const parser = new N3.Parser({ format: n3Format?.ok ? n3Format.value : (fmt==='application/n-triples' ? 'N-Triples' : undefined), baseIRI: baseIRI || undefined });
         const quads = [];
         parser.parse(text, (error, quad, prefixes) => {
           if (error) throw error;

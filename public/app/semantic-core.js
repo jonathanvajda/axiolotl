@@ -278,6 +278,11 @@ async function handleFileUpload(file) {
  * @returns {string}
  */
 function downloadText(filename, text, mime) {
+  if (globalThis.FormatRegistry?.downloadTextFile) {
+    globalThis.FormatRegistry.downloadTextFile(filename, text, { mimeType: mime });
+    return;
+  }
+
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

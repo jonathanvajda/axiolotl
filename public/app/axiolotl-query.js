@@ -201,13 +201,13 @@ async function serializeWorkspaceExportStore(store, mime) {
 }
 
 async function serializeWorkspaceWithN3(store, mime) {
-  const formatByMime = {
+  const detectedFormat = globalThis.FormatRegistry?.getN3ParserFormatForMimeType?.(mime);
+  const format = detectedFormat?.ok ? detectedFormat.value : ({
     'text/turtle': 'Turtle',
     'application/n-triples': 'N-Triples',
     'application/n-quads': 'N-Quads',
     'application/trig': 'TriG',
-  };
-  const format = formatByMime[mime];
+  })[mime];
   if (!format) throw new Error(`Unsupported workspace export format: ${mime}`);
 
   return await new Promise((resolve, reject) => {
@@ -239,6 +239,9 @@ function nquadsToSimpleJsonLd(nquads) {
 }
 
 function workspaceExportExtension(mime) {
+  const preferred = globalThis.FormatRegistry?.getPreferredExtensionForMimeType?.(mime);
+  if (preferred?.ok) return preferred.value;
+
   return ({
     'text/turtle': 'ttl',
     'application/n-triples': 'nt',
@@ -402,13 +405,19 @@ async function handleRunInference() {
 function handleDownloadPreview(format = 'text/turtle') {
   try {
     const text = document.getElementById('rdf-preview').value;
-    const blob = new Blob([text], { type: format });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inferred-overlay.${format.includes('json') ? 'jsonld' : format.includes('xml') ? 'rdf' : 'ttl'}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const ext = workspaceExportExtension(format);
+    const filename = `inferred-overlay.${ext}`;
+    if (globalThis.FormatRegistry?.downloadTextFile) {
+      globalThis.FormatRegistry.downloadTextFile(filename, text, { mimeType: format });
+    } else {
+      const blob = new Blob([text], { type: format });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
     if (debuggingConsoleEnabled) {console.info('[handleDownloadPreview] RDF download triggered');}
   } catch (error) {
     if (debuggingConsoleEnabled) {console.error('[handleDownloadPreview] Failed:', error);}
@@ -510,14 +519,7 @@ async function exportInferredOverlay() {
     const mime = getSelectedOutputMime();
     const text = await serializeStore(g, mime);
 
-    const ext = ({
-      'text/turtle': 'ttl',
-      'application/n-triples': 'nt',
-      'application/n-quads': 'nq',
-      'application/trig': 'trig',
-      'application/ld+json': 'jsonld',
-      'application/rdf+xml': 'rdf'
-    })[mime] || 'ttl';
+    const ext = workspaceExportExtension(mime);
 
     downloadText(`inferred-${timestampUTC()}.${ext}`, text, mime);
     showToast('Download started.', 'success');
