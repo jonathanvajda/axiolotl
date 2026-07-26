@@ -1660,7 +1660,10 @@ z" />
 	<script src="./app/comunica-browser.js"></script>
 	<script src="./app/vendor/cytoscape.min.js"></script>
 	<script src="./app/vendor/sparqljs.umd.js"></script>
-	<script src="./app/shared/format-registry/browser-global.js"></script>
+	<link rel="modulepreload" href="./app/shared/format-registry/mime-registry.js" />
+	<link rel="modulepreload" href="./app/shared/format-registry/rdf-parser-formats.js" />
+	<link rel="modulepreload" href="./app/shared/format-registry/browser-file-actions.js" />
+	<script type="module" src="./app/shared/format-registry/format-registry-compat.js"></script>
 
 	<!-- Header JS -->
 	<script>
