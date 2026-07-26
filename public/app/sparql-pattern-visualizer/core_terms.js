@@ -2,6 +2,10 @@
  * @file core_terms.js
  * @description Pure helpers for RDF/JS term handling, CURIE compaction, labels, and keys.
  */
+import {
+  compactIriToCurie,
+  findLongestPrefixMatch
+} from "../shared/namespace-registry/curie.js";
 
 /**
  * @typedef {Object} RdfJsTerm
@@ -37,15 +41,8 @@ export function termKey(term) {
  * @returns {{prefix: string, namespace: string}|null}
  */
 export function bestPrefixForIri(iri, prefixes) {
-  const entries = Object.entries(prefixes || {});
-  let best = null;
-
-  for (const [pfx, ns] of entries) {
-    if (typeof ns !== "string") continue;
-    if (!iri.startsWith(ns)) continue;
-    if (!best || ns.length > best.namespace.length) best = { prefix: pfx, namespace: ns };
-  }
-  return best;
+  const match = findLongestPrefixMatch(iri, prefixes);
+  return match.ok ? { prefix: match.prefix, namespace: match.namespaceIri } : null;
 }
 
 /**
@@ -55,9 +52,12 @@ export function bestPrefixForIri(iri, prefixes) {
  * @returns {string}
  */
 export function compactIri(iri, prefixes) {
+  const compacted = compactIriToCurie(iri, prefixes);
+  if (compacted.ok) return compacted.value;
+
   const best = bestPrefixForIri(iri, prefixes);
   if (!best) return iri;
-  const local = iri.slice(best.namespace.length);
+  const local = String(iri || "").slice(best.namespace.length);
   const pfx = best.prefix === "" ? ":" : `${best.prefix}:`;
   return `${pfx}${local}`;
 }
