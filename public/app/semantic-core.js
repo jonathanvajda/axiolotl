@@ -233,17 +233,13 @@ const toastError   = (m, t=4500) => showToast(m, 'error',   { timeout: t });
 
 /**
  * Read a File as text.
- * Pure w.r.t. app state; side-effect is FileReader I/O only.
+ * Pure w.r.t. app state; side-effect is delegated to browser-file-io.
  * @param {File} file
  * @returns {Promise<string>}
  */
 function readFileAsText(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsText(file);
-  });
+  return import('./shared/browser-file-io/index.js')
+    .then(({ readFileAsText: readBrowserFileAsText }) => readBrowserFileAsText(file));
 }
 
 /**
@@ -278,15 +274,8 @@ async function handleFileUpload(file) {
  * @returns {void}
  */
 function downloadText(filename, text, mime) {
-  import('./shared/format-registry/browser-file-actions.js')
+  import('./shared/browser-file-io/index.js')
     .then(({ downloadTextFile }) => {
       downloadTextFile(filename, text, { mimeType: mime });
-    })
-    .catch(() => {
-      const blob = new Blob([text], { type: mime });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
     });
 }

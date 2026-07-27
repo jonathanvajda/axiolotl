@@ -1021,13 +1021,12 @@ function initEvents() {
   });
 
   document.getElementById('exportPipelineBtn').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify(getActivePipeline(), null, 2)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = 'pipeline.json';
-    link.click();
-    URL.revokeObjectURL(url);
+    import('./shared/browser-file-io/index.js')
+      .then(({ downloadTextFile }) => {
+        downloadTextFile('pipeline.json', JSON.stringify(getActivePipeline(), null, 2), {
+          mimeType: 'application/json'
+        });
+      });
   });
 }
 
