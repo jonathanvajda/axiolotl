@@ -958,9 +958,6 @@ async function addFilesToDB(rows, errors, namedGraphError) {
  * @returns {string} rdflib.js MIME
  */
 function detectRdfMimeByName(filename='') {
-  const detected = globalThis.FormatRegistry?.getSupportedMimeTypeForFilename?.(filename);
-  if (detected?.ok && detected.value.category === 'rdf') return detected.value.mimeType;
-
   const ext = String(filename).toLowerCase().split('.').pop();
   switch (ext) {
     case 'ttl': return 'text/turtle';

@@ -201,8 +201,7 @@ async function serializeWorkspaceExportStore(store, mime) {
 }
 
 async function serializeWorkspaceWithN3(store, mime) {
-  const detectedFormat = globalThis.FormatRegistry?.getN3ParserFormatForMimeType?.(mime);
-  const format = detectedFormat?.ok ? detectedFormat.value : ({
+  const format = ({
     'text/turtle': 'Turtle',
     'application/n-triples': 'N-Triples',
     'application/n-quads': 'N-Quads',
@@ -239,9 +238,6 @@ function nquadsToSimpleJsonLd(nquads) {
 }
 
 function workspaceExportExtension(mime) {
-  const preferred = globalThis.FormatRegistry?.getPreferredExtensionForMimeType?.(mime);
-  if (preferred?.ok) return preferred.value;
-
   return ({
     'text/turtle': 'ttl',
     'application/n-triples': 'nt',
@@ -407,17 +403,7 @@ function handleDownloadPreview(format = 'text/turtle') {
     const text = document.getElementById('rdf-preview').value;
     const ext = workspaceExportExtension(format);
     const filename = `inferred-overlay.${ext}`;
-    if (globalThis.FormatRegistry?.downloadTextFile) {
-      globalThis.FormatRegistry.downloadTextFile(filename, text, { mimeType: format });
-    } else {
-      const blob = new Blob([text], { type: format });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+    downloadText(filename, text, format);
     if (debuggingConsoleEnabled) {console.info('[handleDownloadPreview] RDF download triggered');}
   } catch (error) {
     if (debuggingConsoleEnabled) {console.error('[handleDownloadPreview] Failed:', error);}
@@ -911,11 +897,6 @@ function structureQueryResults(result) {
   }
 
   return '<em>No results.</em>';
-}
-
-function renderQueryCell(value) {
-  const safe = escapeHtml(value);
-  return `<div class="query-cell" title="${safe}">${safe}</div>`;
 }
 
 document.getElementById('query-results').addEventListener('click', function (event) {

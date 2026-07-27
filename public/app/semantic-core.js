@@ -275,17 +275,18 @@ async function handleFileUpload(file) {
  * @param {string} filename
  * @param {string} text
  * @param {string} mime
- * @returns {string}
+ * @returns {void}
  */
 function downloadText(filename, text, mime) {
-  if (globalThis.FormatRegistry?.downloadTextFile) {
-    globalThis.FormatRegistry.downloadTextFile(filename, text, { mimeType: mime });
-    return;
-  }
-
-  const blob = new Blob([text], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  import('./shared/format-registry/browser-file-actions.js')
+    .then(({ downloadTextFile }) => {
+      downloadTextFile(filename, text, { mimeType: mime });
+    })
+    .catch(() => {
+      const blob = new Blob([text], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    });
 }

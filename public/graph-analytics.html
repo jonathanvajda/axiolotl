@@ -46,7 +46,6 @@
   <link rel="modulepreload" href="./app/shared/format-registry/mime-registry.js" />
   <link rel="modulepreload" href="./app/shared/format-registry/rdf-parser-formats.js" />
   <link rel="modulepreload" href="./app/shared/format-registry/browser-file-actions.js" />
-  <script type="module" src="./app/shared/format-registry/format-registry-compat.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -202,9 +201,6 @@
 
   // --- Parsing helpers ---
   function detectFormatByName(name) {
-    const detected = window.FormatRegistry?.getSupportedMimeTypeForFilename?.(name);
-    if (detected?.ok && detected.value.category === 'rdf') return detected.value.mimeType;
-
     if (!name) return 'auto';
     const n = name.toLowerCase();
     if (n.endsWith('.ttl') || n.endsWith('.n3') || n.endsWith('.trig')) return 'text/turtle';
@@ -267,8 +263,14 @@
       // Try N3 first; it can parse most text syntaxes except RDF/XML
       try {
         log(`Parsing as ${fmt==='text/turtle' ? 'Turtle/N3' : (fmt==='application/n-triples' ? 'N-Triples/N-Quads' : 'Turtle/N3 (auto)')}…`);
-        const n3Format = window.FormatRegistry?.getN3ParserFormatForMimeType?.(fmt);
-        const parser = new N3.Parser({ format: n3Format?.ok ? n3Format.value : (fmt==='application/n-triples' ? 'N-Triples' : undefined), baseIRI: baseIRI || undefined });
+        const parserFormat = {
+          'text/turtle': 'Turtle',
+          'text/n3': 'N3',
+          'application/n-triples': 'N-Triples',
+          'application/n-quads': 'N-Quads',
+          'application/trig': 'TriG'
+        }[fmt];
+        const parser = new N3.Parser({ format: parserFormat || (fmt==='application/n-triples' ? 'N-Triples' : undefined), baseIRI: baseIRI || undefined });
         const quads = [];
         parser.parse(text, (error, quad, prefixes) => {
           if (error) throw error;
