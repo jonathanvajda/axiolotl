@@ -78,33 +78,21 @@ async function serializeStore(store, mime = 'text/turtle') {
     throw new Error('serializeStore expected an N3.Store or compatible RDF/JS source.');
   }
 
-  const supported = new Set([
-    'text/turtle',
-    'application/n-triples',
-    'application/n-quads'
-  ]);
-
-  const format = supported.has(mime) ? mime : 'text/turtle';
-
-  return await new Promise((resolve, reject) => {
-    const writer = new N3.Writer({ format });
-    writer.addQuads(store.getQuads(null, null, null, null));
-    writer.end((error, result) => {
-      if (error) reject(error);
-      else resolve(result || '');
-    });
+  const { serializeRdfDatasetWithAdapters } = await import('./shared/rdf-io/index.js');
+  const serialized = await serializeRdfDatasetWithAdapters(store, {
+    format: mime,
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
   });
+  return serialized.text;
 }
 
 async function serializeStoreToNTriples(store) {
-  return await new Promise((resolve, reject) => {
-    const writer = new N3.Writer({ format: 'N-Triples' });
-    writer.addQuads(store.getQuads(null, null, null, null));
-    writer.end((error, result) => {
-      if (error) reject(error);
-      else resolve(result || '');
-    });
+  const { serializeRdfDatasetWithAdapters } = await import('./shared/rdf-io/index.js');
+  const serialized = await serializeRdfDatasetWithAdapters(store, {
+    format: 'application/n-triples',
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
   });
+  return serialized.text;
 }
 
 function getWorkspaceExportOptions() {
@@ -192,31 +180,16 @@ async function getWorkspaceExportStore(scope) {
 }
 
 async function serializeWorkspaceExportStore(store, mime) {
-  if (mime === 'application/ld+json') {
-    const nq = await serializeWorkspaceWithN3(store, 'application/n-quads');
-    return await serializeJsonLdFromNQuads(nq);
-  }
-
   return await serializeWorkspaceWithN3(store, mime);
 }
 
 async function serializeWorkspaceWithN3(store, mime) {
-  const format = ({
-    'text/turtle': 'Turtle',
-    'application/n-triples': 'N-Triples',
-    'application/n-quads': 'N-Quads',
-    'application/trig': 'TriG',
-  })[mime];
-  if (!format) throw new Error(`Unsupported workspace export format: ${mime}`);
-
-  return await new Promise((resolve, reject) => {
-    const writer = new N3.Writer({ format });
-    writer.addQuads(store.getQuads(null, null, null, null));
-    writer.end((error, result) => {
-      if (error) reject(error);
-      else resolve(result || '');
-    });
+  const { serializeRdfDatasetWithAdapters } = await import('./shared/rdf-io/index.js');
+  const serialized = await serializeRdfDatasetWithAdapters(store, {
+    format: mime,
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
   });
+  return serialized.text;
 }
 
 async function serializeJsonLdFromNQuads(nquads) {
