@@ -65,17 +65,6 @@ async function saveSetting(key, value) {
   }
 }
 
-/*
-* Retrieves a setting by key from the settings database.
-* @param {string} key - The key of the setting to retrieve.
-* @returns {Promise<any>} A promise that resolves to the setting value, or undefined if not found. 
-*/
-async function getSetting(key) {
-  const db = await initSettingsDB();
-  const entry = await db.get(SETTINGS_STORE_NAME, key);
-  return entry?.value;
-}
-
 /**
  * Clears all SPARQL settings from the settings store.
  */
@@ -219,21 +208,6 @@ function savedQueryRecordToJsonLd(record) {
 async function exportSavedQueriesAsJsonLd() {
   const rows = await getAllSavedQueries();
   return rows.map(savedQueryRecordToJsonLd);
-}
-
-const SAVED_QUERY_CSV_HEADERS = [
-  'query ID (IRI)',
-  'label',
-  'type (class iri)',
-  "value ('has sparql query text value')"
-];
-
-function escapeCsvCell(value) {
-  const s = String(value ?? '');
-  if (/[",\n\r]/.test(s)) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
 }
 
 /**
