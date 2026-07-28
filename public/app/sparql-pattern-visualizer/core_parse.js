@@ -15,7 +15,7 @@ import { logError } from "./log.js";
 export function parseSparqlToAst(queryText) {
   try {
     if (!window.sparqljs?.Parser) {
-      throw new Error("sparqljs Parser not found on window. Did you load vendor/sparqljs.umd.js?");
+      throw new Error("sparqljs Parser not found on window. Did you load app/shared/vendor/sparqljs.umd.js?");
     }
     const parser = new window.sparqljs.Parser({ skipValidation: false });
     return parser.parse(String(queryText ?? ""));
