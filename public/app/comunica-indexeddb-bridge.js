@@ -18,9 +18,14 @@ import {
 import {
   commonSPARQLPrefixes,
   debuggingConsoleEnabled,
-  readFileAsText,
   showToast
 } from './semantic-core.js';
+import { readFileAsText } from './shared/browser-file-io/index.js';
+import { getSupportedMimeTypeForFilename } from './shared/format-registry/index.js';
+import {
+  parseRdfTextWithAdapters,
+  rdfJsTermToRdflib
+} from './shared/rdf-io/index.js';
 
 const engine = new Comunica.QueryEngine();
 // N3 RDF/JS terms & store
@@ -163,37 +168,6 @@ async function loadGraphFromIndexedDB() {
 }
 
 /**
- * Converts an RDF/JS term from N3.js into the rdflib.js term shape used by
- * the existing workspace storage path.
- * @param {any} term - RDF/JS term.
- * @returns {any} rdflib.js term.
- */
-function rdfjsTermToRdflibTerm(term) {
-  if (!term) return undefined;
-
-  if (term.termType === 'NamedNode') {
-    return $rdf.sym(term.value);
-  }
-
-  if (term.termType === 'BlankNode') {
-    return $rdf.blankNode(String(term.value || '').replace(/^_:/, ''));
-  }
-
-  if (term.termType === 'Literal') {
-    if (term.language) {
-      return $rdf.literal(term.value, term.language);
-    }
-
-    const datatype = term.datatype?.value;
-    return datatype
-      ? $rdf.literal(term.value, undefined, $rdf.sym(datatype))
-      : $rdf.literal(term.value);
-  }
-
-  throw new Error(`Unsupported RDF/JS term type: ${term.termType}`);
-}
-
-/**
  * Parses N-Triples with N3.js. rdflib.js does not accept the
  * application/n-triples media type in this browser build.
  * @param {string} rdfText - Raw N-Triples text.
@@ -201,24 +175,24 @@ function rdfjsTermToRdflibTerm(term) {
  * @param {string} graphIRI - Optional named graph IRI.
  * @returns {number} Number of parsed statements.
  */
-function parseNTriplesIntoNamedGraph(rdfText, targetGraph, graphIRI) {
-  const parser = new N3.Parser({
-    format: 'N-Triples',
-    baseIRI: 'http://example.org/'
+async function parseNTriplesIntoNamedGraph(rdfText, targetGraph, graphIRI) {
+  const parsed = await parseRdfTextWithAdapters(rdfText, {
+    format: 'application/n-triples',
+    baseIri: 'http://example.org/',
+    runtime: { N3, $rdf }
   });
-  const quads = parser.parse(rdfText);
   const graphSym = graphIRI ? $rdf.sym(graphIRI) : undefined;
 
-  quads.forEach(q => {
+  parsed.quads.forEach(q => {
     targetGraph.add(
-      rdfjsTermToRdflibTerm(q.subject),
-      rdfjsTermToRdflibTerm(q.predicate),
-      rdfjsTermToRdflibTerm(q.object),
+      rdfJsTermToRdflib(q.subject, $rdf),
+      rdfJsTermToRdflib(q.predicate, $rdf),
+      rdfJsTermToRdflib(q.object, $rdf),
       graphSym
     );
   });
 
-  return quads.length;
+  return parsed.quads.length;
 }
 
 /**
@@ -232,7 +206,7 @@ function parseNTriplesIntoNamedGraph(rdfText, targetGraph, graphIRI) {
 const parseIntoNamedGraph = async (rdfText, targetGraph, graphIRI, mimeType) => {
   if (mimeType === 'application/n-triples') {
     try {
-      const count = parseNTriplesIntoNamedGraph(rdfText, targetGraph, graphIRI);
+      const count = await parseNTriplesIntoNamedGraph(rdfText, targetGraph, graphIRI);
       if (debuggingConsoleEnabled) {console.info(
         `[parseIntoNamedGraph] Added ${count} N-Triples statements to ` +
         (graphIRI ? `graph <${graphIRI}>` : 'the default graph')
@@ -244,26 +218,24 @@ const parseIntoNamedGraph = async (rdfText, targetGraph, graphIRI, mimeType) => 
     }
   }
 
-  return new Promise((resolve, reject) => {
-    const tmp = $rdf.graph();
-    $rdf.parse(rdfText, tmp, 'http://example.org/', mimeType, err => {
-      if (err) {
-        if (debuggingConsoleEnabled) {console.error('[parseIntoNamedGraph] Error parsing RDF:', err)};
-        reject(err);
-      } else {
-        const graphSym = graphIRI ? $rdf.sym(graphIRI) : undefined; // undefined ⇒ default graph
-        tmp.statements.forEach(q => {
-          targetGraph.add(q.subject, q.predicate, q.object, graphSym);
-        });
-        if (debuggingConsoleEnabled) {console.info(
-          `[parseIntoNamedGraph] Added ${tmp.statements.length} statements to ` +
-          (graphIRI ? `graph <${graphIRI}>` : 'the default graph')
-        )};
-        resolve();
-      }
-    });
+  const parsed = await parseRdfTextWithAdapters(rdfText, {
+    format: mimeType,
+    baseIri: 'http://example.org/',
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf }
   });
-};
+  const graphSym = graphIRI ? $rdf.sym(graphIRI) : undefined;
+  parsed.quads.forEach(q => {
+    targetGraph.add(
+      rdfJsTermToRdflib(q.subject, $rdf),
+      rdfJsTermToRdflib(q.predicate, $rdf),
+      rdfJsTermToRdflib(q.object, $rdf),
+      graphSym
+    );
+  });
+  if (debuggingConsoleEnabled) {console.info(
+    `[parseIntoNamedGraph] Added ${parsed.quads.length} statements to ` +
+    (graphIRI ? `graph <${graphIRI}>` : 'the default graph')
+  )};};
 
 /**
  * Serializes an rdflib graph and runs a SPARQL UPDATE query against it using Comunica.
@@ -938,7 +910,8 @@ async function addFilesToDB(rows, errors, namedGraphError) {
 
     try {
       const text = await readFileAsText(file);
-      const mime = detectRdfMimeByName(file.name);
+      const detected = getSupportedMimeTypeForFilename(file.name);
+      const mime = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
 
       const g = $rdf.graph();
       // 4-arg signature; pass null/undefined for default graph when IRI blank
@@ -966,28 +939,6 @@ async function addFilesToDB(rows, errors, namedGraphError) {
 };
 
 /**
- * Detect an RDF MIME type from a filename extension.
- * Pure; logs warning for unknown.
- * @param {string} filename
- * @returns {string} rdflib.js MIME
- */
-function detectRdfMimeByName(filename='') {
-  const ext = String(filename).toLowerCase().split('.').pop();
-  switch (ext) {
-    case 'ttl': return 'text/turtle';
-    case 'nt': return 'application/n-triples';
-    case 'n3': return 'text/n3';
-    case 'jsonld': return 'application/ld+json';
-    case 'rdf':
-    case 'owl': return 'application/rdf+xml';
-    case 'trig': return 'application/trig';
-    default:
-      if (debuggingConsoleEnabled) {console.warn(`[detectRdfMimeByName] Unknown extension ".${ext}", defaulting to Turtle`);}
-      return 'text/turtle';
-  }
-}
-
-/**
  * Parse RDF text to an rdflib graph.
  * Pure w.r.t. persistence; returns a new graph.
  * @param {string} text
@@ -998,12 +949,19 @@ function detectRdfMimeByName(filename='') {
 async function parseRdfTextToGraph(text, mime='text/turtle', baseIRI='http://example.org/') {
   const g = $rdf.graph();
 
-  if (mime === 'application/n-triples') {
-    parseNTriplesIntoNamedGraph(text, g, null);
-    return g;
-  }
-
-  await new Promise((res, rej) => $rdf.parse(text, g, baseIRI, mime, err => err ? rej(err) : res()));
+  const parsed = await parseRdfTextWithAdapters(text, {
+    format: mime,
+    baseIri: baseIRI,
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf }
+  });
+  parsed.quads.forEach(q => {
+    g.add(
+      rdfJsTermToRdflib(q.subject, $rdf),
+      rdfJsTermToRdflib(q.predicate, $rdf),
+      rdfJsTermToRdflib(q.object, $rdf),
+      q.graph && q.graph.termType !== 'DefaultGraph' ? rdfJsTermToRdflib(q.graph, $rdf) : undefined
+    );
+  });
   return g;
 }
 
@@ -1178,7 +1136,8 @@ async function importCanonical(opt={}) {
   const resp = await fetch(url, { cache: 'no-store' });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
   const text = await resp.text();
-  const mime = detectRdfMimeByName(url);
+  const detected = getSupportedMimeTypeForFilename(url);
+  const mime = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
   const parsed = await parseRdfTextToGraph(text, mime);
   return await stashGraphToIndexedDB(parsed, targetMode, graphIRI, 'urn:graph:canonical');
 }
@@ -1196,7 +1155,8 @@ async function importLocalFile(opt={}) {
   const { file, targetMode='default', graphIRI=null } = opt;
   if (!file) throw new Error('importLocalFile: file is required');
   const text = await readFileAsText(file);
-  const mime = detectRdfMimeByName(file.name);
+  const detected = getSupportedMimeTypeForFilename(file.name);
+  const mime = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
   const parsed = await parseRdfTextToGraph(text, mime);
   return await stashGraphToIndexedDB(parsed, targetMode, graphIRI, 'urn:graph:upload');
 }
@@ -1243,7 +1203,6 @@ export {
   clearActiveTriples,
   clearGraph,
   describeUpdateShape,
-  detectRdfMimeByName,
   flushActiveWorkspace,
   importCanonical,
   importLocalFile,

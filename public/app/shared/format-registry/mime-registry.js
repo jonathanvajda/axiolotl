@@ -114,7 +114,31 @@ export const SUPPORTED_MIME_DESCRIPTORS = Object.freeze({
     label: 'SPARQL Query',
     category: 'query',
     extensions: ['rq', 'sparql'],
-    aliases: ['rq', 'sparql', 'application/sparql-query']
+    aliases: ['rq', 'sparql', 'SPARQL Query', 'application/sparql-query']
+  }),
+  sparqlUpdate: defineDescriptor({
+    id: 'sparqlUpdate',
+    mimeType: 'application/sparql-update',
+    label: 'SPARQL Update',
+    category: 'query',
+    extensions: ['ru'],
+    aliases: ['ru', 'sparql-update', 'SPARQL Update', 'application/sparql-update']
+  }),
+  sparqlResultsJson: defineDescriptor({
+    id: 'sparqlResultsJson',
+    mimeType: 'application/sparql-results+json',
+    label: 'SPARQL Results JSON',
+    category: 'query',
+    extensions: ['srj'],
+    aliases: ['srj', 'sparql-results-json', 'SPARQL Results JSON', 'application/sparql-results+json']
+  }),
+  sparqlResultsXml: defineDescriptor({
+    id: 'sparqlResultsXml',
+    mimeType: 'application/sparql-results+xml',
+    label: 'SPARQL Results XML',
+    category: 'query',
+    extensions: ['srx'],
+    aliases: ['srx', 'sparql-results-xml', 'SPARQL Results XML', 'application/sparql-results+xml']
   }),
   csv: defineDescriptor({
     id: 'csv',

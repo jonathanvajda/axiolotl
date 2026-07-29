@@ -3,7 +3,6 @@
     //  parseIntoNamedGraph,
     //  loadGraphFromIndexedDB,
     //  stashGraphToIndexedDB
-    //  detectRdfMimeByName      (good candidate for moving to semantic-core.js)
 
 // List of functions in this file:
   // debuggingConsoleEnabled
@@ -15,11 +14,10 @@
   // commonSPARQLPrefixes
   // defaultActivePrefixes
   // readFileAsText
-  // commonMIMEType
-
   // getSelectedOutputMime
-  // downloadText
 
+import { getSupportedMimeTypeForFilename } from './shared/format-registry/index.js';
+import { readFileAsText } from './shared/browser-file-io/index.js';
 import { namespacePrefixMapFromRegistry } from './shared/namespace-registry/index.js';
 
 export const debuggingConsoleEnabled = true; // set to false to disable debug logs
@@ -234,17 +232,6 @@ export const toastError   = (m, t=4500) => showToast(m, 'error',   { timeout: t 
   }
 
 /**
- * Read a File as text.
- * Pure w.r.t. app state; side-effect is delegated to browser-file-io.
- * @param {File} file
- * @returns {Promise<string>}
- */
-export function readFileAsText(file) {
-  return import('./shared/browser-file-io/index.js')
-    .then(({ readFileAsText: readBrowserFileAsText }) => readBrowserFileAsText(file));
-}
-
-/**
  * Reads file content and loads it into IndexedDB under its own graph name.
  * @param {File} file
  */
@@ -257,8 +244,9 @@ export async function handleFileUpload(file) {
 
   try {
     const content = await readFileAsText(file);
-    const { detectRdfMimeByName, parseIntoNamedGraph } = await import('./comunica-indexeddb-bridge.js');
-    const mimeType = detectRdfMimeByName(file.name);
+    const { parseIntoNamedGraph } = await import('./comunica-indexeddb-bridge.js');
+    const detected = getSupportedMimeTypeForFilename(file.name);
+    const mimeType = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
     const graphIRI = `urn:upload:${encodeURIComponent(file.name)}`;
 
     await parseIntoNamedGraph(content, store, graphIRI, mimeType);
@@ -269,16 +257,3 @@ export async function handleFileUpload(file) {
   }
 }
 
-/**
- * Download text as a file (e.g. Turtle or N-Triples).
- * @param {string} filename
- * @param {string} text
- * @param {string} mime
- * @returns {void}
- */
-export function downloadText(filename, text, mime) {
-  import('./shared/browser-file-io/index.js')
-    .then(({ downloadTextFile }) => {
-      downloadTextFile(filename, text, { mimeType: mime });
-    });
-}

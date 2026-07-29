@@ -173,6 +173,7 @@
 
 <script type="module">
 import { COMMON_NAMESPACE_IRIS as NS } from './app/shared/namespace-registry/index.js';
+import { parseRdfTextWithAdapters } from './app/shared/rdf-io/index.js';
 
 (function(){
   // --- State ---
@@ -229,80 +230,44 @@ import { COMMON_NAMESPACE_IRIS as NS } from './app/shared/namespace-registry/ind
     return (s.startsWith('"') && s.endsWith('"')) || (/^[-+]?[0-9]+(\.[0-9]+)?$/.test(s));
   }
 
-  // Convert RDFlib statements to N3-like quad objects
-  function rdflibStatementsToQuads(statements) {
-    const quads = [];
-    for (const st of statements) {
-      const s = st.subject.termType === 'BlankNode' ? ('_:' + st.subject.value) : st.subject.value;
-      const p = st.predicate.value;
-      const o = st.object.termType === 'BlankNode' ? ('_:' + st.object.value) : (st.object.termType === 'Literal' ? JSON.stringify(st.object.value) : st.object.value);
-      quads.push({ s, p, o, g: st.why && st.why.value ? st.why.value : undefined });
-    }
-    return quads;
+  function rdfTermToAnalyticsValue(term) {
+    if (!term) return '';
+    if (term.termType === 'BlankNode') return `_:${term.value}`;
+    if (term.termType === 'Literal') return JSON.stringify(term.value);
+    return term.value || '';
   }
 
+  function rdfIoQuadsToAnalyticsQuads(quads) {
+    return quads.map((quad) => ({
+      s: rdfTermToAnalyticsValue(quad.subject),
+      p: quad.predicate.value,
+      o: rdfTermToAnalyticsValue(quad.object),
+      g: quad.graph && quad.graph.termType !== 'DefaultGraph' ? rdfTermToAnalyticsValue(quad.graph) : undefined
+    }));
+  }
   async function parseFileToQuads(file, overrideFormat, baseIRI) {
     const name = file?.name || 'graph';
     const fmt = overrideFormat && overrideFormat !== 'auto' ? overrideFormat : detectFormatByName(name);
     const text = await file.text();
+    const parseFormat = fmt === 'auto'
+      ? (text.trim().startsWith('{') ? 'application/ld+json' : (/<rdf:RDF[\s>]/.test(text) ? 'application/rdf+xml' : 'text/turtle'))
+      : fmt;
 
-    // JSON-LD -> N-Quads -> quads
-    if (fmt === 'application/ld+json' || (fmt==='auto' && text.trim().startsWith('{'))) {
-      log(`Parsing as JSON-LD…`);
-      const nquads = await jsonld.toRDF(JSON.parse(text), { format: 'application/n-quads', base: baseIRI || undefined });
-      const parser = new N3.Parser({ format: 'N-Quads', baseIRI: baseIRI || undefined });
-      const quads = [];
-      parser.parse(nquads, (error, quad, prefixes) => {
-        if (error) throw error;
-        if (quad) quads.push({ s: quad.subject.id, p: quad.predicate.id, o: quad.object.termType === 'Literal' ? JSON.stringify(quad.object.value) : quad.object.id, g: quad.graph.id });
+    try {
+      log(`Parsing as ${parseFormat} via shared RDF IO...`);
+      const parsed = await parseRdfTextWithAdapters(text, {
+        format: parseFormat,
+        baseIri: baseIRI || 'http://example.org/',
+        runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
       });
-      return quads;
+      return rdfIoQuadsToAnalyticsQuads(parsed.quads);
+    } catch (e) {
+      log(`RDF parse failed: ${e.message || e}`, 'error');
+      throw e;
     }
-
-    // Turtle / N3 / TriG / N-Triples / N-Quads
-    if (fmt === 'text/turtle' || fmt === 'application/n-triples' || fmt === 'application/n-quads' || fmt === 'application/trig' || fmt === 'auto') {
-      // Try N3 first; it can parse most text syntaxes except RDF/XML
-      try {
-        log(`Parsing as ${fmt==='text/turtle' ? 'Turtle/N3' : (fmt==='application/n-triples' ? 'N-Triples/N-Quads' : 'Turtle/N3 (auto)')}…`);
-        const parserFormat = {
-          'text/turtle': 'Turtle',
-          'text/n3': 'N3',
-          'application/n-triples': 'N-Triples',
-          'application/n-quads': 'N-Quads',
-          'application/trig': 'TriG'
-        }[fmt];
-        const parser = new N3.Parser({ format: parserFormat || (fmt==='application/n-triples' ? 'N-Triples' : undefined), baseIRI: baseIRI || undefined });
-        const quads = [];
-        parser.parse(text, (error, quad, prefixes) => {
-          if (error) throw error;
-          if (quad) quads.push({ s: quad.subject.id, p: quad.predicate.id, o: quad.object.termType === 'Literal' ? JSON.stringify(quad.object.value) : quad.object.id, g: quad.graph.id });
-        });
-        if (quads.length > 0) return quads;
-      } catch(e) {
-        log(`N3 parse attempt did not succeed; will try RDF/XML if appropriate.`, 'warn');
-        // fallthrough to RDF/XML
-      }
-    }
-
-    // RDF/XML via rdflib
-    if (fmt === 'application/rdf+xml' || /<rdf:RDF[\s>]/.test(text)) {
-      log(`Parsing as RDF/XML via rdflib…`);
-      const store = $rdf.graph();
-      const base = baseIRI || 'http://example.org/';
-      try {
-        $rdf.parse(text, store, base, 'application/rdf+xml');
-      } catch (e) {
-        log(`RDF/XML parse failed: ${e.message || e}`, 'error');
-        throw e;
-      }
-      return rdflibStatementsToQuads(store.statements);
-    }
-
-    throw new Error('Unsupported format or failed to parse. Try selecting a format override or check file syntax.');
   }
 
-  // --- Graph building & indexes ---
-  function buildIndexes(quads, includeLiterals) {
+  // --- Graph building & indexes ---  function buildIndexes(quads, includeLiterals) {
     state.nodes.clear();
     state.preds.clear();
     state.subjToEdges.clear();

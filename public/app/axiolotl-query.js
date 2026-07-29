@@ -11,7 +11,6 @@ import {
   clearActiveSettings,
   clearActiveTriples,
   describeUpdateShape,
-  detectRdfMimeByName,
   flushActiveWorkspace,
   loadGraphFromIndexedDB,
   makeNamedGraphIRI,
@@ -40,12 +39,20 @@ import {
 import {
   commonSPARQLPrefixes,
   debuggingConsoleEnabled,
-  downloadText,
   handleFileUpload,
-  readFileAsText,
   showToast,
   toastFromQueryError
 } from './semantic-core.js';
+import { downloadTextFile, readFileAsText } from './shared/browser-file-io/index.js';
+import {
+  getMimeTypeForFormatKey,
+  getPreferredExtensionForMimeType,
+  getSupportedMimeTypeForFilename
+} from './shared/format-registry/index.js';
+import {
+  parseRdfTextWithAdapters,
+  serializeRdfDatasetWithAdapters
+} from './shared/rdf-io/index.js';
 
 // Where the ontology files live (folder that also contains ontology-list.json)
 const CANON_ONTOLOGIES_BASE = 'ontology-files/' ;
@@ -172,10 +179,11 @@ async function handleDownloadActiveWorkspace() {
       return;
     }
 
-    downloadText(
-      `active-workspace-${scope}-${timestampUTC()}.${workspaceExportExtension(mime)}`,
+    const extension = getPreferredExtensionForMimeType(mime);
+    downloadTextFile(
+      `active-workspace-${scope}-${timestampUTC()}.${extension.ok ? extension.value : 'rdf'}`,
       text,
-      mime
+      { mimeType: mime }
     );
     showToast(`Downloaded ${count} triple${count === 1 ? '' : 's'}.`, 'success');
   } catch (err) {
@@ -206,7 +214,6 @@ async function serializeWorkspaceExportStore(store, mime) {
 }
 
 async function serializeWorkspaceWithN3(store, mime) {
-  const { serializeRdfDatasetWithAdapters } = await import('./shared/rdf-io/index.js');
   const serialized = await serializeRdfDatasetWithAdapters(store, {
     format: mime,
     runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
@@ -215,31 +222,15 @@ async function serializeWorkspaceWithN3(store, mime) {
 }
 
 async function serializeJsonLdFromNQuads(nquads) {
-  const jsonld = globalThis.jsonld;
-  if (jsonld && typeof jsonld.fromRDF === 'function') {
-    const expanded = await jsonld.fromRDF(nquads, { format: 'application/n-quads' });
-    return JSON.stringify(expanded, null, 2);
-  }
-
-  return JSON.stringify(nquadsToSimpleJsonLd(nquads), null, 2);
-}
-
-function nquadsToSimpleJsonLd(nquads) {
-  return nquads
-    .split(/\r?\n/u)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .map(line => ({ '@value': line }));
-}
-
-function workspaceExportExtension(mime) {
-  return ({
-    'text/turtle': 'ttl',
-    'application/n-triples': 'nt',
-    'application/n-quads': 'nq',
-    'application/trig': 'trig',
-    'application/ld+json': 'jsonld',
-  })[mime] || 'rdf';
+  const parsed = await parseRdfTextWithAdapters(nquads, {
+    format: 'application/n-quads',
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+  });
+  const serialized = await serializeRdfDatasetWithAdapters(parsed.dataset, {
+    format: 'application/ld+json',
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+  });
+  return serialized.text;
 }
 
 /** 
@@ -396,9 +387,9 @@ async function handleRunInference() {
 function handleDownloadPreview(format = 'text/turtle') {
   try {
     const text = document.getElementById('rdf-preview').value;
-    const ext = workspaceExportExtension(format);
-    const filename = `inferred-overlay.${ext}`;
-    downloadText(filename, text, format);
+    const extension = getPreferredExtensionForMimeType(format);
+    const filename = `inferred-overlay.${extension.ok ? extension.value : 'rdf'}`;
+    downloadTextFile(filename, text, { mimeType: format });
     if (debuggingConsoleEnabled) {console.info('[handleDownloadPreview] RDF download triggered');}
   } catch (error) {
     if (debuggingConsoleEnabled) {console.error('[handleDownloadPreview] Failed:', error);}
@@ -500,9 +491,9 @@ async function exportInferredOverlay() {
     const mime = getSelectedOutputMime();
     const text = await serializeStore(g, mime);
 
-    const ext = workspaceExportExtension(mime);
+    const extension = getPreferredExtensionForMimeType(mime);
 
-    downloadText(`inferred-${timestampUTC()}.${ext}`, text, mime);
+    downloadTextFile(`inferred-${timestampUTC()}.${extension.ok ? extension.value : 'rdf'}`, text, { mimeType: mime });
     showToast('Download started.', 'success');
   } catch (e) {
     if (debuggingConsoleEnabled) {
@@ -947,9 +938,12 @@ const commitUpdateByMaterialization = async (updateStr, targetMode='default') =>
     for (const q of insQs) {
       const ttl = await runConstructPreview(q, 'text/turtle');
 
-      const parser = new N3.Parser({ format: 'text/turtle', baseIRI: 'http://example.org/' });
-      const quads = parser.parse(ttl);
-      const overlay = new N3.Store(quads);
+      const parsed = await parseRdfTextWithAdapters(ttl, {
+        format: 'text/turtle',
+        baseIri: 'http://example.org/',
+        runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+      });
+      const overlay = parsed.dataset;
 
       await stashGraphToIndexedDB(overlay, targetMode, graphIRI);
       inserted += quads.length;
@@ -1158,10 +1152,10 @@ function summarizeSavedQueryLabel(row) {
 async function handleDownloadSavedQueriesJsonLd() {
   try {
     const jsonld = await exportSavedQueriesAsJsonLd();
-    downloadText(
+    downloadTextFile(
       `saved-queries-${Date.now()}.jsonld`,
       JSON.stringify(jsonld, null, 2),
-      'application/ld+json'
+      { mimeType: 'application/ld+json' }
     );
     showToast('Saved queries JSON-LD download started.', 'success');
   } catch (err) {
@@ -1175,10 +1169,10 @@ async function handleDownloadSavedQueriesJsonLd() {
 async function handleDownloadSavedQueriesCsv() {
   try {
     const csv = await exportSavedQueriesAsCsv();
-    downloadText(
+    downloadTextFile(
       `saved-queries-${Date.now()}.csv`,
       csv,
-      'text/csv'
+      { mimeType: 'text/csv' }
     );
     showToast('Saved queries CSV download started.', 'success');
   } catch (err) {
@@ -1349,7 +1343,7 @@ function instantIdleWorkspaceStatus() {
  * Assumes:
  * - fetch(), parseIntoNamedGraph(text, g, base, mime), storeTriplesInNamedGraph(triples)
  * - showToast(msg, level)
- * - detectRdfMimeByName(filename)
+ * - shared format-registry MIME detection
  * - debuggingConsoleEnabled global for logging 
  */
 async function loadSelectedOntologiesToDB() {
@@ -1376,7 +1370,8 @@ async function loadSelectedOntologiesToDB() {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const text = await resp.text();
-      const mime = detectRdfMimeByName(filePath);
+      const detected = getSupportedMimeTypeForFilename(filePath);
+      const mime = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
       const g = $rdf.graph();
 
       await parseIntoNamedGraph(text, g, null, mime); // default graph
@@ -1473,25 +1468,12 @@ function renderQueryError(err) {
   resultsDiv.innerHTML = html;
 }
 
-// Drop-down id="output-format" has values: Turtle, n-Triples, JSON-LD, RDF/XML
-const commonMIMEType = {
-  'Turtle':    'text/turtle',
-  'n-Triples': 'application/n-triples',
-  'JSON-LD':   'application/ld+json',
-  'RDF/XML':   'application/rdf+xml',
-  'N-Quads':   'application/n-quads',
-  'TriG':      'application/trig',
-  'SPARQL Results JSON': 'application/sparql-results+json',
-  'SPARQL Results XML':  'application/sparql-results+xml',
-  'SPARQL Update':      'application/sparql-update',
-  'SPARQL Query':       'application/sparql-query',
-};
-
 // Utility to get selected output MIME type from dropdown
 function getSelectedOutputMime() {
   const sel = document.getElementById('output-format');
   const label = sel?.value || 'Turtle';
-  return commonMIMEType[label] || 'text/turtle';
+  const result = getMimeTypeForFormatKey(label);
+  return result.ok ? result.value.mimeType : 'text/turtle';
 }
 
 /**

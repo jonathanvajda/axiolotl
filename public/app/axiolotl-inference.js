@@ -4,7 +4,6 @@
   // comunica-indexeddb-bridge.js
     //  applyUpdateWithComunica
 // semantic-core.js
-    // downloadText(filename, text, mime)  
 import {
   COMMON_NAMESPACE_IRIS,
   namespacePrefixMapFromRegistry
