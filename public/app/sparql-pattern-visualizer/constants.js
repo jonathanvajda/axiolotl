@@ -2,12 +2,19 @@
  * @file constants.js
  * @description Shared constants and defaults.
  */
+import {
+  COMMON_NAMESPACE_IRIS,
+  namespacePrefixMapFromRegistry
+} from "../shared/namespace-registry/index.js";
 
 export const debuggerConsoleLogEnabled = true;
 
-export const DEFAULT_QUERY = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+const NS = COMMON_NAMESPACE_IRIS;
+const PREFIXES = namespacePrefixMapFromRegistry();
+
+export const DEFAULT_QUERY = `PREFIX rdf: <${PREFIXES.rdf}>
 PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX skos: <${PREFIXES.skos}>
 
 SELECT ?p ?name WHERE {
   ?p a foaf:Person .
@@ -22,11 +29,11 @@ SELECT ?p ?name WHERE {
  * (MVP heuristic; can be made configurable.)
  */
 export const KNOWN_ANNOTATION_PREDICATE_IRIS = new Set([
-  "http://www.w3.org/2000/01/rdf-schema#label",
-  "http://www.w3.org/2000/01/rdf-schema#comment",
-  "http://purl.org/dc/terms/title",
+  NS.rdfs.label,
+  NS.rdfs.comment,
+  NS.dcterms.title,
   "http://purl.org/dc/elements/1.1/title",
-  "http://www.w3.org/2004/02/skos/core#prefLabel",
-  "http://www.w3.org/2004/02/skos/core#altLabel",
-  "http://www.w3.org/2004/02/skos/core#definition"
+  NS.skos.prefLabel,
+  NS.skos.altLabel,
+  NS.skos.definition
 ]);

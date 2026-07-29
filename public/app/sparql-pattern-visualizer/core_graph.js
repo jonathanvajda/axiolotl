@@ -5,6 +5,9 @@
 
 import { KNOWN_ANNOTATION_PREDICATE_IRIS } from "./constants.js";
 import { termKey, termLabel } from "./core_terms.js";
+import { COMMON_NAMESPACE_IRIS } from "../shared/namespace-registry/index.js";
+
+const NS = COMMON_NAMESPACE_IRIS;
 
 /**
  * @typedef {Object} GraphNode
@@ -120,7 +123,7 @@ export function applyTypeHeuristics(nodesById, edges) {
 export function classifyEdge(predicateTerm, objectTerm) {
   const predIri = predicateTerm?.termType === "NamedNode" ? predicateTerm.value : null;
 
-  if (predIri === "http://www.w3.org/1999/02/22-rdf-syntax-ns#type") return "rdfType";
+  if (predIri === NS.rdf.type) return "rdfType";
 
   // Property path objects in SPARQL.js are not NamedNode terms (MVP: treat separately)
   if (predicateTerm && predicateTerm.termType == null && typeof predicateTerm === "object") return "path";
