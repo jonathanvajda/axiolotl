@@ -7,6 +7,20 @@
 //     clearTriples
 //   rdflib.js
 //     $rdf
+import {
+  clearSavedQueries,
+  clearSettingsStore,
+  clearTriples,
+  getAllGraphNames,
+  getAllTriples,
+  storeTriplesInNamedGraph
+} from './indexeddb-triplestore.js';
+import {
+  commonSPARQLPrefixes,
+  debuggingConsoleEnabled,
+  readFileAsText,
+  showToast
+} from './semantic-core.js';
 
 const engine = new Comunica.QueryEngine();
 // N3 RDF/JS terms & store
@@ -599,10 +613,10 @@ async function collectStreamText(stream) {
 }
 
 // Execute a SPARQL query on a remote SPARQL endpoint
-async function runQueryOnEndpoint(endpoint, query) {
+async function runQueryOnEndpoint(endpoint, query, authHeaders = {}) {
   const headers = {
     'Content-Type': 'application/sparql-query',
-    ...endpointAuthHeaders,
+    ...authHeaders,
   };
   const response = await fetch(endpoint, { method: 'POST', headers, body: query });
   if (!response.ok) {
@@ -1223,13 +1237,26 @@ async function previewInsertFromUpdate(updateStr, opt={}) {
   return { previewGraph, count: res.count, graphIRI: res.graphIRI };
 }
 
-// Make bridge functions available globally when not using modules
-window.parseIntoNamedGraph = parseIntoNamedGraph;
-window.storeTriplesInNamedGraph = storeTriplesInNamedGraph;
-window.queryFromNamedGraph = queryFromNamedGraph;
-window.getAllGraphNames = getAllGraphNames;
-window.clearGraph = clearGraph;
-window.applyUpdateWithComunica = applyUpdateWithComunica;
-window.loadGraphFromIndexedDB  = loadGraphFromIndexedDB;
-window.stashGraphToIndexedDB = stashGraphToIndexedDB;
-window.queryAllNamedGraphs     = queryAllNamedGraphs;
+export {
+  applyUpdateWithComunica,
+  clearActiveSettings,
+  clearActiveTriples,
+  clearGraph,
+  describeUpdateShape,
+  detectRdfMimeByName,
+  flushActiveWorkspace,
+  importCanonical,
+  importLocalFile,
+  loadGraphFromIndexedDB,
+  makeNamedGraphIRI,
+  makePreviewConstructs,
+  parseIntoNamedGraph,
+  parseRdfTextToGraph,
+  previewInsertFromUpdate,
+  queryAllNamedGraphs,
+  queryFromNamedGraph,
+  runQueryOnEndpoint,
+  runQueryOnLocalDataset,
+  runConstructPreview,
+  stashGraphToIndexedDB
+};

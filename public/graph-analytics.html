@@ -109,7 +109,7 @@
             </div>
             <div>
               <label>Allowed predicates (one per line)</label>
-              <textarea id="predList" placeholder="http://purl.org/dc/terms/creator\nhttp://schema.org/parent"></textarea>
+              <textarea id="predList" placeholder="https://example.org/predicate\nhttps://schema.org/parent"></textarea>
             </div>
             <div>
               <label>Subproperty roots (one per line)</label>
@@ -170,10 +170,10 @@
 <script src="./app/shared/vendor/rdflib.min.js"></script>
 <script src="./app/shared/vendor/comunica-browser.js"></script>
 <script src="./app/shared/vendor/idb.min.js"></script>
-<script src="./app/comunica-indexeddb-bridge.js"></script>
-<script src="./app/indexeddb-triplestore.js"></script>
 
-<script>
+<script type="module">
+import { COMMON_NAMESPACE_IRIS as NS } from './app/shared/namespace-registry/index.js';
+
 (function(){
   // --- State ---
   const state = {
@@ -317,11 +317,11 @@
       const {s, p, o} = q;
       state.preds.add(p);
       // capture owl:ObjectProperty
-      if (p === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type' && o === 'http://www.w3.org/2002/07/owl#ObjectProperty') {
+      if (p === NS.rdf.type && o === NS.owl.ObjectProperty) {
         state.objectProps.add(s);
       }
       // subPropertyOf tree
-      if (p === 'http://www.w3.org/2000/01/rdf-schema#subPropertyOf') {
+      if (p === NS.rdfs.subPropertyOf) {
         const child = s, parent = o;
         const arr = state.subPropIndex.get(parent) || [];
         arr.push(child);
@@ -543,12 +543,16 @@
 </script>
   
   <!-- ==================== DRY add-on: path-finder.js (uses your existing libs) ==================== -->
-  <script>
+  <script type="module">
+  import { loadGraphFromIndexedDB } from './app/comunica-indexeddb-bridge.js';
+  import { mapFromQuads, transitiveClosure } from './app/axiolotl-inference.js';
+  import { COMMON_NAMESPACE_IRIS as NS } from './app/shared/namespace-registry/index.js';
+
   // Path Finder — reuses your existing rdflib/comunica + inference helpers (no duplicate parsers)
   // Exposes window.PathFinder with: loadStore, computeAllowedPredicates, shortestPath, allPaths, toSparql
   //
   // Depends on:
-  //   - loadGraphFromIndexedDB(), formulaToRdfjsStore()  (from comunica-indexeddb-bridge.js)
+  //   - loadGraphFromIndexedDB() (from comunica-indexeddb-bridge.js)
   //   - mapFromQuads(), transitiveClosure(), and RDF/OWL/RDFS constants (from axiolotl-inference.js)
   //   - global N3 (RDF/JS DataFactory/Store)
   (function(){
@@ -657,21 +661,18 @@
       // discover owl:ObjectProperty in data
       if (mode === 'objectProps'){
         const out = new Set();
-        const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
-        const OWL_OP   = 'http://www.w3.org/2002/07/owl#ObjectProperty';
-        for (const q of store.getQuads(null, namedNode(RDF_TYPE), namedNode(OWL_OP), null)){
+        for (const q of store.getQuads(null, namedNode(NS.rdf.type), namedNode(NS.owl.ObjectProperty), null)){
           out.add(q.subject.value);
         }
         return out;
       }
 
       if (mode === 'subpropTree'){
-        const RDFS_SP = 'http://www.w3.org/2000/01/rdf-schema#subPropertyOf';
         const edges = (typeof mapFromQuads === 'function')
-          ? mapFromQuads(store, RDFS_SP)
+          ? mapFromQuads(store, NS.rdfs.subPropertyOf)
           : (function fallback(){
               const M = new Map();
-              for (const q of store.getQuads(null, namedNode(RDFS_SP), null, null)){
+              for (const q of store.getQuads(null, namedNode(NS.rdfs.subPropertyOf), null, null)){
                 const c = q.subject.value, p = q.object.value;
                 if (!M.has(c)) M.set(c, new Set());
                 if (!M.has(p)) M.set(p, new Set());
@@ -702,8 +703,7 @@
     }
 
     async function loadStore(){
-      const rdflibGraph = await loadGraphFromIndexedDB();
-      return formulaToRdfjsStore(rdflibGraph);
+      return await loadGraphFromIndexedDB();
     }
 
     // Public API

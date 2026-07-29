@@ -6,17 +6,12 @@
 import { logEvent, logError } from "./sparql-pattern-visualizer/log.js";
 import { parseSparqlToAst } from "./sparql-pattern-visualizer/core_parse.js";
 import { buildGraphModel } from "./sparql-pattern-visualizer/core_graph.js";
+import { commonSPARQLPrefixes, showToast } from "./semantic-core.js";
 
 let hasRenderedDiagram = false;
 
 function notify(message, type = "info") {
-  if (typeof window.showToast === "function") {
-    window.showToast(message, type);
-    return;
-  }
-
-  const method = type === "error" ? "error" : "log";
-  console[method](message);
+  showToast(message, type);
 }
 
 function setDiagramVisible(isVisible) {
@@ -148,7 +143,7 @@ function composeAxiolotlQuery() {
   }
 
   const prefixHeader = prefixes
-    .map(pfx => window.commonSPARQLPrefixes?.[pfx])
+    .map(pfx => commonSPARQLPrefixes?.[pfx])
     .filter(Boolean)
     .join("\n");
 

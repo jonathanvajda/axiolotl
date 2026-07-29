@@ -20,8 +20,10 @@
   // getSelectedOutputMime
   // downloadText
 
+import { namespacePrefixMapFromRegistry } from './shared/namespace-registry/index.js';
 
-debuggingConsoleEnabled = true; // set to false to disable debug logs
+export const debuggingConsoleEnabled = true; // set to false to disable debug logs
+const PREFIXES = namespacePrefixMapFromRegistry();
 
 /**
  * Safely logs a variable to the console, limiting the output size for large data.
@@ -29,7 +31,7 @@ debuggingConsoleEnabled = true; // set to false to disable debug logs
  * @param {*} argument - The argument passed to the function.
  * @param {number} [maxLength=500] - The maximum number of characters to preview.
  */
-function safeConsoleLog(functionName, argument, maxLength = 500) {
+export function safeConsoleLog(functionName, argument, maxLength = 500) {
     if (typeof argument === 'string') {
         // Handle large strings
         const preview = argument.length > maxLength
@@ -104,7 +106,7 @@ function __logError(name, err) {
  * @param {F} fn
  * @returns {F}
  */
-function withDebug(name, fn) {
+export function withDebug(name, fn) {
   return /** @type {F} */ (function (...args) {
     __logStart(name, args);
     try {
@@ -125,7 +127,7 @@ function withDebug(name, fn) {
 }
 
 // Simple toast notification system
-function showToast(message, type = 'info', { timeout = 3500 } = {}) {
+export function showToast(message, type = 'info', { timeout = 3500 } = {}) {
   let container = document.getElementById('toast-container');
   if (!container) {
     container = document.createElement('div');
@@ -178,7 +180,7 @@ function showToast(message, type = 'info', { timeout = 3500 } = {}) {
 }
 
 // Show user-friendly toast from a query error object/message
-function toastFromQueryError(err) {
+export function toastFromQueryError(err) {
   const msg = (err && (err.userMessage || err.message || String(err))) || 'Unknown error';
 
   // Normalize common issues
@@ -202,31 +204,31 @@ function toastFromQueryError(err) {
 }
 
 // Convenience wrappers for different toast types
-const toastInfo    = (m, t=3500) => showToast(m, 'info',    { timeout: t });
-const toastSuccess = (m, t=3500) => showToast(m, 'success', { timeout: t });
-const toastError   = (m, t=4500) => showToast(m, 'error',   { timeout: t });
+export const toastInfo    = (m, t=3500) => showToast(m, 'info',    { timeout: t });
+export const toastSuccess = (m, t=3500) => showToast(m, 'success', { timeout: t });
+export const toastError   = (m, t=4500) => showToast(m, 'error',   { timeout: t });
 
 
 /** 
  * Defines common prefixes in SPARQL
  */
-  const commonSPARQLPrefixes = {
-    "rdf": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-    "rdfs": "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>",
-    "owl": "PREFIX owl: <http://www.w3.org/2002/07/owl#>",
-    "xsd": "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>",
-    "skos": "PREFIX skos: <http://www.w3.org/2004/02/skos/core#>",
-    "dc": "PREFIX dc: <http://purl.org/dc/elements/1.1/>",
-    "dcterms": "PREFIX dcterms: <http://purl.org/dc/terms/>",
-    "obo": "PREFIX obo: <http://purl.obolibrary.org/obo/>",
-    "cco2": "PREFIX cco2: <https://www.commoncoreontologies.org/>",
-    "cceo": "PREFIX cceo: <http://www.ontologyrepository.com/CommonCoreOntologies/>",
-    "geo": "PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>",
-    "geojson": "PREFIX geojson: <https://purl.org/geojson/vocab#>",
-    "foaf": "PREFIX foaf: <http://xmlns.com/foaf/0.1/>",
-    "prov": "PREFIX prov: <http://www.w3.org/ns/prov#>",
-    "dcat": "PREFIX dcat: <http://www.w3.org/ns/dcat#>",
-    "vcard": "PREFIX vcard: <http://www.w3.org/2006/vcard/ns#>",
+  export const commonSPARQLPrefixes = {
+    "rdf": `PREFIX rdf: <${PREFIXES.rdf}>`,
+    "rdfs": `PREFIX rdfs: <${PREFIXES.rdfs}>`,
+    "owl": `PREFIX owl: <${PREFIXES.owl}>`,
+    "xsd": `PREFIX xsd: <${PREFIXES.xsd}>`,
+    "skos": `PREFIX skos: <${PREFIXES.skos}>`,
+    "dc": `PREFIX dc: <${PREFIXES.dc}>`,
+    "dcterms": `PREFIX dcterms: <${PREFIXES.dcterms}>`,
+    "obo": `PREFIX obo: <${PREFIXES.obo}>`,
+    "cco2": `PREFIX cco2: <${PREFIXES.cco2}>`,
+    "cceo": `PREFIX cceo: <${PREFIXES.cceo}>`,
+    "geo": `PREFIX geo: <${PREFIXES.geo}>`,
+    "geojson": `PREFIX geojson: <${PREFIXES.geojson}>`,
+    "foaf": `PREFIX foaf: <${PREFIXES.foaf}>`,
+    "prov": `PREFIX prov: <${PREFIXES.prov}>`,
+    "dcat": `PREFIX dcat: <${PREFIXES.dcat}>`,
+    "vcard": `PREFIX vcard: <${PREFIXES.vcard}>`,
     "wd": "PREFIX wd: <http://www.wikidata.org/entity/>",
     "bd": "PREFIX bd: <http://www.bigdata.com/rdf#>"
   }
@@ -237,7 +239,7 @@ const toastError   = (m, t=4500) => showToast(m, 'error',   { timeout: t });
  * @param {File} file
  * @returns {Promise<string>}
  */
-function readFileAsText(file) {
+export function readFileAsText(file) {
   return import('./shared/browser-file-io/index.js')
     .then(({ readFileAsText: readBrowserFileAsText }) => readBrowserFileAsText(file));
 }
@@ -246,7 +248,7 @@ function readFileAsText(file) {
  * Reads file content and loads it into IndexedDB under its own graph name.
  * @param {File} file
  */
-async function handleFileUpload(file) {
+export async function handleFileUpload(file) {
   if (!file) {
     if (debuggingConsoleEnabled) {console.warn('[handleFileUpload] No file provided.');}
     return;
@@ -255,6 +257,7 @@ async function handleFileUpload(file) {
 
   try {
     const content = await readFileAsText(file);
+    const { detectRdfMimeByName, parseIntoNamedGraph } = await import('./comunica-indexeddb-bridge.js');
     const mimeType = detectRdfMimeByName(file.name);
     const graphIRI = `urn:upload:${encodeURIComponent(file.name)}`;
 
@@ -273,7 +276,7 @@ async function handleFileUpload(file) {
  * @param {string} mime
  * @returns {void}
  */
-function downloadText(filename, text, mime) {
+export function downloadText(filename, text, mime) {
   import('./shared/browser-file-io/index.js')
     .then(({ downloadTextFile }) => {
       downloadTextFile(filename, text, { mimeType: mime });

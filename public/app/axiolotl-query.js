@@ -1,31 +1,53 @@
 // axiolotl-query.js
 // This file manages UI interactions and connects them to inference logic
 
-// Dependencies
-  // axiolotl-inference.js
-    //  parseTurtle,
-    //  serializeTurtle,
-    //  getSelectedRulesFromCheckboxes,
-    //  inferUntilStable
-  // comunica-indexeddb-bridge.js
-    //  parseIntoNamedGraph,
-    //  loadGraphFromIndexedDB,
-    //  stashGraphToIndexedDB
-    //  detectRdfMimeByName
-  // semantic-core.js
-    //  debuggingConsoleEnabled
-    //  showToast
-    //  handleFileUpload
-    //  readFileAsText
-    //  toastFromQueryError(err)
-    //  toastInfo
-    //  toastSuccess
-    //  toastError
-    //  commonSPARQLPrefixes
-    //  downloadText
+import {
+  clearInferenceConsole,
+  getSelectedRulesFromCheckboxes,
+  inferUntilStable,
+  setInferenceBusy
+} from './axiolotl-inference.js';
+import {
+  clearActiveSettings,
+  clearActiveTriples,
+  describeUpdateShape,
+  detectRdfMimeByName,
+  flushActiveWorkspace,
+  loadGraphFromIndexedDB,
+  makeNamedGraphIRI,
+  makePreviewConstructs,
+  parseIntoNamedGraph,
+  runConstructPreview,
+  runQueryOnEndpoint,
+  runQueryOnLocalDataset,
+  stashGraphToIndexedDB
+} from './comunica-indexeddb-bridge.js';
+import {
+  clearSavedQueries,
+  countAllTriples,
+  countNamedGraphs,
+  deleteExactTriples,
+  deleteSavedQuery,
+  exportSavedQueriesAsCsv,
+  exportSavedQueriesAsJsonLd,
+  getAllSavedQueries,
+  getSetting,
+  importSavedQueriesFromCsv,
+  saveSavedQuery,
+  saveSetting,
+  storeTriplesInNamedGraph
+} from './indexeddb-triplestore.js';
+import {
+  commonSPARQLPrefixes,
+  debuggingConsoleEnabled,
+  downloadText,
+  handleFileUpload,
+  readFileAsText,
+  showToast,
+  toastFromQueryError
+} from './semantic-core.js';
 
-
-    // Where the ontology files live (folder that also contains ontology-list.json)
+// Where the ontology files live (folder that also contains ontology-list.json)
 const CANON_ONTOLOGIES_BASE = 'ontology-files/' ;
 const CANON_ONTOLOGIES_LIST = CANON_ONTOLOGIES_BASE + 'ontology-list.json' ;
 
@@ -555,10 +577,6 @@ document.getElementById('add-to-db').addEventListener('click', () => {
   const namedGraphError = document.getElementById('namedGraphError');
   addFilesToDB(rows, errors, namedGraphError);
 });
-
-// Flush all IndexedDB + localStorage for this app
-document.getElementById('flush-active-workspace')?.addEventListener('click', flushActiveWorkspace);
-
 
 // Auth type selector changes visible fields
 document.getElementById('auth-type').addEventListener('change', () => {
@@ -1476,9 +1494,6 @@ function getSelectedOutputMime() {
   return commonMIMEType[label] || 'text/turtle';
 }
 
-// Make callable from other modules if they need it
-window.renderQueryError = renderQueryError;
-
 /**
  * Run button handler (Read/Write aware with Preview/Commit for UPDATE).
  * - Builds the final query from active prefixes + editor text.
@@ -1551,7 +1566,7 @@ document.getElementById('run-query').onclick = async () => {
       if (useEndpoint) {
         if (debuggingConsoleEnabled) {console.info('[run-query] Using remote endpoint for READ');}
         const endpoint = document.getElementById('endpoint-reference')?.value ?? '';
-        response = await runQueryOnEndpoint(endpoint, query); // expected { vars, rows } for SELECT
+        response = await runQueryOnEndpoint(endpoint, query, endpointAuthHeaders); // expected { vars, rows } for SELECT
       } else {
         if (debuggingConsoleEnabled) {console.info('[run-query] Using local database for READ');}
         response = await runQueryOnLocalDataset(query);

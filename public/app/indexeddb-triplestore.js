@@ -2,6 +2,10 @@
 // Dependencies
 // idb : aka indexedDB
 // openDB
+import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
+import { debuggingConsoleEnabled } from './semantic-core.js';
+
+const NS = COMMON_NAMESPACE_IRIS;
 
 const DB_NAME = 'inferenceDB';
 const STORE_NAME = 'triples';
@@ -95,7 +99,7 @@ async function clearSettingsStore() {
 const QUERY_IRI = {
   class: "https://github.com/jonathanvajda/SemanticArtifactOntology/ont000007",
   predicate: "https://github.com/jonathanvajda/SemanticArtifactOntology/has_sparql_query_text_value",
-  label: "http://www.w3.org/2000/01/rdf-schema#label"
+  label: NS.rdfs.label
 }
 
 /**
@@ -195,7 +199,7 @@ async function deleteSavedQuery(id) {
 function savedQueryRecordToJsonLd(record) {
   return {
     '@id': record.id,
-    '@type': [record.type, 'http://www.w3.org/2002/07/owl#NamedIndividual'],
+    '@type': [record.type, NS.owl.NamedIndividual],
     [QUERY_IRI.predicate]: [{ '@value': record.value }],
     [QUERY_IRI.label]: [{'@value': record.label }]
   };
@@ -657,8 +661,6 @@ async function wipeActiveWorkspace() {
 
   try { window?.dispatchEvent(new CustomEvent('triples-changed', { detail: { db: 'inferenceDB', store: 'triples', type: 'clear' } })); } catch { }
   try { window?.dispatchEvent(new CustomEvent('settings-changed', { detail: { db: 'SPARQLSettings', store: 'Settings', type: 'clear' } })); } catch { }
-  try { notifyIdbChange?.({ db: 'inferenceDB', store: 'triples', type: 'clear' }); } catch { }
-  try { notifyIdbChange?.({ db: 'SPARQLSettings', store: 'Settings', type: 'clear' }); } catch { }
 }
 
 
@@ -689,3 +691,37 @@ async function hardResetDatabases() {
   try { window?.dispatchEvent(new CustomEvent('settings-changed', { detail: { db: SETTINGS_DB_NAME, store: SETTINGS_STORE_NAME, type: 'clear' } })); } catch {}
   try { window?.dispatchEvent(new CustomEvent('saved-queries-changed', { detail: { db: DB_NAME, store: QUERY_STORE_NAME, type: 'clear' } })); } catch {}
 }
+
+export {
+  initSettingsDB,
+  getSetting,
+  saveSetting,
+  clearSettingsStore,
+  initQueryStore,
+  saveSavedQuery,
+  getSavedQueryById,
+  getAllSavedQueries,
+  deleteSavedQuery,
+  savedQueryRecordToJsonLd,
+  exportSavedQueriesAsJsonLd,
+  savedQueriesToCsv,
+  exportSavedQueriesAsCsv,
+  parseSavedQueriesCsv,
+  importSavedQueriesFromCsv,
+  clearSavedQueries,
+  initTripleStore,
+  storeTriplesInNamedGraph,
+  getAllTriples,
+  getAllGraphNames,
+  countAllTriples,
+  countNamedGraphs,
+  deleteExactTriples,
+  clearTriples,
+  getTriplesByField,
+  closeOpenIndexedDBConnections,
+  deleteIndexedDBInstance,
+  clearLocalStorage,
+  wipeActiveWorkspace,
+  clearActiveWorkspace,
+  hardResetDatabases
+};
