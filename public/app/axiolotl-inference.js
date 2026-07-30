@@ -6,6 +6,7 @@
 // semantic-core.js
 import {
   COMMON_NAMESPACE_IRIS,
+  isAbsoluteIri,
   namespacePrefixMapFromRegistry
 } from './shared/namespace-registry/index.js';
 import {
@@ -16,6 +17,7 @@ import { debuggingConsoleEnabled } from './semantic-core.js';
 
 const NS = COMMON_NAMESPACE_IRIS;
 const PREFIXES = namespacePrefixMapFromRegistry();
+const engine = new Comunica.QueryEngine();
 
 /**
  * Extract selected inference rule IDs from checked checkboxes.
@@ -587,7 +589,7 @@ function uuid() {
   });
 }
 
-async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, graphIRI }) {
+async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, graphIRI, authHeaders = {} }) {
   if (!overlayGraph) throw new Error('Nothing to insert. Run inference first.');
   if (!endpointUrl) throw new Error('Missing endpoint URL.');
 
@@ -614,7 +616,7 @@ async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, grap
 
   const res = await fetch(endpointUrl, {
     method: 'POST',
-    headers: { 'content-type': 'application/sparql-update', ...endpointAuthHeaders },
+    headers: { 'content-type': 'application/sparql-update', ...authHeaders },
     body: update
   });
 
@@ -789,6 +791,7 @@ export {
   getConstructQueryForRule,
   getSelectedRulesFromCheckboxes,
   inferUntilStable,
+  insertOverlayIntoEndpoint,
   mapFromQuads,
   runInferenceOverlay,
   runRuleOnce,

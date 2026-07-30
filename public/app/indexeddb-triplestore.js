@@ -6,6 +6,7 @@ import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
 import { debuggingConsoleEnabled } from './semantic-core.js';
 
 const NS = COMMON_NAMESPACE_IRIS;
+const idb = globalThis.idb;
 
 const DB_NAME = 'inferenceDB';
 const STORE_NAME = 'triples';
@@ -18,6 +19,15 @@ const INFERENCE_DB_VERSION = 3;
 
 let tripleDbHandle = null;
 let settingsDbHandle = null;
+
+function normalizeIriString(s) {
+  if (typeof s !== 'string') return s;
+  let text = s.trim();
+  if (text.length >= 2 && text[0] === '<' && text[text.length - 1] === '>') {
+    text = text.slice(1, -1).trim();
+  }
+  return text;
+}
 
 /*
 * Initializes the settings database with required object store.
@@ -678,7 +688,7 @@ async function clearActiveWorkspace() {
 }
 
 async function hardResetDatabases() {
-  await closeAllKnownDbHandles();
+  await closeOpenIndexedDBConnections();
 
   await Promise.all([
     deleteIndexedDBInstance(DB_NAME),
@@ -693,6 +703,7 @@ async function hardResetDatabases() {
 }
 
 export {
+  QUERY_IRI,
   initSettingsDB,
   getSetting,
   saveSetting,

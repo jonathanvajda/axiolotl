@@ -84,7 +84,7 @@ function __logSuccess(name, summary) {
 function __logError(name, err) {
   try {
     // Surface to your UI log as well
-    transformationLogWarn?.(`${name} failed: ${err?.message || err}`);
+    globalThis.transformationLogWarn?.(`${name} failed: ${err?.message || err}`);
   } catch {}
   if (!debuggingConsoleEnabled) return;
   try {

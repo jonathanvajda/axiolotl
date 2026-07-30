@@ -5,9 +5,13 @@ import {
   clearInferenceConsole,
   getSelectedRulesFromCheckboxes,
   inferUntilStable,
+  insertOverlayIntoEndpoint,
   setInferenceBusy
 } from './axiolotl-inference.js';
 import {
+  addFilesToDB,
+  buildQuery,
+  clearActiveSavedQueries,
   clearActiveSettings,
   clearActiveTriples,
   describeUpdateShape,
@@ -15,6 +19,7 @@ import {
   loadGraphFromIndexedDB,
   makeNamedGraphIRI,
   makePreviewConstructs,
+  getQueryKind,
   parseIntoNamedGraph,
   runConstructPreview,
   runQueryOnEndpoint,
@@ -32,6 +37,7 @@ import {
   getAllSavedQueries,
   getSetting,
   importSavedQueriesFromCsv,
+  QUERY_IRI,
   saveSavedQuery,
   saveSetting,
   storeTriplesInNamedGraph
@@ -145,6 +151,10 @@ function getWorkspaceExportFormats(scope) {
     ['application/n-quads', 'N-Quads'],
     ['application/ld+json', 'JSON-LD'],
   ];
+}
+
+function timestampUTC() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
 function syncWorkspaceExportFormatOptions() {
@@ -474,7 +484,7 @@ async function insertInferredTriplesIntoEndpoint() {
       if (target.mode === 'named' && !target.graphIRI) {
         target.graphIRI = makeNamedGraphIRI('http://example.org/inferred');
       }
-      await insertOverlayIntoEndpoint(g, endpointUrl, target);
+      await insertOverlayIntoEndpoint(g, endpointUrl, { ...target, authHeaders: endpointAuthHeaders });
       showToast('Inserted inferred data into SPARQL endpoint.', 'success');
     } catch (e) {
       if (debuggingConsoleEnabled) {console.error(e);}
@@ -946,7 +956,7 @@ const commitUpdateByMaterialization = async (updateStr, targetMode='default') =>
       const overlay = parsed.dataset;
 
       await stashGraphToIndexedDB(overlay, targetMode, graphIRI);
-      inserted += quads.length;
+      inserted += parsed.quads.length;
     }
   }
 

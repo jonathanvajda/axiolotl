@@ -13,7 +13,10 @@ import {
   clearTriples,
   getAllGraphNames,
   getAllTriples,
-  storeTriplesInNamedGraph
+  getTriplesByField,
+  initTripleStore,
+  storeTriplesInNamedGraph,
+  wipeActiveWorkspace
 } from './indexeddb-triplestore.js';
 import {
   commonSPARQLPrefixes,
@@ -249,7 +252,7 @@ const applyUpdateWithComunica = async (updateQuery, graph) => {
   // Prefer the CONSTRUCT path for inference.
   if (debuggingConsoleEnabled) {console.warn('[applyUpdateWithComunica] UPDATE against stringSource is a no-op; prefer CONSTRUCT.')};
   const comunica = engine;
-  const text = await serializeStore(g, mime);
+  const text = graph.serialize(null, undefined, 'text/turtle');
   const source = { type: 'stringSource', value: text, mediaType: 'text/turtle' };
   await comunica.queryVoid(updateQuery, {
     sources: [source],
@@ -514,7 +517,7 @@ async function queryAllNamedGraphs(query) {
 function clearGraph(graphIRI) {
   return initTripleStore()
     .then(db => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const tx = db.transaction('triples', 'readwrite');
       const store = tx.store;
       return store.getAll()
         .then(triples => {
@@ -881,17 +884,6 @@ async function flushActiveWorkspace() {
   try {
     await wipeActiveWorkspace();           // your existing function
 
-    // Immediately set both status buttons to OFF (no DB access)
-    instantIdleWorkspaceStatus();
-    instantIdleSparqlStatus();
-
-    // Optional but safe: refresh later (returns 0/0 and "No SPARQL…" after wipe)
-    queueMicrotask(() => {
-      try { refreshWorkspaceStatus?.(); } catch {}
-      try { refreshSparqlStatus?.(); } catch {}
-    });
-
-    if (debuggingConsoleEnabled) console.info('[flush-active-workspace] Workspace data cleared.');
     showToast('Workspace data cleared.', 'success');
   } catch (e) {
     if (debuggingConsoleEnabled) console.error('[flush-active-workspace] Failed to clear workspace:', e);
@@ -1001,6 +993,14 @@ function makeNamedGraphIRI(base='urn:graph:auto') {
   return `${String(base).replace(/\/+$/,'')}/${timestampUTC()}/${uuid()}`;
 }
 
+function timestampUTC() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+function uuid() {
+  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 /**
  * Persist a graph into IndexedDB (default or named) without loading the store.
  * - Fast path: transform + (optional) de-dup + append
@@ -1061,10 +1061,6 @@ async function clearActiveTriples() {
   try {
     await clearTriples();
 
-    instantIdleWorkspaceStatus();
-    queueMicrotask(() => {
-      try { refreshWorkspaceStatus?.(); } catch {}
-    });
 
     if (debuggingConsoleEnabled) {
       console.info('[clear-active-triples] Triple store cleared.');
@@ -1085,10 +1081,6 @@ async function clearActiveSettings() {
   try {
     await clearSettingsStore();
 
-    instantIdleSparqlStatus();
-    queueMicrotask(() => {
-      try { refreshSparqlStatus?.(); } catch {}
-    });
 
     if (debuggingConsoleEnabled) {
       console.info('[clear-active-settings] Settings store cleared.');
@@ -1198,7 +1190,10 @@ async function previewInsertFromUpdate(updateStr, opt={}) {
 }
 
 export {
+  clearActiveSavedQueries,
   applyUpdateWithComunica,
+  addFilesToDB,
+  buildQuery,
   clearActiveSettings,
   clearActiveTriples,
   clearGraph,
@@ -1209,6 +1204,9 @@ export {
   loadGraphFromIndexedDB,
   makeNamedGraphIRI,
   makePreviewConstructs,
+  getQueryKind,
+  isAbsoluteIri,
+  normalizeIriString,
   parseIntoNamedGraph,
   parseRdfTextToGraph,
   previewInsertFromUpdate,
