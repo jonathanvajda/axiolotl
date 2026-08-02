@@ -8,6 +8,7 @@
 //   rdflib.js
 //     $rdf
 import {
+  clearGraph as clearGraphFromProjectStorage,
   clearSavedQueries,
   clearSettingsStore,
   clearTriples,
@@ -515,20 +516,8 @@ async function queryAllNamedGraphs(query) {
  * @returns {Promise<void>}
  */
 function clearGraph(graphIRI) {
-  return initTripleStore()
-    .then(db => {
-      const tx = db.transaction('triples', 'readwrite');
-      const store = tx.store;
-      return store.getAll()
-        .then(triples => {
-          const toDelete = triples.filter(t => t.graph === graphIRI);
-          for (const triple of toDelete) {
-            store.delete([triple.subject, triple.predicate, triple.object, triple.graph]);
-          }
-        })
-        .then(() => tx.done)
-        .then(() => {if (debuggingConsoleEnabled) {console.info(`[clearGraph] Cleared ${graphIRI}`)}});
-    })
+  return clearGraphFromProjectStorage(graphIRI)
+    .then(() => {if (debuggingConsoleEnabled) {console.info(`[clearGraph] Cleared ${graphIRI}`)};})
     .catch(err => {
       if (debuggingConsoleEnabled) {console.error(`[clearGraph] Failed to clear graph <${graphIRI}>:`, err)};
       throw err;

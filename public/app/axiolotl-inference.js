@@ -142,6 +142,42 @@ function looseQuadKey(q) {
 function canBeSubject(term) {
   return !!term && (term.termType === 'NamedNode' || term.termType === 'BlankNode');
 }
+
+function canBePredicate(term) {
+  return !!term && term.termType === 'NamedNode';
+}
+
+function canBeObject(term) {
+  return !!term && ['NamedNode', 'BlankNode', 'Literal'].includes(term.termType);
+}
+
+function canBeGraph(term) {
+  return !term || ['DefaultGraph', 'NamedNode', 'BlankNode'].includes(term.termType);
+}
+
+function isSerializableInferenceQuad(q) {
+  return !!q
+    && canBeSubject(q.subject)
+    && canBePredicate(q.predicate)
+    && canBeObject(q.object)
+    && canBeGraph(q.graph);
+}
+
+function selectSerializableInferenceQuads(quads, context = 'inference') {
+  let skipped = 0;
+  const selected = [];
+
+  for (const q of quads || []) {
+    if (isSerializableInferenceQuad(q)) selected.push(q);
+    else skipped++;
+  }
+
+  if (skipped) {
+    inferenceWarn(`[${context}] Skipped ${skipped} invalid constructed quad${skipped === 1 ? '' : 's'} before overlay serialization.`);
+  }
+
+  return selected;
+}
 /**
  * Applies a set of inference rules repeatedly until no new triples are added.
  * @param {string[]} rules - List of rule identifiers to apply (e.g. ["inverse", "subclassof"])
@@ -651,12 +687,14 @@ function getConstructQueryForRule(rule) {
         {
           ?x ?p ?y .
           ?p owl:inverseOf ?inverse .
+          FILTER(isIRI(?y) || isBlank(?y))
           BIND(?y AS ?S) BIND(?inverse AS ?P) BIND(?x AS ?O)
         }
         UNION
         {
           ?x ?inverse ?y .
           ?p owl:inverseOf ?inverse .
+          FILTER(isIRI(?y) || isBlank(?y))
           BIND(?y AS ?S) BIND(?p AS ?P) BIND(?x AS ?O)
         }
         FILTER NOT EXISTS {
@@ -713,6 +751,7 @@ function getConstructQueryForRule(rule) {
       WHERE {
         ?x ?p ?y .
         ?p rdfs:range ?range .
+        FILTER(isIRI(?y) || isBlank(?y))
         FILTER NOT EXISTS {
           { ?y rdf:type ?range }
           UNION
@@ -739,6 +778,7 @@ function getConstructQueryForRule(rule) {
       WHERE {
         ?x ?p ?y .
         ?p a owl:SymmetricProperty .
+        FILTER(isIRI(?y) || isBlank(?y))
         FILTER NOT EXISTS {
           { ?y ?p ?x }
           UNION
@@ -776,12 +816,14 @@ async function applyConstructWithComunica(constructQuery, rdfjsStore) {
     distinctConstruct: true,
   });
 
-  return await new Promise((resolve, reject) => {
+  const quads = await new Promise((resolve, reject) => {
     const quads = [];
     quadStream.on('data', q => quads.push(q));
     quadStream.on('end', () => resolve(quads));
     quadStream.on('error', reject);
   });
+
+  return selectSerializableInferenceQuads(quads, 'applyConstructWithComunica');
 }
 
 export {
@@ -795,6 +837,7 @@ export {
   mapFromQuads,
   runInferenceOverlay,
   runRuleOnce,
+  selectSerializableInferenceQuads,
   setInferenceBusy,
   transitiveClosure
 };

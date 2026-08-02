@@ -40,13 +40,14 @@
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono"; }
   </style>
   <!-- Libraries: N3 for Turtle/N-Triples/N-Quads; jsonld for JSON-LD -> N-Quads; rdflib for RDF/XML fallback -->
-  <script src="https://cdn.jsdelivr.net/npm/n3@1.17.3/browser/n3.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsonld@8.3.2/dist/jsonld.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/rdflib@2.2.13/dist/rdflib.min.js"></script>
+  <script src="./app/shared/vendor/n3.min.js"></script>
+  <script src="./app/shared/vendor/jsonld.min.js"></script>
+  <script src="./app/shared/vendor/rdflib.min.js"></script>
   <link rel="modulepreload" href="./app/shared/format-registry/mime-registry.js" />
   <link rel="modulepreload" href="./app/shared/format-registry/rdf-parser-formats.js" />
   <link rel="modulepreload" href="./app/shared/browser-file-io/index.js" />
   <link rel="modulepreload" href="./app/shared/rdf-io/index.js" />
+  <link rel="modulepreload" href="./app/shared/indexeddb-data-management/index.js" />
 </head>
 <body>
   <div class="wrap">
@@ -166,10 +167,7 @@
       </div>
     </div>
   </div>
-<script src="./app/shared/vendor/n3.min.js"></script>
-<script src="./app/shared/vendor/rdflib.min.js"></script>
 <script src="./app/shared/vendor/comunica-browser.js"></script>
-<script src="./app/shared/vendor/idb.min.js"></script>
 
 <script type="module">
 import { COMMON_NAMESPACE_IRIS as NS } from './app/shared/namespace-registry/index.js';

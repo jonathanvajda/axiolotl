@@ -51,11 +51,15 @@ import {
 } from './semantic-core.js';
 import { downloadTextFile, readFileAsText } from './shared/browser-file-io/index.js';
 import {
+  serializeWorkspaceExport
+} from './axiolotl-workspace-export.js';
+import {
   getMimeTypeForFormatKey,
   getPreferredExtensionForMimeType,
   getSupportedMimeTypeForFilename
 } from './shared/format-registry/index.js';
 import {
+  serializeRdfGraphExport,
   parseRdfTextWithAdapters,
   serializeRdfDatasetWithAdapters
 } from './shared/rdf-io/index.js';
@@ -113,8 +117,8 @@ async function serializeStore(store, mime = 'text/turtle') {
     throw new Error('serializeStore expected an N3.Store or compatible RDF/JS source.');
   }
 
-  const { serializeRdfDatasetWithAdapters } = await import('./shared/rdf-io/index.js');
-  const serialized = await serializeRdfDatasetWithAdapters(store, {
+  const serialized = await serializeRdfGraphExport(store, {
+    scope: 'all',
     format: mime,
     runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
   });
@@ -181,8 +185,11 @@ async function handleDownloadActiveWorkspace() {
   try {
     const { scope, mime } = getWorkspaceExportOptions();
     const store = await getWorkspaceExportStore(scope);
-    const text = await serializeWorkspaceExportStore(store, mime);
-    const count = store.getQuads(null, null, null, null).length;
+    const { text, count } = await serializeWorkspaceExport(store, {
+      scope: 'all',
+      mimeType: mime,
+      runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+    });
 
     if (!count) {
       showToast('No triples found for that export scope.', 'info');
@@ -217,18 +224,6 @@ async function getWorkspaceExportStore(scope) {
 
   scoped.addQuads(quads);
   return scoped;
-}
-
-async function serializeWorkspaceExportStore(store, mime) {
-  return await serializeWorkspaceWithN3(store, mime);
-}
-
-async function serializeWorkspaceWithN3(store, mime) {
-  const serialized = await serializeRdfDatasetWithAdapters(store, {
-    format: mime,
-    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
-  });
-  return serialized.text;
 }
 
 async function serializeJsonLdFromNQuads(nquads) {
@@ -665,7 +660,7 @@ document.getElementById('set-endpoint-auth')?.addEventListener('click', async ()
       await saveSetting(k, v);
     }
     // Fire one event for the batch and repaint:
-    try { notifyIdbChange?.({ db: 'SPARQLSettings', store: 'Settings', type: 'put' }); } catch {}
+    try { notifyIdbChange?.({ db: 'OntologyWorkbenchProjects', store: 'settings', type: 'put' }); } catch {}
     await refreshSparqlStatus();
 
     // 3) UI feedback
@@ -685,7 +680,7 @@ document.getElementById('set-endpoint')?.addEventListener('click', async () => {
   await saveSetting('sparqlEndpoint', endpoint);
 
   // Tell listeners (and other tabs) that settings changed:
-  try { notifyIdbChange?.({ db: 'SPARQLSettings', store: 'Settings', type: 'put', key: 'sparqlEndpoint' }); } catch {}
+  try { notifyIdbChange?.({ db: 'OntologyWorkbenchProjects', store: 'settings', type: 'put', key: 'sparqlEndpoint' }); } catch {}
 
   // Paint immediately in this tab:
   await refreshSparqlStatus();
@@ -1259,8 +1254,8 @@ function notifyIdbChange(payload) {
   // Call this AFTER your own IDB writes to sync other tabs & listeners
   try { bc?.postMessage(payload); } catch {}
   try {
-    const type = (payload?.store === 'Settings') ? 'settings-changed'
-              : (payload?.store === 'triples') ? 'triples-changed'
+    const type = (payload?.store === 'settings') ? 'settings-changed'
+              : (payload?.store === 'quadRows') ? 'triples-changed'
               : 'idb-changed';
     window.dispatchEvent(new CustomEvent(type, { detail: payload }));
   } catch {}
@@ -1272,8 +1267,8 @@ window.addEventListener('triples-changed', refreshWorkspaceStatus);
 
 bc?.addEventListener('message', (evt) => {
   const { db, store } = evt.data || {};
-  if (db === 'SPARQLSettings' && store === 'Settings') refreshSparqlStatus();
-  if (db === 'inferenceDB' && store === 'triples') refreshWorkspaceStatus();
+  if (db === 'OntologyWorkbenchProjects' && store === 'settings') refreshSparqlStatus();
+  if (db === 'OntologyWorkbenchProjects' && store === 'quadRows') refreshWorkspaceStatus();
 });
 
 // PURE: decide what the SPARQL status should look like
