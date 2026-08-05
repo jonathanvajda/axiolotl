@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Jonathan Vajda
 
 import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
+import { normalizeIriToken } from './shared/ontology-utils/index.js';
 import {
   DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID,
   clearGraphQuadRows,
@@ -470,10 +471,11 @@ function artifactToSavedQueryRecord(artifact) {
 }
 
 function normalizeAxiolotlTripleRow(triple, { migratedFromLegacy = false } = {}) {
-  const graph = normalizeIriString(
+  const graph = normalizeIriToken(
     typeof triple?.graph === 'string'
       ? triple.graph
-      : (triple?.graph?.value || triple?.g || triple?.why?.value || '')
+      : (triple?.graph?.value || triple?.g || triple?.why?.value || ''),
+    { stripDisplayLabel: false }
   ) || null;
   const graphId = createGraphId(graph || '');
   return normalizeQuadRow({
@@ -539,15 +541,6 @@ function createGraphRecord(graph, quadCount = 0, migratedFromLegacy = false) {
 
 function createGraphId(graph) {
   return createStableRecordId('graph:axiolotl', [graph || 'default']);
-}
-
-function normalizeIriString(s) {
-  if (typeof s !== 'string') return s;
-  let text = s.trim();
-  if (text.length >= 2 && text[0] === '<' && text[text.length - 1] === '>') {
-    text = text.slice(1, -1).trim();
-  }
-  return text;
 }
 
 function dispatchStorageEvent(name, detail) {

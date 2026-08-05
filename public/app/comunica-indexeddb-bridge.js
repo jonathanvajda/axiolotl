@@ -30,6 +30,12 @@ import {
   parseRdfTextWithAdapters,
   rdfJsTermToRdflib
 } from './shared/rdf-io/index.js';
+import {
+  createTimestampedGraphIri,
+  isAbsoluteIri,
+  isBlankNodeId,
+  normalizeIriToken
+} from './shared/ontology-utils/index.js';
 
 const engine = new Comunica.QueryEngine();
 // N3 RDF/JS terms & store
@@ -40,36 +46,9 @@ const { namedNode, blankNode, literal, quad, defaultGraph } = DataFactory;
    IRI / term-kind detection
    ----------------------------- */
 
-// Absolute IRI detection that does NOT classify CURIEs like "skos:prefLabel" as IRIs
-function isAbsoluteIri(s) {
-  if (typeof s !== 'string' || s.length === 0) return false;
-  if (/\s/.test(s)) return false; // IRIs can’t have spaces
-  // schemes with // (hierarchical)
-  if (/^(?:https?|wss?|ftp|file):\/\//i.test(s)) return true;
-  // schemes without // (non-hierarchical)
-  if (/^(?:urn|tag|mailto|data|ipfs|ipns):/i.test(s)) return true;
-  return false; // everything else (e.g., "skos:prefLabel") is NOT an absolute IRI
-}
-
 // Objects: NamedNode (absolute IRI), BlankNode, or Literal
 function looksLikeBnodeId(v) {
-  return typeof v === 'string' && (v.startsWith('_:') || v.startsWith('_g_') || /^[A-Za-z]\d+$/.test(v));
-}
-
-/**
- * This normalizes an IRI string by trimming whitespace and removing surrounding angle brackets.
- * @param {*} s
- * @returns   {string|*} normalized IRI string, or original value if not a string
- */
-
-function normalizeIriString(s) {
-  if (typeof s !== 'string') return s;
-  let t = s.trim();
-  // Strip surrounding angle brackets like <http://example.org/x>
-  if (t.length >= 2 && t[0] === '<' && t[t.length - 1] === '>') {
-    t = t.slice(1, -1).trim();
-  }
-  return t;
+  return typeof v === 'string' && (isBlankNodeId(v) || v.startsWith('_g_') || /^[A-Za-z]\d+$/.test(v));
 }
 
 /* -----------------------------
@@ -116,7 +95,7 @@ function asObjectTerm(v, type, lang, datatype) {
 
 // Subjects: either NamedNode (absolute IRI) or BlankNode
 function asRdfjsSubject(v, type) {
-  const iri = normalizeIriString(v);
+  const iri = typeof v === 'string' ? normalizeIriToken(v) : v;
   if ((type === 'NamedNode') && isAbsoluteIri(iri)) return namedNode(iri);
   if (isAbsoluteIri(iri)) return namedNode(iri);
   return blankNode(String(v || '').replace(/^_:/, '').replace(/^_g_/, ''));
@@ -124,7 +103,7 @@ function asRdfjsSubject(v, type) {
 
 // Predicates: must be absolute IRI
 function asRdfjsPredicate(v, type) {
-  const iri = normalizeIriString(v);
+  const iri = typeof v === 'string' ? normalizeIriToken(v) : v;
   if ((type === 'NamedNode') && isAbsoluteIri(iri)) return namedNode(iri);
   if (isAbsoluteIri(iri)) return namedNode(iri);
   throw new Error(`Predicate must be absolute IRI: ${String(v)}`);
@@ -132,13 +111,13 @@ function asRdfjsPredicate(v, type) {
 
 // Objects: NamedNode (absolute IRI), BlankNode, or Literal
 function asRdfjsObject(v, type, lang, datatype) {
-  const iri = normalizeIriString(v);
+  const iri = typeof v === 'string' ? normalizeIriToken(v) : v;
   if ((type === 'NamedNode') && isAbsoluteIri(iri)) return namedNode(iri);
   if (type === 'BlankNode' || looksLikeBnodeId(v)) {
     return blankNode(String(v).replace(/^_:/, '').replace(/^_g_/, ''));
   }
   if (lang) return literal(v ?? '', lang);
-  if (datatype) return literal(v ?? '', namedNode(normalizeIriString(datatype)));
+  if (datatype) return literal(v ?? '', namedNode(normalizeIriToken(datatype)));
   if (isAbsoluteIri(iri)) return namedNode(iri);
   return literal(v ?? '');
 }
@@ -979,15 +958,7 @@ function serializeGraph(graph, mime='text/turtle', baseIRI='http://example.org/'
  * @param {string} base - Base IRI to prefix (e.g., 'urn:graph:import')
  */
 function makeNamedGraphIRI(base='urn:graph:auto') {
-  return `${String(base).replace(/\/+$/,'')}/${timestampUTC()}/${uuid()}`;
-}
-
-function timestampUTC() {
-  return new Date().toISOString().replace(/[:.]/g, '-');
-}
-
-function uuid() {
-  return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return createTimestampedGraphIri(base);
 }
 
 /**
@@ -1195,7 +1166,6 @@ export {
   makePreviewConstructs,
   getQueryKind,
   isAbsoluteIri,
-  normalizeIriString,
   parseIntoNamedGraph,
   parseRdfTextToGraph,
   previewInsertFromUpdate,

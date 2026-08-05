@@ -6,9 +6,16 @@
 // semantic-core.js
 import {
   COMMON_NAMESPACE_IRIS,
-  isAbsoluteIri,
   namespacePrefixMapFromRegistry
 } from './shared/namespace-registry/index.js';
+import {
+  canUseTermAsGraph,
+  canUseTermAsObject,
+  canUseTermAsPredicate,
+  canUseTermAsSubject,
+  hasBlankNodeTermInQuad,
+  isAbsoluteIri
+} from './shared/ontology-utils/index.js';
 import {
   loadGraphFromIndexedDB,
   stashGraphToIndexedDB
@@ -110,9 +117,7 @@ function quadKey(q) {
 }
 
 function quadHasBlankNode(q) {
-  return q.subject.termType === 'BlankNode' ||
-         q.object.termType === 'BlankNode' ||
-         q.graph.termType === 'BlankNode';
+  return hasBlankNodeTermInQuad(q);
 }
 
 function looseQuadKey(q) {
@@ -139,28 +144,12 @@ function looseQuadKey(q) {
   ].join('¦');
 }
 
-function canBeSubject(term) {
-  return !!term && (term.termType === 'NamedNode' || term.termType === 'BlankNode');
-}
-
-function canBePredicate(term) {
-  return !!term && term.termType === 'NamedNode';
-}
-
-function canBeObject(term) {
-  return !!term && ['NamedNode', 'BlankNode', 'Literal'].includes(term.termType);
-}
-
-function canBeGraph(term) {
-  return !term || ['DefaultGraph', 'NamedNode', 'BlankNode'].includes(term.termType);
-}
-
 function isSerializableInferenceQuad(q) {
   return !!q
-    && canBeSubject(q.subject)
-    && canBePredicate(q.predicate)
-    && canBeObject(q.object)
-    && canBeGraph(q.graph);
+    && canUseTermAsSubject(q.subject)
+    && canUseTermAsPredicate(q.predicate)
+    && canUseTermAsObject(q.object)
+    && canUseTermAsGraph(q.graph);
 }
 
 function selectSerializableInferenceQuads(quads, context = 'inference') {
@@ -323,7 +312,7 @@ async function inferUntilStable(rules) {
     for (const q of newProps) {
       const p = q.predicate.value;
 
-      if (!canBeSubject(q.object)) continue;
+      if (!canUseTermAsSubject(q.object)) continue;
 
       if (symmetricProps.has(p)) {
         out.push(quad(
@@ -376,7 +365,7 @@ async function inferUntilStable(rules) {
       }
 
       const Rs = rangeMap.get(p);
-      if (Rs && canBeSubject(q.object)) {
+      if (Rs && canUseTermAsSubject(q.object)) {
         for (const r of Rs) {
           if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(r)) {
             skipRng++;
@@ -413,7 +402,7 @@ async function inferUntilStable(rules) {
       const pred = namedNode(p);
 
       // x p y & y p z -> x p z
-      if (canBeSubject(q.object)) {
+      if (canUseTermAsSubject(q.object)) {
         for (const yz of rdfjsStore.getQuads(q.object, pred, null, q.graph)) {
           out.push(quad(
             q.subject,
@@ -600,29 +589,6 @@ function selectUnseen(quads, seenKeys) {
   }
 
   return { $new: uniq, batchUnique: batchSet.size };
-}
-
-function pad2(n){ return String(n).padStart(2,'0'); }
-
-/**
- * Return a stable UTC timestamp: YYYYMMDDThhmmssZ
- */
-function timestampUTC() {
-  const d = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  return `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
-}
-
-/**
- * Return a UUID (uses crypto.randomUUID if available).
- * Pure; no side effects.
- */
-function uuid() {
-  if (crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random()*16|0, v = (c === 'x') ? r : ((r & 0x3) | 0x8);
-    return v.toString(16);
-  });
 }
 
 async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, graphIRI, authHeaders = {} }) {

@@ -63,6 +63,7 @@ import {
   parseRdfTextWithAdapters,
   serializeRdfDatasetWithAdapters
 } from './shared/rdf-io/index.js';
+import { createUuid } from './shared/ontology-utils/index.js';
 
 // Where the ontology files live (folder that also contains ontology-list.json)
 const CANON_ONTOLOGIES_BASE = 'ontology-files/' ;
@@ -1055,14 +1056,11 @@ async function renderOntologyList() {
 
 /**
  * Generate a GUID-like identifier.
- * Uses crypto.randomUUID when available.
+ * Uses the promoted crypto-backed UUID utility.
  * @returns {string}
  */
 function makeGuidLike() {
-  if (window.crypto?.randomUUID) {
-    return window.crypto.randomUUID().replaceAll('-', '');
-  }
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  return createUuid({ removeHyphens: true });
 }
 
 
