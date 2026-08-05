@@ -9,7 +9,6 @@ import {
 
 export const debuggerConsoleLogEnabled = true;
 
-const NS = COMMON_NAMESPACE_IRIS;
 const PREFIXES = namespacePrefixMapFromRegistry();
 
 export const DEFAULT_QUERY = `PREFIX rdf: <${PREFIXES.rdf}>
@@ -29,11 +28,11 @@ SELECT ?p ?name WHERE {
  * (MVP heuristic; can be made configurable.)
  */
 export const KNOWN_ANNOTATION_PREDICATE_IRIS = new Set([
-  NS.rdfs.label,
-  NS.rdfs.comment,
-  NS.dcterms.title,
+  COMMON_NAMESPACE_IRIS.rdfs.label,
+  COMMON_NAMESPACE_IRIS.rdfs.comment,
+  COMMON_NAMESPACE_IRIS.dcterms.title,
   "http://purl.org/dc/elements/1.1/title",
-  NS.skos.prefLabel,
-  NS.skos.altLabel,
-  NS.skos.definition
+  COMMON_NAMESPACE_IRIS.skos.prefLabel,
+  COMMON_NAMESPACE_IRIS.skos.altLabel,
+  COMMON_NAMESPACE_IRIS.skos.definition
 ]);

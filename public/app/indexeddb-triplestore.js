@@ -19,8 +19,6 @@ import {
 } from './shared/indexeddb-data-management/index.js';
 import { debuggingConsoleEnabled } from './semantic-core.js';
 
-const NS = COMMON_NAMESPACE_IRIS;
-
 const LEGACY_TRIPLE_DB_NAME = 'inferenceDB';
 const LEGACY_TRIPLE_STORE_NAME = 'triples';
 const LEGACY_QUERY_STORE_NAME = 'savedQueries';
@@ -35,7 +33,7 @@ const DEFAULT_GRAPH_LABEL = 'Default graph';
 const QUERY_IRI = {
   class: 'https://github.com/jonathanvajda/SemanticArtifactOntology/ont000007',
   predicate: 'https://github.com/jonathanvajda/SemanticArtifactOntology/has_sparql_query_text_value',
-  label: NS.rdfs.label
+  label: COMMON_NAMESPACE_IRIS.rdfs.label
 };
 
 let portfolioPromise = null;
@@ -242,7 +240,7 @@ async function deleteSavedQuery(id) {
 function savedQueryRecordToJsonLd(record) {
   return {
     '@id': record.id,
-    '@type': [record.type, NS.owl.NamedIndividual],
+    '@type': [record.type, COMMON_NAMESPACE_IRIS.owl.NamedIndividual],
     [QUERY_IRI.predicate]: [{ '@value': record.value }],
     [QUERY_IRI.label]: [{ '@value': record.label }]
   };

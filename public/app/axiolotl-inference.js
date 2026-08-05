@@ -22,7 +22,6 @@ import {
 } from './comunica-indexeddb-bridge.js';
 import { debuggingConsoleEnabled } from './semantic-core.js';
 
-const NS = COMMON_NAMESPACE_IRIS;
 const PREFIXES = namespacePrefixMapFromRegistry();
 const engine = new Comunica.QueryEngine();
 
@@ -190,30 +189,30 @@ async function inferUntilStable(rules) {
   const seen = new Set(rdfjsStore.getQuads(null, null, null, null).map(quadKey));
 
   // ---- 1) Precompute TBox closures/maps ----
-  const subClassEdges = mapFromQuads(rdfjsStore, NS.rdfs.subClassOf);
-  const subPropEdges  = mapFromQuads(rdfjsStore, NS.rdfs.subPropertyOf);
+  const subClassEdges = mapFromQuads(rdfjsStore, COMMON_NAMESPACE_IRIS.rdfs.subClassOf);
+  const subPropEdges  = mapFromQuads(rdfjsStore, COMMON_NAMESPACE_IRIS.rdfs.subPropertyOf);
 
   const classSupers = transitiveClosure(subClassEdges); // Map<class -> Set<allSuperClasses>>
   const propSupers  = transitiveClosure(subPropEdges);  // Map<prop  -> Set<allSuperProps>>
 
-  const domainMap = mapFromQuads(rdfjsStore, NS.rdfs.domain); // Map<prop -> Set<class>>
-  const rangeMap  = mapFromQuads(rdfjsStore, NS.rdfs.range);  // Map<prop -> Set<class>>
+  const domainMap = mapFromQuads(rdfjsStore, COMMON_NAMESPACE_IRIS.rdfs.domain); // Map<prop -> Set<class>>
+  const rangeMap  = mapFromQuads(rdfjsStore, COMMON_NAMESPACE_IRIS.rdfs.range);  // Map<prop -> Set<class>>
 
   const symmetricProps = new Set(
     rdfjsStore
-      .getQuads(null, namedNode(NS.rdf.type), namedNode(NS.owl.SymmetricProperty), null)
+      .getQuads(null, namedNode(COMMON_NAMESPACE_IRIS.rdf.type), namedNode(COMMON_NAMESPACE_IRIS.owl.SymmetricProperty), null)
       .map(q => q.subject.value)
   );
 
   const transitiveProps = new Set(
     rdfjsStore
-      .getQuads(null, namedNode(NS.rdf.type), namedNode(NS.owl.TransitiveProperty), null)
+      .getQuads(null, namedNode(COMMON_NAMESPACE_IRIS.rdf.type), namedNode(COMMON_NAMESPACE_IRIS.owl.TransitiveProperty), null)
       .map(q => q.subject.value)
   );
 
   // Make owl:inverseOf two-way
   const inversePairs = new Map(); // Map<p -> Set<inv>>
-  for (const q of rdfjsStore.getQuads(null, namedNode(NS.owl.inverseOf), null, null)) {
+  for (const q of rdfjsStore.getQuads(null, namedNode(COMMON_NAMESPACE_IRIS.owl.inverseOf), null, null)) {
     const p = q.subject.value;
     const inv = q.object.value;
 
@@ -225,10 +224,10 @@ async function inferUntilStable(rules) {
   }
 
   // ---- 2) Work queues and enqueue logic ----
-  const workTypes = rdfjsStore.getQuads(null, namedNode(NS.rdf.type), null, null).slice();
+  const workTypes = rdfjsStore.getQuads(null, namedNode(COMMON_NAMESPACE_IRIS.rdf.type), null, null).slice();
   const workProps = rdfjsStore
     .getQuads(null, null, null, null)
-    .filter(q => q.predicate.value !== NS.rdf.type);
+    .filter(q => q.predicate.value !== COMMON_NAMESPACE_IRIS.rdf.type);
 
   function enqueue(quads) {
     for (const q of quads) {
@@ -239,7 +238,7 @@ async function inferUntilStable(rules) {
       overlayStore.addQuad(q);
       seen.add(key);
 
-      if (q.predicate.value === NS.rdf.type) workTypes.push(q);
+      if (q.predicate.value === COMMON_NAMESPACE_IRIS.rdf.type) workTypes.push(q);
       else workProps.push(q);
     }
   }
@@ -261,7 +260,7 @@ async function inferUntilStable(rules) {
 
         out.push(quad(
           q.subject,
-          namedNode(NS.rdf.type),
+          namedNode(COMMON_NAMESPACE_IRIS.rdf.type),
           namedNode(sup),
           q.graph
         ));
@@ -357,7 +356,7 @@ async function inferUntilStable(rules) {
 
           out.push(quad(
             q.subject,
-            namedNode(NS.rdf.type),
+            namedNode(COMMON_NAMESPACE_IRIS.rdf.type),
             namedNode(d),
             q.graph
           ));
@@ -374,7 +373,7 @@ async function inferUntilStable(rules) {
 
           out.push(quad(
             q.object,
-            namedNode(NS.rdf.type),
+            namedNode(COMMON_NAMESPACE_IRIS.rdf.type),
             namedNode(r),
             q.graph
           ));
