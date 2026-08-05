@@ -7,7 +7,7 @@
  */
 
 /**
- * @typedef {'rdf'|'query'|'tabular'|'document'|'text'|'data'} FormatCategory
+ * @typedef {'rdf'|'query'|'tabular'|'document'|'text'|'data'|'visualization'|'archive'|'binary'} FormatCategory
  */
 
 /**
@@ -140,6 +140,14 @@ export const SUPPORTED_MIME_DESCRIPTORS = Object.freeze({
     extensions: ['srx'],
     aliases: ['srx', 'sparql-results-xml', 'SPARQL Results XML', 'application/sparql-results+xml']
   }),
+  sql: defineDescriptor({
+    id: 'sql',
+    mimeType: 'application/sql',
+    label: 'SQL',
+    category: 'query',
+    extensions: ['sql'],
+    aliases: ['sql', 'text/sql', 'application/sql']
+  }),
   csv: defineDescriptor({
     id: 'csv',
     mimeType: 'text/csv',
@@ -203,14 +211,49 @@ export const SUPPORTED_MIME_DESCRIPTORS = Object.freeze({
     category: 'data',
     extensions: ['json'],
     aliases: ['json', 'application/json']
+  }),
+  mermaid: defineDescriptor({
+    id: 'mermaid',
+    mimeType: 'text/mermaid',
+    label: 'Mermaid',
+    category: 'visualization',
+    extensions: ['mmd', 'mermaid'],
+    aliases: ['mmd', 'mermaid', 'text/mermaid']
+  }),
+  d3Json: defineDescriptor({
+    id: 'd3Json',
+    mimeType: 'application/d3+json',
+    label: 'D3 JSON',
+    category: 'visualization',
+    extensions: ['json'],
+    aliases: ['d3', 'd3json', 'd3-json', 'application/d3+json']
+  }),
+  zip: defineDescriptor({
+    id: 'zip',
+    mimeType: 'application/zip',
+    label: 'ZIP archive',
+    category: 'archive',
+    extensions: ['zip'],
+    aliases: ['zip', 'application/zip']
+  }),
+  binary: defineDescriptor({
+    id: 'binary',
+    mimeType: 'application/octet-stream',
+    label: 'Binary file',
+    category: 'binary',
+    extensions: ['bin'],
+    aliases: ['binary', 'bin', 'application/octet-stream']
   })
 });
 
 const FORMAT_LIST = Object.freeze(Object.values(SUPPORTED_MIME_DESCRIPTORS));
 
-const MIME_BY_EXTENSION = Object.freeze(Object.fromEntries(
-  FORMAT_LIST.flatMap((descriptor) => descriptor.extensions.map((extension) => [extension, descriptor]))
-));
+const MIME_BY_EXTENSION = Object.freeze(FORMAT_LIST.reduce((map, descriptor) => {
+  for (const extension of descriptor.extensions) {
+    if (!map[extension]) map[extension] = descriptor;
+  }
+  return map;
+}, {}));
 
 const MIME_BY_ALIAS = Object.freeze(Object.fromEntries(
   FORMAT_LIST.flatMap((descriptor) => {
@@ -219,19 +262,9 @@ const MIME_BY_ALIAS = Object.freeze(Object.fromEntries(
   })
 ));
 
-const MERMAID_OUTPUT_DESCRIPTOR = defineVisualizationDescriptor({
-  id: 'mermaid',
-  mimeType: 'text/mermaid',
-  label: 'Mermaid',
-  extensions: ['mmd', 'mermaid']
-});
+const MERMAID_OUTPUT_DESCRIPTOR = SUPPORTED_MIME_DESCRIPTORS.mermaid;
 
-const D3_JSON_OUTPUT_DESCRIPTOR = defineVisualizationDescriptor({
-  id: 'd3Json',
-  mimeType: 'application/d3+json',
-  label: 'D3 JSON',
-  extensions: ['json']
-});
+const D3_JSON_OUTPUT_DESCRIPTOR = SUPPORTED_MIME_DESCRIPTORS.d3Json;
 
 /**
  * Returns the last filename extension without the leading dot.
@@ -309,6 +342,13 @@ export function normalizeSupportedMimeType(input) {
  * Preferred extension without dot, or an unknown-filetype result.
  */
 export function getPreferredExtensionForMimeType(mimeType) {
+  const normalized = normalizeToken(mimeType);
+  if (normalized === normalizeToken(MERMAID_OUTPUT_DESCRIPTOR.mimeType) || normalized === normalizeToken(MERMAID_OUTPUT_DESCRIPTOR.id)) {
+    return Object.freeze({ ok: true, value: MERMAID_OUTPUT_DESCRIPTOR.extensions[0] });
+  }
+  if (normalized === normalizeToken(D3_JSON_OUTPUT_DESCRIPTOR.mimeType) || normalized === normalizeToken(D3_JSON_OUTPUT_DESCRIPTOR.id)) {
+    return Object.freeze({ ok: true, value: D3_JSON_OUTPUT_DESCRIPTOR.extensions[0] });
+  }
   const result = normalizeSupportedMimeType(mimeType);
   return result.ok
     ? Object.freeze({ ok: true, value: result.value.extensions[0] })
@@ -422,12 +462,4 @@ function normalizeExtension(extension) {
 
 function normalizeToken(input) {
   return String(input || '').trim().toLowerCase();
-}
-
-function defineVisualizationDescriptor(descriptor) {
-  return Object.freeze({
-    ...descriptor,
-    category: 'visualization',
-    extensions: Object.freeze(descriptor.extensions.map(normalizeExtension))
-  });
 }

@@ -153,20 +153,16 @@ function createMockIndexedDB() {
 
 describe('Axiolotl shared project triplestore', () => {
   let originalIndexedDB;
-  let originalLocalStorage;
 
   beforeEach(() => {
     originalIndexedDB = globalThis.indexedDB;
-    originalLocalStorage = globalThis.localStorage;
     globalThis.indexedDB = createMockIndexedDB();
-    globalThis.localStorage = { clear() {} };
     resetAxiolotlProjectStorageForTests();
   });
 
   afterEach(() => {
     resetAxiolotlProjectStorageForTests();
     globalThis.indexedDB = originalIndexedDB;
-    globalThis.localStorage = originalLocalStorage;
   });
 
   test('stores and reads SPARQL settings through shared project settings', async () => {

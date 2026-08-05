@@ -867,7 +867,7 @@ const getQueryKind = (q) => {
 
 // Flush Active workspace
 async function flushActiveWorkspace() {
-  const ok = confirm('This will delete ALL Active Workspace data (IndexedDB) and clear localStorage. Continue?');
+  const ok = confirm('This will delete ALL Active Workspace data from the shared project database. Continue?');
   if (!ok) return;
 
   try {

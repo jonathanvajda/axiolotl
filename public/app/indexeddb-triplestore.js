@@ -392,15 +392,6 @@ async function deleteIndexedDBInstance(name) {
   return deleteIndexedDbDatabase(name).then((deleted) => ({ name, deleted, blocked: false }));
 }
 
-function clearLocalStorage() {
-  try {
-    localStorage.clear();
-    if (debuggingConsoleEnabled) console.info('[clearLocalStorage] Cleared localStorage');
-  } catch (error) {
-    if (debuggingConsoleEnabled) console.warn('[clearLocalStorage] Could not clear localStorage:', error);
-  }
-}
-
 async function wipeActiveWorkspace() {
   await clearActiveWorkspace();
 }
@@ -411,7 +402,6 @@ async function clearActiveWorkspace() {
     clearSettingsStore(),
     clearSavedQueries()
   ]);
-  clearLocalStorage();
 }
 
 async function hardResetDatabases() {
@@ -595,7 +585,6 @@ export {
   getTriplesByField,
   closeOpenIndexedDBConnections,
   deleteIndexedDBInstance,
-  clearLocalStorage,
   wipeActiveWorkspace,
   clearActiveWorkspace,
   hardResetDatabases,

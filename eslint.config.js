@@ -82,7 +82,6 @@ export default [
     ignores: [
       'node_modules/**',
       'public/app/shared/vendor/**',
-      'public/app/deprecated/**',
       '**/*.min.js'
     ]
   },  {

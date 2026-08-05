@@ -86,6 +86,8 @@ function nullIfNone(v) {
 
 // Assumes the commonSPARQLPrefixes enumerages the relevant dictionary
 const defaultActivePrefixes = ['rdfs', 'owl', 'skos'];
+const ACTIVE_PREFIXES_SETTING_KEY = 'activePrefixes';
+let activePrefixesCache = [...defaultActivePrefixes];
 
 /**
  * Update the RDF preview box from the last overlay graph
@@ -238,25 +240,37 @@ async function serializeJsonLdFromNQuads(nquads) {
   return serialized.text;
 }
 
-/** 
-* Get/set active prefixes from localStorage
-* Assumes:
-*  localStorage is available
-*  commonSPARQLPrefixes object exists
-*  defaultActivePrefixes array exists
-*  @returns {Array<string>} Array of active prefix keys
-*/
-function getActivePrefixes() {
-  let active = localStorage.getItem('activePrefixes');
-  if (active) {
-    try { return JSON.parse(active); } catch {}
-  }
-  return defaultActivePrefixes;
+/**
+ * Loads the active SPARQL prefix selection from shared IndexedDB settings.
+ *
+ * @returns {Promise<string[]>} Active prefix keys.
+ */
+async function hydrateActivePrefixes() {
+  const active = await getSetting(ACTIVE_PREFIXES_SETTING_KEY);
+  activePrefixesCache = Array.isArray(active) && active.length
+    ? active.filter((prefix) => typeof prefix === 'string')
+    : [...defaultActivePrefixes];
+  return [...activePrefixesCache];
 }
 
-function setActivePrefixes(prefixArr) {
-  localStorage.setItem('activePrefixes', JSON.stringify(prefixArr));
-  // Optionally save to IndexedDB as well
+/**
+ * Reads the cached active SPARQL prefix selection.
+ *
+ * @returns {string[]} Active prefix keys.
+ */
+function getActivePrefixes() {
+  return [...activePrefixesCache];
+}
+
+/**
+ * Persists the active SPARQL prefix selection to shared IndexedDB settings.
+ *
+ * @param {string[]} prefixArr Active prefix keys.
+ * @returns {Promise<void>}
+ */
+async function storeActivePrefixes(prefixArr) {
+  activePrefixesCache = Array.isArray(prefixArr) ? [...prefixArr] : [...defaultActivePrefixes];
+  await saveSetting(ACTIVE_PREFIXES_SETTING_KEY, activePrefixesCache);
 }
 
 // Render the prefix bar with active prefixes and [manage prefixes] button
@@ -265,7 +279,7 @@ function setActivePrefixes(prefixArr) {
 //  commonSPARQLPrefixes object exists
 //  getActivePrefixes() function exists
 //  openPrefixModal() function exists
-//  setActivePrefixes() function exists
+//  storeActivePrefixes() function exists
 
 function renderPrefixBar() {
   const bar = document.getElementById('prefix-bar');
@@ -337,11 +351,11 @@ function openPrefixModal() {
 
   const saveBtn = modalContent.querySelector('#save-prefixes-btn');
   if (saveBtn) {
-    saveBtn.onclick = (e) => {
+    saveBtn.onclick = async (e) => {
       e.preventDefault();
       const checked = Array.from(modalContent.querySelectorAll('input[name="prefix"]:checked'))
         .map(cb => cb.value);
-      setActivePrefixes(checked);
+      await storeActivePrefixes(checked);
       modal.style.display = 'none';
       renderPrefixBar();
     };
@@ -965,7 +979,11 @@ function displayQueryResults(resultsHtml) {
 }
 
 addNewFileRow(); // start with one row
-renderPrefixBar(); // initial render of prefix bar
+hydrateActivePrefixes()
+  .catch((error) => {
+    if (debuggingConsoleEnabled) console.warn('[hydrateActivePrefixes] failed:', error);
+  })
+  .finally(renderPrefixBar);
 
 // Tab switching
 document.querySelectorAll('.tab').forEach((tab, idx) => {
