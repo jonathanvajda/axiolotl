@@ -6,6 +6,7 @@ import {
   compactIriToCurie,
   findLongestPrefixMatch
 } from "../shared/namespace-registry/curie.js";
+import { isBlankNodeTerm } from "../shared/ontology-utils/index.js";
 
 /**
  * @typedef {Object} RdfJsTerm
@@ -23,7 +24,7 @@ import {
 export function termKey(term) {
   if (!term || typeof term !== "object") return "term:unknown";
   if (term.termType === "Variable") return `var:?${term.value}`;
-  if (term.termType === "BlankNode") return `bnode:${term.value}`;
+  if (isBlankNodeTerm(term)) return `bnode:${term.value}`;
   if (term.termType === "NamedNode") return `iri:${term.value}`;
   if (term.termType === "Literal") {
     const dt = term.datatype?.value ?? "";
@@ -72,7 +73,7 @@ export function termLabel(term, prefixes) {
   if (!term || typeof term !== "object") return "<?>";
 
   if (term.termType === "Variable") return `?${term.value}`;
-  if (term.termType === "BlankNode") return `_:${term.value}`;
+  if (isBlankNodeTerm(term)) return `_:${term.value}`;
   if (term.termType === "NamedNode") return compactIri(term.value, prefixes);
 
   if (term.termType === "Literal") {

@@ -14,6 +14,7 @@ import {
   canUseTermAsPredicate,
   canUseTermAsSubject,
   hasBlankNodeTermInQuad,
+  isBlankNodeTerm,
   isAbsoluteIri
 } from './shared/ontology-utils/index.js';
 import {
@@ -121,17 +122,17 @@ function quadHasBlankNode(q) {
 
 function looseQuadKey(q) {
   const subj =
-    q.subject.termType === 'BlankNode'
+    isBlankNodeTerm(q.subject)
       ? 'BlankNode:_'
       : `${q.subject.termType}:${q.subject.value}`;
 
   const obj =
-    q.object.termType === 'BlankNode'
+    isBlankNodeTerm(q.object)
       ? 'BlankNode:_'
       : `${q.object.termType}:${q.object.value}:${q.object.language || ''}:${q.object.datatype?.value || ''}`;
 
   const graph =
-    q.graph.termType === 'BlankNode'
+    isBlankNodeTerm(q.graph)
       ? 'BlankNode:_'
       : `${q.graph.termType}:${q.graph.value || ''}`;
 

@@ -1055,22 +1055,12 @@ async function renderOntologyList() {
 }
 
 /**
- * Generate a GUID-like identifier.
- * Uses the promoted crypto-backed UUID utility.
- * @returns {string}
- */
-function makeGuidLike() {
-  return createUuid({ removeHyphens: true });
-}
-
-
-/**
  * Build one normalized saved-query record from textarea content.
  * @param {string} queryText
  * @returns {{id:string,type:string,value:string,createdAt:string}}
  */
 function buildSavedQueryRecord(queryText,queryLabel) {
-  const GUID = makeGuidLike();
+  const GUID = createUuid({ removeHyphens: true });
   return {
     id: `https://github.com/jonathanvajda/SemanticArtifactOntology/ont000007_SPARQLQuery_${GUID}`,
     label: String(queryLabel ?? 'Untitled'),

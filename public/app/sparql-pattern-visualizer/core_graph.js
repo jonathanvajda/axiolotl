@@ -6,6 +6,7 @@
 import { KNOWN_ANNOTATION_PREDICATE_IRIS } from "./constants.js";
 import { termKey, termLabel } from "./core_terms.js";
 import { COMMON_NAMESPACE_IRIS } from "../shared/namespace-registry/index.js";
+import { isBlankNodeTerm } from "../shared/ontology-utils/index.js";
 
 /**
  * @typedef {Object} GraphNode
@@ -155,7 +156,7 @@ export function buildGraphModel(ast) {
 
     let kind = "iri";
     if (term?.termType === "Variable") kind = "variable";
-    else if (term?.termType === "BlankNode") kind = "blank";
+    else if (isBlankNodeTerm(term)) kind = "blank";
     else if (term?.termType === "Literal") kind = "literal";
     else if (term?.termType === "NamedNode") kind = "iri";
 
