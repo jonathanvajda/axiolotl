@@ -162,15 +162,6 @@ function getBranchKeyForIndex(queryType, index) {
   return keys[index] || null;
 }
 
-function slugifyStepLabel(text) {
-  return String(text || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 40);
-}
-
 function createDefaultStep(labelText) {
   var firstQuery = state.queryManifest.queries[0] || null;
   var branchKeys = firstQuery ? getBranchKeysForQueryType(firstQuery.type) : ['true', 'false'];
