@@ -3,7 +3,9 @@
 
 import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
 import { normalizeIriToken } from './shared/ontology-utils/index.js';
+import { getMimeTypeForFormatKey } from './shared/format-registry/index.js';
 import {
+  PROJECT_RECORD_JSONLD_CONTEXT,
   DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID,
   clearGraphQuadRows,
   createProjectPortfolioStores,
@@ -29,12 +31,7 @@ const AXIOLOTL_APP_ID = 'axiolotl';
 const AXIOLOTL_PROJECT_LABEL = 'Default Cross-App Workspace';
 const QUERY_ARTIFACT_KIND = 'sparql-query';
 const DEFAULT_GRAPH_LABEL = 'Default graph';
-
-const QUERY_IRI = {
-  class: 'https://github.com/jonathanvajda/SemanticArtifactOntology/ont000007',
-  predicate: 'https://github.com/jonathanvajda/SemanticArtifactOntology/has_sparql_query_text_value',
-  label: COMMON_NAMESPACE_IRIS.rdfs.label
-};
+const SPARQL_QUERY_FORMAT_KEY = 'sparqlQuery';
 
 let portfolioPromise = null;
 let legacyMigrationPromise = null;
@@ -181,24 +178,25 @@ async function saveSavedQuery(record) {
 async function saveSavedQueryInternal(record, { migratedFromLegacy = false, dispatchEvent = true } = {}) {
   const normalized = normalizeSavedQueryRecord(record);
   const stores = await openAxiolotlProjectStores();
+  const formatDetails = resolveSparqlQueryFormatDetails();
   await stores.artifacts.storeProjectArtifact({
     artifactId: normalized.id,
     projectId: DEFAULT_PROJECT_PORTFOLIO_PROJECT_ID,
     artifactKind: QUERY_ARTIFACT_KIND,
     role: 'query',
     label: normalized.label,
-    mediaType: 'application/sparql-query',
-    extension: 'rq',
+    mediaType: formatDetails.mimeType,
+    extension: formatDetails.extensions[0],
     createdAt: normalized.createdAt,
     updatedAt: normalized.updatedAt || normalized.createdAt,
-    source: { appId: AXIOLOTL_APP_ID },
+    source: { [COMMON_NAMESPACE_IRIS.okea.appId]: AXIOLOTL_APP_ID },
     metadata: {
-      queryType: normalized.type,
+      [COMMON_NAMESPACE_IRIS.rdf.type]: normalized.type,
       ...(migratedFromLegacy
         ? { migratedFrom: { databaseName: LEGACY_TRIPLE_DB_NAME, storeName: LEGACY_QUERY_STORE_NAME } }
         : {})
     }
-  }, normalized.value);
+  }, convertSavedQueryRecordToJsonLd(normalized));
   if (dispatchEvent) dispatchStorageEvent('saved-queries-changed', {
     db: 'OntologyWorkbenchProjects',
     store: 'artifacts',
@@ -239,10 +237,12 @@ async function deleteSavedQuery(id) {
 
 function savedQueryRecordToJsonLd(record) {
   return {
+    '@context': PROJECT_RECORD_JSONLD_CONTEXT,
     '@id': record.id,
-    '@type': [record.type, COMMON_NAMESPACE_IRIS.owl.NamedIndividual],
-    [QUERY_IRI.predicate]: [{ '@value': record.value }],
-    [QUERY_IRI.label]: [{ '@value': record.label }]
+    '@type': [record.type, COMMON_NAMESPACE_IRIS.cco2.informationContentEntity],
+    [COMMON_NAMESPACE_IRIS.dcterms.title]: [{ '@value': record.label, '@type': COMMON_NAMESPACE_IRIS.xsd.string }],
+    [COMMON_NAMESPACE_IRIS.dcterms.format]: resolveSparqlQueryFormatDetails().mimeType,
+    [COMMON_NAMESPACE_IRIS.rdf.value]: [{ '@value': record.value, '@type': COMMON_NAMESPACE_IRIS.xsd.string }]
   };
 }
 
@@ -276,7 +276,7 @@ function parseSavedQueriesCsv(csvText) {
     }).records.map((row) => ({
       id: row.queryId,
       label: row.queryLabel,
-      type: row.queryKind || QUERY_IRI.class,
+      type: row.queryKind || COMMON_NAMESPACE_IRIS.cco2.informationContentEntity,
       value: row.queryText
     }))
   );
@@ -450,7 +450,7 @@ function normalizeSavedQueryRecord(record) {
   return {
     id: String(record?.id || createStableRecordId('artifact:axiolotl-query', [record?.label || record?.value || Date.now()])).trim(),
     label: String(record?.label || 'Saved SPARQL query').trim(),
-    type: String(record?.type || QUERY_IRI.class).trim(),
+    type: String(record?.type || COMMON_NAMESPACE_IRIS.cco2.informationContentEntity).trim(),
     value: String(record?.value ?? ''),
     createdAt: record?.createdAt || new Date().toISOString(),
     updatedAt: record?.updatedAt || record?.createdAt || new Date().toISOString()
@@ -458,14 +458,48 @@ function normalizeSavedQueryRecord(record) {
 }
 
 function artifactToSavedQueryRecord(artifact) {
+  const payload = readSavedQueryRecordFromJsonLd(artifact.payload);
   return {
     id: artifact.artifactId,
     label: artifact.label,
-    type: artifact.metadata?.queryType || QUERY_IRI.class,
-    value: typeof artifact.payload === 'string' ? artifact.payload : String(artifact.payload ?? ''),
+    type: artifact.metadata?.[COMMON_NAMESPACE_IRIS.rdf.type] || artifact.metadata?.queryType || payload?.type || COMMON_NAMESPACE_IRIS.cco2.informationContentEntity,
+    value: payload?.value ?? (typeof artifact.payload === 'string' ? artifact.payload : String(artifact.payload ?? '')),
     createdAt: artifact.createdAt,
     updatedAt: artifact.updatedAt
   };
+}
+
+function convertSavedQueryRecordToJsonLd(record) {
+  return savedQueryRecordToJsonLd(record);
+}
+
+function readSavedQueryRecordFromJsonLd(value) {
+  if (!value || typeof value !== 'object' || !(COMMON_NAMESPACE_IRIS.rdf.value in value)) return null;
+  const textValue = Array.isArray(value[COMMON_NAMESPACE_IRIS.rdf.value])
+    ? value[COMMON_NAMESPACE_IRIS.rdf.value][0]
+    : value[COMMON_NAMESPACE_IRIS.rdf.value];
+  const labelValue = Array.isArray(value[COMMON_NAMESPACE_IRIS.dcterms.title])
+    ? value[COMMON_NAMESPACE_IRIS.dcterms.title][0]
+    : value[COMMON_NAMESPACE_IRIS.dcterms.title];
+  return {
+    id: String(value['@id'] || ''),
+    type: Array.isArray(value['@type']) ? value['@type'][0] : String(value['@type'] || COMMON_NAMESPACE_IRIS.cco2.informationContentEntity),
+    label: readJsonLdScalarValue(labelValue),
+    value: readJsonLdScalarValue(textValue)
+  };
+}
+
+function readJsonLdScalarValue(value) {
+  if (value == null) return '';
+  if (typeof value === 'object' && '@value' in value) return String(value['@value'] ?? '');
+  if (typeof value === 'object' && '@id' in value) return String(value['@id'] ?? '');
+  return String(value);
+}
+
+function resolveSparqlQueryFormatDetails() {
+  const result = getMimeTypeForFormatKey(SPARQL_QUERY_FORMAT_KEY);
+  if (!result.ok) throw new Error(`Format registry is missing ${SPARQL_QUERY_FORMAT_KEY}.`);
+  return result.value;
 }
 
 function normalizeAxiolotlTripleRow(triple, { migratedFromLegacy = false } = {}) {
@@ -524,7 +558,7 @@ function createGraphRecord(graph, quadCount = 0, migratedFromLegacy = false) {
     graphIri: graph || null,
     role: 'loaded',
     label: graph || DEFAULT_GRAPH_LABEL,
-    source: { appId: AXIOLOTL_APP_ID },
+    source: { [COMMON_NAMESPACE_IRIS.okea.appId]: AXIOLOTL_APP_ID },
     materialization: {
       strategy: 'materialized-on-import',
       status: 'ready',
@@ -548,7 +582,6 @@ function dispatchStorageEvent(name, detail) {
 }
 
 export {
-  QUERY_IRI,
   initSettingsDB,
   getSetting,
   saveSetting,

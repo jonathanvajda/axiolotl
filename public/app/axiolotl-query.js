@@ -37,11 +37,11 @@ import {
   getAllSavedQueries,
   getSetting,
   importSavedQueriesFromCsv,
-  QUERY_IRI,
   saveSavedQuery,
   saveSetting,
   storeTriplesInNamedGraph
 } from './indexeddb-triplestore.js';
+import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
 import {
   commonSPARQLPrefixes,
   debuggingConsoleEnabled,
@@ -1060,11 +1060,10 @@ async function renderOntologyList() {
  * @returns {{id:string,type:string,value:string,createdAt:string}}
  */
 function buildSavedQueryRecord(queryText,queryLabel) {
-  const GUID = createUuid({ removeHyphens: true });
   return {
-    id: `https://github.com/jonathanvajda/SemanticArtifactOntology/ont000007_SPARQLQuery_${GUID}`,
+    id: `urn:uuid:${createUuid()}`,
     label: String(queryLabel ?? 'Untitled'),
-    type: QUERY_IRI.class,
+    type: COMMON_NAMESPACE_IRIS.cco2.informationContentEntity,
     value: String(queryText ?? ''),
     createdAt: new Date().toISOString()
   };

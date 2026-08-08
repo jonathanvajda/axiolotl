@@ -1,7 +1,11 @@
 import {
+  COMMON_NAMESPACE_IRIS
+} from './shared/namespace-registry/index.js';
+import {
   countAllTriples,
   countNamedGraphs,
   deleteExactTriples,
+  exportSavedQueriesAsJsonLd,
   getAllGraphNames,
   getAllSavedQueries,
   getAllTriples,
@@ -185,6 +189,22 @@ describe('Axiolotl shared project triplestore', () => {
         id: 'query:classes',
         label: 'Classes',
         value: 'SELECT * WHERE { ?s a owl:Class }'
+      })
+    ]);
+
+    await expect(exportSavedQueriesAsJsonLd()).resolves.toEqual([
+      expect.objectContaining({
+        '@id': 'query:classes',
+        '@type': ['https://example.org/Query', COMMON_NAMESPACE_IRIS.cco2.informationContentEntity],
+        [COMMON_NAMESPACE_IRIS.dcterms.title]: [{
+          '@value': 'Classes',
+          '@type': COMMON_NAMESPACE_IRIS.xsd.string
+        }],
+        [COMMON_NAMESPACE_IRIS.dcterms.format]: 'application/sparql-query',
+        [COMMON_NAMESPACE_IRIS.rdf.value]: [{
+          '@value': 'SELECT * WHERE { ?s a owl:Class }',
+          '@type': COMMON_NAMESPACE_IRIS.xsd.string
+        }]
       })
     ]);
   });
