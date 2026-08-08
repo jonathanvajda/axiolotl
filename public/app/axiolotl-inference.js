@@ -116,10 +116,6 @@ function quadKey(q) {
   ].join('¦');
 }
 
-function quadHasBlankNode(q) {
-  return hasBlankNodeTermInQuad(q);
-}
-
 function looseQuadKey(q) {
   const subj =
     isBlankNodeTerm(q.subject)
@@ -493,7 +489,7 @@ async function inferUntilStable(rules) {
 
       const newQuads = await runRuleOnce(rule, rdfjsStore);
 
-      const blankCount = newQuads.filter(quadHasBlankNode).length;
+      const blankCount = newQuads.filter(hasBlankNodeTermInQuad).length;
       const looseCount = new Set(newQuads.map(looseQuadKey)).size;
 
       inferenceInfo(
