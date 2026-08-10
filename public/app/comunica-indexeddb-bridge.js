@@ -1,4 +1,4 @@
-// Dependencies
+﻿// Dependencies
 //   comunica-browser.js
 //     QueryEngine
 //   indexeddb-triplestore.js
@@ -36,6 +36,11 @@ import {
   isBlankNodeId,
   normalizeIriToken
 } from './shared/ontology-utils/index.js';
+import {
+  classifySparqlOperationFamily,
+  buildSparqlUpdatePreviewConstructs,
+  describeSparqlUpdateShape
+} from './shared/sparql-utils/index.js';
 
 const engine = new Comunica.QueryEngine();
 // N3 RDF/JS terms & store
@@ -60,7 +65,7 @@ function looksLikeBnodeId(v) {
 function asSubjectTerm(v, type) {
   if ((type === 'NamedNode') && isAbsoluteIri(v)) return $rdf.sym(v);
   if (isAbsoluteIri(v)) return $rdf.sym(v); // fallback if metadata missing
-  // subjects can’t be literals → use bnode if not an absolute IRI
+  // subjects canâ€™t be literals â†’ use bnode if not an absolute IRI
   const id = String(v || '').replace(/^_:/, '').replace(/^_g_/, '');
   return $rdf.blankNode(id || 's');
 }
@@ -240,7 +245,7 @@ const applyUpdateWithComunica = async (updateQuery, graph) => {
     lenient: true
   });
   return graph;
-  // If you’d rather fail loudly so no one uses this path:
+  // If youâ€™d rather fail loudly so no one uses this path:
   // throw new Error('applyUpdateWithComunica is not supported for stringSource; use CONSTRUCT-based inference.');
 };
 
@@ -389,7 +394,7 @@ async function queryFromNamedGraph(graphIRI, query) {
         data.on('end', resolve);
         data.on('error', reject);
       });
-      // Graph-y results — keep old shape (your UI already supports it)
+      // Graph-y results â€” keep old shape (your UI already supports it)
       return nt.split('\n').filter(Boolean).map(line => ({ nt: { value: line } }));
     }
 
@@ -462,7 +467,7 @@ async function queryAllNamedGraphs(query) {
       }
       // If JSON parsed but isn't results/boolean, fall through to quads
     } catch (_) {
-      // Not JSON / not SELECT-ASK — fall through to N-Triples
+      // Not JSON / not SELECT-ASK â€” fall through to N-Triples
     }
 
     // Fallback: quads (CONSTRUCT/DESCRIBE)
@@ -575,243 +580,16 @@ async function runQueryOnEndpoint(endpoint, query, authHeaders = {}) {
 
 
 /**
+/**
  * Turn an UPDATE into 0..n CONSTRUCT previews.
- * Supported shapes: INSERT DATA {...}, INSERT{T}WHERE{P}, DELETE WHERE{P},
- * DELETE{T}WHERE{P}, and DELETE{T}INSERT{U}WHERE{P}.
- * Pure; string-in/string-out. Caller decides how to execute.
- * @param {string} updateStr
- * @returns {Array<{label:string, query:string}>}
+ * @type {(updateStr: string) => Array<{label:string, query:string}>}
  */
-const makePreviewConstructs = (updateStr) => {
-  const { prologue, body: s } = splitSparqlPrologue(updateStr);
-  const out = [];
-
-  // INSERT DATA { GRAPH <g>? { ... } }
-  // We preview "triples to be inserted". If GRAPH is present we ignore it for preview;
-  // execution context (graph target) is set by UI.
-  const mInsertData = s.match(/^INSERT\s+DATA\s*\{([\s\S]+)\}\s*;?\s*$/i);
-  if (mInsertData) {
-    const body = mInsertData[1];
-    // INSERT DATA has no WHERE pattern, so construct the constant template once.
-    out.push({
-      label: 'Triples that would be inserted',
-      query: `${prologue}\nCONSTRUCT { ${body} } WHERE {}`
-    });
-    return out;
-  }
-
-  // DELETE WHERE { P }
-  const mDeleteWhere = s.match(/^DELETE\s+WHERE\s*\{([\s\S]+)\}\s*;?\s*$/i);
-  if (mDeleteWhere) {
-    const P = mDeleteWhere[1];
-    out.push({
-      label: 'Triples that would be deleted',
-      query: `${prologue}\nCONSTRUCT { ${P} } WHERE { ${P} }`
-    });
-    return out;
-  }
-
-  // DELETE { T } INSERT { U } WHERE { P }
-  const deleteInsert = parseDeleteInsertWhereUpdate(s);
-  if (deleteInsert) {
-    out.push({ label:'Triples that would be deleted', query:`${prologue}\nCONSTRUCT { ${deleteInsert.deleteTemplate} } WHERE { ${deleteInsert.wherePattern} }` });
-    out.push({ label:'Triples that would be inserted', query:`${prologue}\nCONSTRUCT { ${deleteInsert.insertTemplate} } WHERE { ${deleteInsert.wherePattern} }` });
-    return out;
-  }
-
-  // INSERT { T } WHERE { P }
-  const insertWhere = parseInsertWhereUpdate(s);
-  if (insertWhere) {
-    out.push({ label:'Triples that would be inserted', query:`${prologue}\nCONSTRUCT { ${insertWhere.insertTemplate} } WHERE { ${insertWhere.wherePattern} }` });
-    return out;
-  }
-
-  // DELETE { T } WHERE { P }
-  const deleteWhere = parseDeleteWhereUpdate(s);
-  if (deleteWhere) {
-    out.push({ label:'Triples that would be deleted', query:`${prologue}\nCONSTRUCT { ${deleteWhere.deleteTemplate} } WHERE { ${deleteWhere.wherePattern} }` });
-    return out;
-  }
-
-  if (debuggingConsoleEnabled) {
-    console.info('[makePreviewConstructs] No supported preview pattern matched.', describeUpdateShape(updateStr));
-  }
-  return out;
-};
-
-function describeUpdateShape(updateStr) {
-  const { prologue, body } = splitSparqlPrologue(updateStr);
-  const firstKeyword = body.match(/^([A-Za-z]+)/)?.[1] || '';
-  return {
-    prologueLength: prologue.length,
-    firstKeyword,
-    bodyPreview: body.slice(0, 160),
-    textPreview: String(updateStr ?? '').slice(0, 160),
-  };
-}
-
-function splitSparqlPrologue(queryText) {
-  const text = stripSparqlComments(String(queryText ?? '')).trim();
-  const prologueMatch = text.match(/^((?:\s*(?:PREFIX\s+[\w-]*:\s*<[^>]+>|BASE\s*<[^>]+>)\s*)*)/i);
-  const prologue = (prologueMatch?.[1] || '').trim();
-  const body = text.slice(prologueMatch?.[0]?.length || 0).trim();
-  return { prologue, body };
-}
-
-function stripSparqlComments(queryText) {
-  let out = '';
-  let quote = null;
-  let inIri = false;
-  let escaped = false;
-
-  for (let i = 0; i < queryText.length; i += 1) {
-    const ch = queryText[i];
-
-    if (quote) {
-      out += ch;
-      if (escaped) {
-        escaped = false;
-      } else if (ch === '\\') {
-        escaped = true;
-      } else if (ch === quote) {
-        quote = null;
-      }
-      continue;
-    }
-
-    if (inIri) {
-      out += ch;
-      if (ch === '>') inIri = false;
-      continue;
-    }
-
-    if (ch === '"' || ch === "'") {
-      quote = ch;
-      out += ch;
-      continue;
-    }
-
-    if (ch === '<') {
-      inIri = true;
-      out += ch;
-      continue;
-    }
-
-    if (ch === '#') {
-      while (i < queryText.length && queryText[i] !== '\n') i += 1;
-      if (i < queryText.length) out += queryText[i];
-      continue;
-    }
-
-    out += ch;
-  }
-
-  return out;
-}
-
-function parseInsertWhereUpdate(updateBody) {
-  const cursor = consumeKeyword(updateBody, 0, 'INSERT');
-  if (cursor < 0) return null;
-  const insertBlock = readBraceBlock(updateBody, cursor);
-  if (!insertBlock) return null;
-  const whereCursor = consumeKeyword(updateBody, insertBlock.end, 'WHERE');
-  if (whereCursor < 0) return null;
-  const whereBlock = readBraceBlock(updateBody, whereCursor);
-  if (!whereBlock || hasTrailingUpdateText(updateBody, whereBlock.end)) return null;
-  return { insertTemplate: insertBlock.content, wherePattern: whereBlock.content };
-}
-
-function parseDeleteWhereUpdate(updateBody) {
-  const cursor = consumeKeyword(updateBody, 0, 'DELETE');
-  if (cursor < 0) return null;
-  const deleteBlock = readBraceBlock(updateBody, cursor);
-  if (!deleteBlock) return null;
-  const whereCursor = consumeKeyword(updateBody, deleteBlock.end, 'WHERE');
-  if (whereCursor < 0) return null;
-  const whereBlock = readBraceBlock(updateBody, whereCursor);
-  if (!whereBlock || hasTrailingUpdateText(updateBody, whereBlock.end)) return null;
-  return { deleteTemplate: deleteBlock.content, wherePattern: whereBlock.content };
-}
-
-function parseDeleteInsertWhereUpdate(updateBody) {
-  const cursor = consumeKeyword(updateBody, 0, 'DELETE');
-  if (cursor < 0) return null;
-  const deleteBlock = readBraceBlock(updateBody, cursor);
-  if (!deleteBlock) return null;
-  const insertCursor = consumeKeyword(updateBody, deleteBlock.end, 'INSERT');
-  if (insertCursor < 0) return null;
-  const insertBlock = readBraceBlock(updateBody, insertCursor);
-  if (!insertBlock) return null;
-  const whereCursor = consumeKeyword(updateBody, insertBlock.end, 'WHERE');
-  if (whereCursor < 0) return null;
-  const whereBlock = readBraceBlock(updateBody, whereCursor);
-  if (!whereBlock || hasTrailingUpdateText(updateBody, whereBlock.end)) return null;
-  return {
-    deleteTemplate: deleteBlock.content,
-    insertTemplate: insertBlock.content,
-    wherePattern: whereBlock.content,
-  };
-}
-
-function consumeKeyword(text, start, keyword) {
-  const rest = text.slice(start).trimStart();
-  const skipped = text.length - start - rest.length;
-  const pattern = new RegExp(`^${keyword}\\b`, 'i');
-  const match = rest.match(pattern);
-  return match ? start + skipped + match[0].length : -1;
-}
-
-function readBraceBlock(text, start) {
-  const open = text.indexOf('{', start);
-  if (open < 0) return null;
-
-  let depth = 0;
-  let quote = null;
-  let escaped = false;
-
-  for (let i = open; i < text.length; i += 1) {
-    const ch = text[i];
-
-    if (quote) {
-      if (escaped) {
-        escaped = false;
-      } else if (ch === '\\') {
-        escaped = true;
-      } else if (ch === quote) {
-        quote = null;
-      }
-      continue;
-    }
-
-    if (ch === '"' || ch === "'") {
-      quote = ch;
-      continue;
-    }
-
-    if (ch === '{') depth += 1;
-    if (ch === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        return {
-          content: text.slice(open + 1, i),
-          end: i + 1,
-        };
-      }
-    }
-  }
-
-  return null;
-}
-
-function hasTrailingUpdateText(text, start) {
-  return !/^;?\s*$/u.test(text.slice(start));
-}
+const makePreviewConstructs = buildSparqlUpdatePreviewConstructs;
+const describeUpdateShape = describeSparqlUpdateShape;
 
 function isUpdateQuery(q) {
   if (debuggingConsoleEnabled) {console.info('[isUpdateQuery] Checking if query is UPDATE...');}
-  const s = String(q).trim().replace(/^\s*#.*$/mg,''); // strip leading comments
-  // SPARQL Update keywords (very coarse but effective)
-  return /^(INSERT|DELETE|WITH|LOAD|CLEAR|CREATE|DROP|COPY|MOVE|ADD)\b/i.test(s);
+  return classifySparqlOperationFamily(q) === 'UPDATE';
 }
 
 /**
@@ -821,27 +599,7 @@ function isUpdateQuery(q) {
  * @returns {'UPDATE'|'READ'|'UNKNOWN'}
  */
 const getQueryKind = (q) => {
-  try {
-    let s = String(q ?? '');
-
-    // strip full-line comments
-    s = s.replace(/^\s*#.*$/mg, '');
-
-    // remove leading PREFIX/BASE declarations (any number of them)
-    // e.g., PREFIX x: <…>  /  BASE <…>
-    s = s.replace(/^(?:\s*(?:PREFIX\s+\w+:\s*<[^>]+>|BASE\s*<[^>]+>))+?/img, '').trim();
-
-    if (!s) return 'UNKNOWN';
-
-    // now check the first keyword
-    if (/^(INSERT|DELETE|WITH|LOAD|CLEAR|CREATE|DROP|COPY|MOVE|ADD)\b/i.test(s)) return 'UPDATE';
-    if (/^(SELECT|ASK|CONSTRUCT|DESCRIBE)\b/i.test(s)) return 'READ';
-
-    return 'UNKNOWN';
-  } catch (e) {
-    if (debuggingConsoleEnabled) {console.error('[getQueryKind] Failed to classify query:', e);}
-    return 'UNKNOWN';
-  }
+  return classifySparqlOperationFamily(q);
 };
 
 // Flush Active workspace
@@ -1074,7 +832,7 @@ async function clearActiveSavedQueries() {
 }
 
 /**
- * Canonical (pre-listed) URL → fetch → parse → stash to default/named.
+ * Canonical (pre-listed) URL â†’ fetch â†’ parse â†’ stash to default/named.
  * Side-effects: fetch network + write to IndexedDB.
  * @param {Object} opt
  * @param {string} opt.url
@@ -1095,7 +853,7 @@ async function importCanonical(opt={}) {
 }
 
 /**
- * Local file → read → parse → stash to default/named.
+ * Local file â†’ read â†’ parse â†’ stash to default/named.
  * Side-effects: read file + write to IndexedDB.
  * @param {Object} opt
  * @param {File} opt.file

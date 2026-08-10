@@ -4,8 +4,10 @@
  */
 
 import { logEvent, logError } from "./sparql-pattern-visualizer/log.js";
-import { parseSparqlToAst } from "./sparql-pattern-visualizer/core_parse.js";
-import { buildGraphModel } from "./sparql-pattern-visualizer/core_graph.js";
+import {
+  buildSparqlGraphModelFromAst,
+  parseSparqlQueryToAst
+} from "./shared/sparql-utils/index.js";
 import { commonSPARQLPrefixes, showToast } from "./semantic-core.js";
 
 let hasRenderedDiagram = false;
@@ -158,8 +160,8 @@ function handleRenderRequest() {
     const queryText = composeAxiolotlQuery();
     logEvent("axiolotl.render.start", { showPrefixes, attachFilters });
 
-    const ast = parseSparqlToAst(queryText);
-    const graphModel = buildGraphModel(ast, { attachFilters });
+    const ast = parseSparqlQueryToAst(queryText, { runtime: window });
+    const graphModel = buildSparqlGraphModelFromAst(ast, { attachFilters });
 
     renderDiagram(graphModel);
     renderPrefixLegend(graphModel.prefixes, showPrefixes);
