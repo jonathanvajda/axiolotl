@@ -44,3 +44,8 @@ export {
   parseSparqlDeleteWhereUpdate,
   parseSparqlInsertWhereUpdate
 } from './update-patterns.js';
+
+export {
+  applySparqlUpdateToQuadStore,
+  rdfJsQuadsToQuadRows
+} from './update-materialization.js';

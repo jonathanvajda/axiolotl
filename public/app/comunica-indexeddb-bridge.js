@@ -38,8 +38,7 @@ import {
 } from './shared/ontology-utils/index.js';
 import {
   classifySparqlOperationFamily,
-  buildSparqlUpdatePreviewConstructs,
-  describeSparqlUpdateShape
+  buildSparqlUpdatePreviewConstructs
 } from './shared/sparql-utils/index.js';
 
 const engine = new Comunica.QueryEngine();
@@ -224,31 +223,6 @@ const parseIntoNamedGraph = async (rdfText, targetGraph, graphIRI, mimeType) => 
     `[parseIntoNamedGraph] Added ${parsed.quads.length} statements to ` +
     (graphIRI ? `graph <${graphIRI}>` : 'the default graph')
   )};};
-
-/**
- * Serializes an rdflib graph and runs a SPARQL UPDATE query against it using Comunica.
- * @param {string} updateQuery - The SPARQL UPDATE string.
- * @param {$rdf.Formula} graph - The rdflib graph to operate on.
- * @returns {Promise<$rdf.Formula>} A promise resolving to the updated graph.
- */
-const applyUpdateWithComunica = async (updateQuery, graph) => {
-  // NOTE: Running UPDATE against a read-only stringSource cannot mutate `graph`.
-  // We intentionally do NOT serialize any result here because UPDATE has no stream output.
-  // Prefer the CONSTRUCT path for inference.
-  if (debuggingConsoleEnabled) {console.warn('[applyUpdateWithComunica] UPDATE against stringSource is a no-op; prefer CONSTRUCT.')};
-  const comunica = engine;
-  const text = graph.serialize(null, undefined, 'text/turtle');
-  const source = { type: 'stringSource', value: text, mediaType: 'text/turtle' };
-  await comunica.queryVoid(updateQuery, {
-    sources: [source],
-    baseIRI: 'http://example.org/',
-    lenient: true
-  });
-  return graph;
-  // If youâ€™d rather fail loudly so no one uses this path:
-  // throw new Error('applyUpdateWithComunica is not supported for stringSource; use CONSTRUCT-based inference.');
-};
-
 
 async function collectQueryResult(result) {
   if (result.type === 'bindings') {
@@ -585,7 +559,6 @@ async function runQueryOnEndpoint(endpoint, query, authHeaders = {}) {
  * @type {(updateStr: string) => Array<{label:string, query:string}>}
  */
 const makePreviewConstructs = buildSparqlUpdatePreviewConstructs;
-const describeUpdateShape = describeSparqlUpdateShape;
 
 function isUpdateQuery(q) {
   if (debuggingConsoleEnabled) {console.info('[isUpdateQuery] Checking if query is UPDATE...');}
@@ -909,13 +882,11 @@ async function previewInsertFromUpdate(updateStr, opt={}) {
 
 export {
   clearActiveSavedQueries,
-  applyUpdateWithComunica,
   addFilesToDB,
   buildQuery,
   clearActiveSettings,
   clearActiveTriples,
   clearGraph,
-  describeUpdateShape,
   flushActiveWorkspace,
   importCanonical,
   importLocalFile,

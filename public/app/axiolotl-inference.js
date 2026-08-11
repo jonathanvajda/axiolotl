@@ -1,9 +1,6 @@
 // axiolotl-inference.js
 
-// Dependencies
-  // comunica-indexeddb-bridge.js
-    //  applyUpdateWithComunica
-// semantic-core.js
+// Dependencies: semantic-core.js and shared RDF/namespace utilities.
 import {
   COMMON_NAMESPACE_IRIS,
   namespacePrefixMapFromRegistry

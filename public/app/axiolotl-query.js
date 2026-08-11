@@ -14,7 +14,6 @@ import {
   clearActiveSavedQueries,
   clearActiveSettings,
   clearActiveTriples,
-  describeUpdateShape,
   flushActiveWorkspace,
   loadGraphFromIndexedDB,
   makeNamedGraphIRI,
@@ -64,6 +63,7 @@ import {
   serializeRdfDatasetWithAdapters
 } from './shared/rdf-io/index.js';
 import { createUuid } from './shared/ontology-utils/index.js';
+import { applySparqlUpdateToQuadStore } from './shared/sparql-utils/index.js';
 
 // Where the ontology files live (folder that also contains ontology-list.json)
 const CANON_ONTOLOGIES_BASE = 'ontology-files/' ;
@@ -908,71 +908,53 @@ document.getElementById('query-results').addEventListener('click', function (eve
   }
 });
 
-/**
- * Commit an UPDATE by materializing its delta:
- * - For each "delete preview" → compute quads and delete exact matches from IndexedDB.
- * - For each "insert preview" → compute quads and append to chosen graph (default/named).
- * Pure re inputs; side-effect is the intended IndexedDB mutation on success.
- * @param {string} updateStr
- * @param {'default'|'named'} targetMode
- * @returns {Promise<{deleted:number, inserted:number, graphIRI:string}>}
- */
-const commitUpdateByMaterialization = async (updateStr, targetMode='default') => {
-  const previews = makePreviewConstructs(updateStr);
-  if (!previews.length) {
-    const detail = typeof describeUpdateShape === 'function'
-      ? describeUpdateShape(updateStr)
-      : { bodyPreview: String(updateStr ?? '').slice(0, 160) };
-    throw new Error(`Unsupported UPDATE shape for commit. Parsed first keyword: ${detail.firstKeyword || '(none)'}. Body preview: ${detail.bodyPreview || detail.textPreview || '(empty)'}`);
-  }
-
-  // We separate delete-like vs insert-like by their labels
-  const delQs = previews.filter(p=>/deleted/i.test(p.label)).map(p=>p.query);
-  const insQs = previews.filter(p=>/inserted/i.test(p.label)).map(p=>p.query);
-
-  let deleted = 0, inserted = 0;
-  const graphIRI = (targetMode === 'named') ? makeNamedGraphIRI('http://example.org/updated') : null;
-
-  // ---- apply deletes
-  for (const q of delQs) {
-    const nt = await runConstructPreview(q, 'application/n-triples');
-    const triples = nt.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
-      // naive NT line split: <s> <p> <o> .
-      // For literals with spaces, a full N-Triples parser would be safer; keep simple but robust:
-      const m = line.match(/^(\S+)\s+(\S+)\s+(.+)\s+\.\s*$/);
-      if (!m) return null;
-      const subj = m[1].replace(/^<|>$/g,'');
-      const pred = m[2].replace(/^<|>$/g,'');
-      // object could be IRI or literal; we store raw value as persisted in your schema
-      let obj = m[3];
-      let objectValue = obj.startsWith('<') ? obj.replace(/^<|>$/g,'')
-                        : obj; // literals stay as-is (rdflib persisted literal.value)
-      return { subject: subj, predicate: pred, object: objectValue, graph: '' }; // default graph key (deletes are exact)
-    }).filter(Boolean);
-
-    deleted += await deleteExactTriples(triples);
-  }
-
-  // ---- apply inserts
-  if (insQs.length) {
-    for (const q of insQs) {
-      const ttl = await runConstructPreview(q, 'text/turtle');
-
-      const parsed = await parseRdfTextWithAdapters(ttl, {
-        format: 'text/turtle',
-        baseIri: 'http://example.org/',
-        runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
-      });
-      const overlay = parsed.dataset;
-
-      await stashGraphToIndexedDB(overlay, targetMode, graphIRI);
-      inserted += parsed.quads.length;
+async function commitUpdateByMaterialization(updateStr, targetMode = 'default') {
+  const result = await applySparqlUpdateToQuadStore(updateStr, {
+    runConstructQuery: async (query, { format }) => runConstructPreview(query, format),
+    parseConstructResult: async (rdfText, { format }) => parseRdfTextWithAdapters(rdfText, {
+      format,
+      baseIri: 'http://example.org/',
+      runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+    }),
+    deleteQuadRows: async (rows) => deleteExactTriples(rows),
+    insertQuadRows: async (rows, context) => {
+      const store = createStoreFromQuadRows(rows);
+      await stashGraphToIndexedDB(store, context.targetMode, context.graphIri || null);
+      return rows.length;
     }
+  }, {
+    targetMode,
+    createGraphIri: makeNamedGraphIRI,
+    autoGraphBase: 'http://example.org/updated'
+  });
+
+  return {
+    deleted: result.deleted,
+    inserted: result.inserted,
+    graphIRI: result.graphIri
+  };
+}
+
+function createStoreFromQuadRows(rows) {
+  const store = new N3.Store();
+  for (const row of rows || []) {
+    store.addQuad(N3.DataFactory.quad(
+      row.subjectType === 'BlankNode' ? N3.DataFactory.blankNode(row.subject) : N3.DataFactory.namedNode(row.subject),
+      N3.DataFactory.namedNode(row.predicate),
+      createObjectTermFromQuadRow(row),
+      row.graph ? N3.DataFactory.namedNode(row.graph) : N3.DataFactory.defaultGraph()
+    ));
   }
+  return store;
+}
 
-  return { deleted, inserted, graphIRI: graphIRI || '(default graph)' };
-};
-
+function createObjectTermFromQuadRow(row) {
+  if (row.objectType === 'NamedNode') return N3.DataFactory.namedNode(row.object);
+  if (row.objectType === 'BlankNode') return N3.DataFactory.blankNode(row.object);
+  if (row.objectLang) return N3.DataFactory.literal(row.object, row.objectLang);
+  if (row.objectDatatype) return N3.DataFactory.literal(row.object, N3.DataFactory.namedNode(row.objectDatatype));
+  return N3.DataFactory.literal(row.object);
+}
 // Display results in the designated div
 function displayQueryResults(resultsHtml) {
   const resultsDiv = document.getElementById('query-results');

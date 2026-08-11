@@ -1,4 +1,5 @@
 import {
+  applySparqlUpdateToQuadStore,
   buildSparqlUpdatePreviewConstructs,
   classifySparqlOperationFamily,
   readBalancedSparqlBraceBlock,
@@ -49,5 +50,43 @@ describe('shared SPARQL utilities used by Axiolotl', () => {
     expect(previews[1].label).toBe('Triples that would be inserted');
     expect(previews[1].query).toContain('CONSTRUCT');
     expect(previews[1].query).toContain('?s ex:new ?o');
+  });
+
+  test('applies update materialization through injected quad-store adapters', async () => {
+    const inserted = [];
+    const deleted = [];
+    const result = await applySparqlUpdateToQuadStore([
+      'PREFIX ex: <http://example.org/>',
+      'DELETE { ?s ex:old ?o }',
+      'INSERT { ?s ex:new ?o }',
+      'WHERE { ?s ex:old ?o }'
+    ].join('\n'), {
+      runConstructQuery: async (_query, { operation }) => operation,
+      parseConstructResult: async (_text, { operation }) => ({
+        quads: [{
+          subject: { termType: 'NamedNode', value: 'http://example.org/s' },
+          predicate: { termType: 'NamedNode', value: operation === 'delete' ? 'http://example.org/old' : 'http://example.org/new' },
+          object: {
+            termType: 'Literal',
+            value: 'literal with spaces',
+            language: '',
+            datatype: { termType: 'NamedNode', value: 'http://www.w3.org/2001/XMLSchema#string' }
+          },
+          graph: { termType: 'DefaultGraph', value: '' }
+        }]
+      }),
+      deleteQuadRows: async (rows) => {
+        deleted.push(...rows);
+        return rows.length;
+      },
+      insertQuadRows: async (rows) => {
+        inserted.push(...rows);
+        return rows.length;
+      }
+    });
+
+    expect(result).toMatchObject({ deleted: 1, inserted: 1 });
+    expect(deleted[0]).toMatchObject({ predicate: 'http://example.org/old', object: 'literal with spaces' });
+    expect(inserted[0]).toMatchObject({ predicate: 'http://example.org/new', objectDatatype: 'http://www.w3.org/2001/XMLSchema#string' });
   });
 });
