@@ -64,6 +64,10 @@ import {
 } from './shared/rdf-io/index.js';
 import { createUuid } from './shared/ontology-utils/index.js';
 import { applySparqlUpdateToQuadStore } from './shared/sparql-utils/index.js';
+import {
+  createStatusPresentation,
+  renderStatusMessage
+} from './shared/ui-feedback/index.js';
 
 // Where the ontology files live (folder that also contains ontology-list.json)
 const CANON_ONTOLOGIES_BASE = 'ontology-files/' ;
@@ -1260,38 +1264,45 @@ bc?.addEventListener('message', (evt) => {
 
 // PURE: decide what the SPARQL status should look like
 function presentSparqlStatus(hasEndpoint) {
-  return {
-    text: hasEndpoint ? 'SPARQL Endpoint Assigned' : 'No SPARQL Endpoint Assigned',
-    isOk: !!hasEndpoint
-  };
+  return createStatusPresentation({
+    message: hasEndpoint ? 'SPARQL Endpoint Assigned' : 'No SPARQL Endpoint Assigned',
+    severity: hasEndpoint ? 'success' : 'idle',
+    metadata: {
+      isOk: !!hasEndpoint
+    }
+  });
 }
 
 // PURE: decide what the workspace status should look like
 function presentWorkspaceStatus(tripleCount, namedGraphCount) {
   const t = Number(tripleCount) || 0;
   const g = Number(namedGraphCount) || 0;
-  return {
-    text: `Active Workspace: ${t} triple${t===1?'':'s'}, ${g} named graph${g===1?'':'s'}`,
-    isOk: (t > 0 || g > 0)
-  };
+  const isOk = (t > 0 || g > 0);
+  return createStatusPresentation({
+    message: `Active Workspace: ${t} triple${t===1?'':'s'}, ${g} named graph${g===1?'':'s'}`,
+    severity: isOk ? 'success' : 'idle',
+    metadata: { isOk }
+  });
 }
 
 // IMPURE: apply a presentation to the SPARQL button
 function renderSparqlStatus(pres) {
   const el = document.getElementById('sparql-endpoint-status');
   if (!el) return;
-  el.textContent = pres.text;
-  el.classList.toggle('status-ok',   pres.isOk);
-  el.classList.toggle('status-idle', !pres.isOk);
+  renderStatusMessage(el, pres, { classPrefix: 'status' });
+  const isOk = !!pres.metadata?.isOk;
+  el.classList.toggle('status-ok', isOk);
+  el.classList.toggle('status-idle', !isOk);
 }
 
 // IMPURE: apply a presentation to the workspace button
 function renderWorkspaceStatus(pres) {
   const el = document.getElementById('active-workspace-status');
   if (!el) return;
-  el.textContent = pres.text;
-  el.classList.toggle('status-ok',   pres.isOk);
-  el.classList.toggle('status-idle', !pres.isOk);
+  renderStatusMessage(el, pres, { classPrefix: 'status' });
+  const isOk = !!pres.metadata?.isOk;
+  el.classList.toggle('status-ok', isOk);
+  el.classList.toggle('status-idle', !isOk);
 }
 
 // IMPURE: IO -> PURE -> DOM

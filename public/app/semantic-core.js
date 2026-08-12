@@ -19,6 +19,7 @@
 import { getSupportedMimeTypeForFilename } from './shared/format-registry/index.js';
 import { readFileAsText } from './shared/browser-file-io/index.js';
 import { namespacePrefixMapFromRegistry } from './shared/namespace-registry/index.js';
+import { renderToastNotification } from './shared/ui-feedback/index.js';
 
 export const debuggingConsoleEnabled = true; // set to false to disable debug logs
 const PREFIXES = namespacePrefixMapFromRegistry();
@@ -126,55 +127,13 @@ export function withDebug(name, fn) {
 
 // Simple toast notification system
 export function showToast(message, type = 'info', { timeout = 3500 } = {}) {
-  let container = document.getElementById('toast-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'toast-container';
-    container.setAttribute('aria-live', 'polite');
-    container.setAttribute('aria-atomic', 'true');
-    document.body.appendChild(container);
-  }
-
-  // Optional: cap the queue to avoid a flood
-  const MAX_TOASTS = 8;
-  while (container.children.length >= MAX_TOASTS) {
-    container.firstElementChild?.remove();
-  }
-
-  const div = document.createElement('div');
-  div.className = `toast toast--${type}`;
-  div.setAttribute('role', type === 'error' ? 'alert' : 'status'); // a11y
-  div.tabIndex = 0; // focusable for screenreaders / keyboard
-
-  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ︎';
-  // Build nodes safely (avoid injecting HTML from message)
-  const iconSpan = document.createElement('span');
-  iconSpan.className = 'toast__icon';
-  iconSpan.textContent = icon;
-
-  const msgDiv = document.createElement('div');
-  msgDiv.textContent = message;
-
-  div.appendChild(iconSpan);
-  div.appendChild(msgDiv);
-  container.appendChild(div);
-
-  let hideTimer = null;
-  const startHide = () => {
-    hideTimer = setTimeout(() => {
-      div.classList.add('hide');
-      setTimeout(() => div.remove(), 250);
-    }, timeout);
-  };
-  const stopHide = () => { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } };
-
-  // auto-dismiss, but pause on hover/focus
-  startHide();
-  div.addEventListener('mouseenter', stopHide);
-  div.addEventListener('mouseleave', startHide);
-  div.addEventListener('focusin',   stopHide);
-  div.addEventListener('focusout',  startHide);
-  div.addEventListener('click',     () => { stopHide(); div.classList.add('hide'); setTimeout(() => div.remove(), 200); });
+  const result = renderToastNotification({
+    message,
+    severity: type,
+    timeoutMs: timeout,
+    containerId: 'toast-container'
+  });
+  if (!result.ok && debuggingConsoleEnabled) console.error('[showToast] failed', result.error);
 }
 
 // Show user-friendly toast from a query error object/message
