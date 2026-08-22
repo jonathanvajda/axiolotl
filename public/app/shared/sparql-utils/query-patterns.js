@@ -16,16 +16,16 @@ const DEFAULT_ANNOTATION_PREDICATE_IRIS = Object.freeze([
 ]);
 
 /**
- * Parses SPARQL query text into a SPARQL.js AST using an injected or global
+ * Parses SPARQL query text into a SPARQL.js AST using an explicitly injected
  * SPARQL.js parser runtime.
  *
  * @param {string} queryText - SPARQL query text.
- * @param {{Parser?: Function, sparqljs?: {Parser?: Function}, runtime?: any, skipValidation?: boolean}} [options] - Parser/runtime options.
+ * @param {{Parser?: Function, sparqljs?: {Parser?: Function}, runtime?: {sparqljs?: {Parser?: Function}}, skipValidation?: boolean}} [options] - Parser/runtime options.
  * @returns {any} SPARQL.js AST.
  * @throws {Error} When no SPARQL.js parser is available or parsing fails.
  */
 export function parseSparqlQueryToAst(queryText, options = {}) {
-  const Parser = options.Parser || options.sparqljs?.Parser || options.runtime?.sparqljs?.Parser || globalThis.sparqljs?.Parser;
+  const Parser = options.Parser || options.sparqljs?.Parser || options.runtime?.sparqljs?.Parser;
   if (!Parser) {
     throw new Error('SPARQL.js Parser not found. Provide options.Parser or load a SPARQL.js runtime.');
   }
