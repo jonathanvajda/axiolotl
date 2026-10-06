@@ -1,31 +1,75 @@
 // axiolotl-query.js
 // This file manages UI interactions and connects them to inference logic
 
-// Dependencies
-  // axiolotl-inference.js
-    //  parseTurtle,
-    //  serializeTurtle,
-    //  getSelectedRulesFromCheckboxes,
-    //  inferUntilStable
-  // comunica-indexeddb-bridge.js
-    //  parseIntoNamedGraph,
-    //  loadGraphFromIndexedDB,
-    //  stashGraphToIndexedDB
-    //  detectRdfMimeByName
-  // semantic-core.js
-    //  debuggingConsoleEnabled
-    //  showToast
-    //  handleFileUpload
-    //  readFileAsText
-    //  toastFromQueryError(err)
-    //  toastInfo
-    //  toastSuccess
-    //  toastError
-    //  commonSPARQLPrefixes
-    //  downloadText
+import {
+  clearInferenceConsole,
+  getSelectedRulesFromCheckboxes,
+  inferUntilStable,
+  insertOverlayIntoEndpoint,
+  setInferenceBusy
+} from './axiolotl-inference.js';
+import {
+  addFilesToDB,
+  buildQuery,
+  clearActiveSavedQueries,
+  clearActiveSettings,
+  clearActiveTriples,
+  flushActiveWorkspace,
+  loadGraphFromIndexedDB,
+  makeNamedGraphIRI,
+  makePreviewConstructs,
+  getQueryKind,
+  parseIntoNamedGraph,
+  runConstructPreview,
+  runQueryOnEndpoint,
+  runQueryOnLocalDataset,
+  stashGraphToIndexedDB
+} from './comunica-indexeddb-bridge.js';
+import {
+  clearSavedQueries,
+  countAllTriples,
+  countNamedGraphs,
+  deleteExactTriples,
+  deleteSavedQuery,
+  exportSavedQueriesAsCsv,
+  exportSavedQueriesAsJsonLd,
+  getAllSavedQueries,
+  getSetting,
+  importSavedQueriesFromCsv,
+  saveSavedQuery,
+  saveSetting,
+  storeTriplesInNamedGraph
+} from './indexeddb-triplestore.js';
+import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
+import {
+  commonSPARQLPrefixes,
+  debuggingConsoleEnabled,
+  handleFileUpload,
+  showToast,
+  toastFromQueryError
+} from './semantic-core.js';
+import { downloadTextFile, readFileAsText } from './shared/browser-file-io/index.js';
+import {
+  serializeWorkspaceExport
+} from './axiolotl-workspace-export.js';
+import {
+  getMimeTypeForFormatKey,
+  getPreferredExtensionForMimeType,
+  getSupportedMimeTypeForFilename
+} from './shared/format-registry/index.js';
+import {
+  serializeRdfGraphExport,
+  parseRdfTextWithAdapters,
+  serializeRdfDatasetWithAdapters
+} from './shared/rdf-io/index.js';
+import { createUuid } from './shared/ontology-utils/index.js';
+import { applySparqlUpdateToQuadStore } from './shared/sparql-utils/index.js';
+import {
+  createStatusPresentation,
+  renderStatusMessage
+} from './shared/ui-feedback/index.js';
 
-
-    // Where the ontology files live (folder that also contains ontology-list.json)
+// Where the ontology files live (folder that also contains ontology-list.json)
 const CANON_ONTOLOGIES_BASE = 'ontology-files/' ;
 const CANON_ONTOLOGIES_LIST = CANON_ONTOLOGIES_BASE + 'ontology-list.json' ;
 
@@ -47,6 +91,8 @@ function nullIfNone(v) {
 
 // Assumes the commonSPARQLPrefixes enumerages the relevant dictionary
 const defaultActivePrefixes = ['rdfs', 'owl', 'skos'];
+const ACTIVE_PREFIXES_SETTING_KEY = 'activePrefixes';
+let activePrefixesCache = [...defaultActivePrefixes];
 
 /**
  * Update the RDF preview box from the last overlay graph
@@ -78,33 +124,21 @@ async function serializeStore(store, mime = 'text/turtle') {
     throw new Error('serializeStore expected an N3.Store or compatible RDF/JS source.');
   }
 
-  const supported = new Set([
-    'text/turtle',
-    'application/n-triples',
-    'application/n-quads'
-  ]);
-
-  const format = supported.has(mime) ? mime : 'text/turtle';
-
-  return await new Promise((resolve, reject) => {
-    const writer = new N3.Writer({ format });
-    writer.addQuads(store.getQuads(null, null, null, null));
-    writer.end((error, result) => {
-      if (error) reject(error);
-      else resolve(result || '');
-    });
+  const serialized = await serializeRdfGraphExport(store, {
+    scope: 'all',
+    format: mime,
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
   });
+  return serialized.text;
 }
 
 async function serializeStoreToNTriples(store) {
-  return await new Promise((resolve, reject) => {
-    const writer = new N3.Writer({ format: 'N-Triples' });
-    writer.addQuads(store.getQuads(null, null, null, null));
-    writer.end((error, result) => {
-      if (error) reject(error);
-      else resolve(result || '');
-    });
+  const { serializeRdfDatasetWithAdapters } = await import('./shared/rdf-io/index.js');
+  const serialized = await serializeRdfDatasetWithAdapters(store, {
+    format: 'application/n-triples',
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
   });
+  return serialized.text;
 }
 
 function getWorkspaceExportOptions() {
@@ -128,6 +162,10 @@ function getWorkspaceExportFormats(scope) {
     ['application/n-quads', 'N-Quads'],
     ['application/ld+json', 'JSON-LD'],
   ];
+}
+
+function timestampUTC() {
+  return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
 function syncWorkspaceExportFormatOptions() {
@@ -154,18 +192,22 @@ async function handleDownloadActiveWorkspace() {
   try {
     const { scope, mime } = getWorkspaceExportOptions();
     const store = await getWorkspaceExportStore(scope);
-    const text = await serializeWorkspaceExportStore(store, mime);
-    const count = store.getQuads(null, null, null, null).length;
+    const { text, count } = await serializeWorkspaceExport(store, {
+      scope: 'all',
+      mimeType: mime,
+      runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+    });
 
     if (!count) {
       showToast('No triples found for that export scope.', 'info');
       return;
     }
 
-    downloadText(
-      `active-workspace-${scope}-${timestampUTC()}.${workspaceExportExtension(mime)}`,
+    const extension = getPreferredExtensionForMimeType(mime);
+    downloadTextFile(
+      `active-workspace-${scope}-${timestampUTC()}.${extension.ok ? extension.value : 'rdf'}`,
       text,
-      mime
+      { mimeType: mime }
     );
     showToast(`Downloaded ${count} triple${count === 1 ? '' : 's'}.`, 'success');
   } catch (err) {
@@ -191,82 +233,49 @@ async function getWorkspaceExportStore(scope) {
   return scoped;
 }
 
-async function serializeWorkspaceExportStore(store, mime) {
-  if (mime === 'application/ld+json') {
-    const nq = await serializeWorkspaceWithN3(store, 'application/n-quads');
-    return await serializeJsonLdFromNQuads(nq);
-  }
-
-  return await serializeWorkspaceWithN3(store, mime);
-}
-
-async function serializeWorkspaceWithN3(store, mime) {
-  const formatByMime = {
-    'text/turtle': 'Turtle',
-    'application/n-triples': 'N-Triples',
-    'application/n-quads': 'N-Quads',
-    'application/trig': 'TriG',
-  };
-  const format = formatByMime[mime];
-  if (!format) throw new Error(`Unsupported workspace export format: ${mime}`);
-
-  return await new Promise((resolve, reject) => {
-    const writer = new N3.Writer({ format });
-    writer.addQuads(store.getQuads(null, null, null, null));
-    writer.end((error, result) => {
-      if (error) reject(error);
-      else resolve(result || '');
-    });
-  });
-}
-
 async function serializeJsonLdFromNQuads(nquads) {
-  const jsonld = globalThis.jsonld;
-  if (jsonld && typeof jsonld.fromRDF === 'function') {
-    const expanded = await jsonld.fromRDF(nquads, { format: 'application/n-quads' });
-    return JSON.stringify(expanded, null, 2);
-  }
-
-  return JSON.stringify(nquadsToSimpleJsonLd(nquads), null, 2);
+  const parsed = await parseRdfTextWithAdapters(nquads, {
+    format: 'application/n-quads',
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+  });
+  const serialized = await serializeRdfDatasetWithAdapters(parsed.dataset, {
+    format: 'application/ld+json',
+    runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+  });
+  return serialized.text;
 }
 
-function nquadsToSimpleJsonLd(nquads) {
-  return nquads
-    .split(/\r?\n/u)
-    .map(line => line.trim())
-    .filter(Boolean)
-    .map(line => ({ '@value': line }));
+/**
+ * Loads the active SPARQL prefix selection from shared IndexedDB settings.
+ *
+ * @returns {Promise<string[]>} Active prefix keys.
+ */
+async function hydrateActivePrefixes() {
+  const active = await getSetting(ACTIVE_PREFIXES_SETTING_KEY);
+  activePrefixesCache = Array.isArray(active) && active.length
+    ? active.filter((prefix) => typeof prefix === 'string')
+    : [...defaultActivePrefixes];
+  return [...activePrefixesCache];
 }
 
-function workspaceExportExtension(mime) {
-  return ({
-    'text/turtle': 'ttl',
-    'application/n-triples': 'nt',
-    'application/n-quads': 'nq',
-    'application/trig': 'trig',
-    'application/ld+json': 'jsonld',
-  })[mime] || 'rdf';
-}
-
-/** 
-* Get/set active prefixes from localStorage
-* Assumes:
-*  localStorage is available
-*  commonSPARQLPrefixes object exists
-*  defaultActivePrefixes array exists
-*  @returns {Array<string>} Array of active prefix keys
-*/
+/**
+ * Reads the cached active SPARQL prefix selection.
+ *
+ * @returns {string[]} Active prefix keys.
+ */
 function getActivePrefixes() {
-  let active = localStorage.getItem('activePrefixes');
-  if (active) {
-    try { return JSON.parse(active); } catch {}
-  }
-  return defaultActivePrefixes;
+  return [...activePrefixesCache];
 }
 
-function setActivePrefixes(prefixArr) {
-  localStorage.setItem('activePrefixes', JSON.stringify(prefixArr));
-  // Optionally save to IndexedDB as well
+/**
+ * Persists the active SPARQL prefix selection to shared IndexedDB settings.
+ *
+ * @param {string[]} prefixArr Active prefix keys.
+ * @returns {Promise<void>}
+ */
+async function storeActivePrefixes(prefixArr) {
+  activePrefixesCache = Array.isArray(prefixArr) ? [...prefixArr] : [...defaultActivePrefixes];
+  await saveSetting(ACTIVE_PREFIXES_SETTING_KEY, activePrefixesCache);
 }
 
 // Render the prefix bar with active prefixes and [manage prefixes] button
@@ -275,7 +284,7 @@ function setActivePrefixes(prefixArr) {
 //  commonSPARQLPrefixes object exists
 //  getActivePrefixes() function exists
 //  openPrefixModal() function exists
-//  setActivePrefixes() function exists
+//  storeActivePrefixes() function exists
 
 function renderPrefixBar() {
   const bar = document.getElementById('prefix-bar');
@@ -347,11 +356,11 @@ function openPrefixModal() {
 
   const saveBtn = modalContent.querySelector('#save-prefixes-btn');
   if (saveBtn) {
-    saveBtn.onclick = (e) => {
+    saveBtn.onclick = async (e) => {
       e.preventDefault();
       const checked = Array.from(modalContent.querySelectorAll('input[name="prefix"]:checked'))
         .map(cb => cb.value);
-      setActivePrefixes(checked);
+      await storeActivePrefixes(checked);
       modal.style.display = 'none';
       renderPrefixBar();
     };
@@ -402,13 +411,9 @@ async function handleRunInference() {
 function handleDownloadPreview(format = 'text/turtle') {
   try {
     const text = document.getElementById('rdf-preview').value;
-    const blob = new Blob([text], { type: format });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `inferred-overlay.${format.includes('json') ? 'jsonld' : format.includes('xml') ? 'rdf' : 'ttl'}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const extension = getPreferredExtensionForMimeType(format);
+    const filename = `inferred-overlay.${extension.ok ? extension.value : 'rdf'}`;
+    downloadTextFile(filename, text, { mimeType: format });
     if (debuggingConsoleEnabled) {console.info('[handleDownloadPreview] RDF download triggered');}
   } catch (error) {
     if (debuggingConsoleEnabled) {console.error('[handleDownloadPreview] Failed:', error);}
@@ -493,7 +498,7 @@ async function insertInferredTriplesIntoEndpoint() {
       if (target.mode === 'named' && !target.graphIRI) {
         target.graphIRI = makeNamedGraphIRI('http://example.org/inferred');
       }
-      await insertOverlayIntoEndpoint(g, endpointUrl, target);
+      await insertOverlayIntoEndpoint(g, endpointUrl, { ...target, authHeaders: endpointAuthHeaders });
       showToast('Inserted inferred data into SPARQL endpoint.', 'success');
     } catch (e) {
       if (debuggingConsoleEnabled) {console.error(e);}
@@ -510,16 +515,9 @@ async function exportInferredOverlay() {
     const mime = getSelectedOutputMime();
     const text = await serializeStore(g, mime);
 
-    const ext = ({
-      'text/turtle': 'ttl',
-      'application/n-triples': 'nt',
-      'application/n-quads': 'nq',
-      'application/trig': 'trig',
-      'application/ld+json': 'jsonld',
-      'application/rdf+xml': 'rdf'
-    })[mime] || 'ttl';
+    const extension = getPreferredExtensionForMimeType(mime);
 
-    downloadText(`inferred-${timestampUTC()}.${ext}`, text, mime);
+    downloadTextFile(`inferred-${timestampUTC()}.${extension.ok ? extension.value : 'rdf'}`, text, { mimeType: mime });
     showToast('Download started.', 'success');
   } catch (e) {
     if (debuggingConsoleEnabled) {
@@ -594,10 +592,6 @@ document.getElementById('add-to-db').addEventListener('click', () => {
   const namedGraphError = document.getElementById('namedGraphError');
   addFilesToDB(rows, errors, namedGraphError);
 });
-
-// Flush all IndexedDB + localStorage for this app
-document.getElementById('flush-active-workspace')?.addEventListener('click', flushActiveWorkspace);
-
 
 // Auth type selector changes visible fields
 document.getElementById('auth-type').addEventListener('change', () => {
@@ -685,7 +679,7 @@ document.getElementById('set-endpoint-auth')?.addEventListener('click', async ()
       await saveSetting(k, v);
     }
     // Fire one event for the batch and repaint:
-    try { notifyIdbChange?.({ db: 'SPARQLSettings', store: 'Settings', type: 'put' }); } catch {}
+    try { notifyIdbChange?.({ db: 'OntologyWorkbenchProjects', store: 'settings', type: 'put' }); } catch {}
     await refreshSparqlStatus();
 
     // 3) UI feedback
@@ -705,7 +699,7 @@ document.getElementById('set-endpoint')?.addEventListener('click', async () => {
   await saveSetting('sparqlEndpoint', endpoint);
 
   // Tell listeners (and other tabs) that settings changed:
-  try { notifyIdbChange?.({ db: 'SPARQLSettings', store: 'Settings', type: 'put', key: 'sparqlEndpoint' }); } catch {}
+  try { notifyIdbChange?.({ db: 'OntologyWorkbenchProjects', store: 'settings', type: 'put', key: 'sparqlEndpoint' }); } catch {}
 
   // Paint immediately in this tab:
   await refreshSparqlStatus();
@@ -911,11 +905,6 @@ function structureQueryResults(result) {
   return '<em>No results.</em>';
 }
 
-function renderQueryCell(value) {
-  const safe = escapeHtml(value);
-  return `<div class="query-cell" title="${safe}">${safe}</div>`;
-}
-
 document.getElementById('query-results').addEventListener('click', function (event) {
   const cell = event.target.closest('.query-cell');
   if (cell) {
@@ -923,68 +912,53 @@ document.getElementById('query-results').addEventListener('click', function (eve
   }
 });
 
-/**
- * Commit an UPDATE by materializing its delta:
- * - For each "delete preview" → compute quads and delete exact matches from IndexedDB.
- * - For each "insert preview" → compute quads and append to chosen graph (default/named).
- * Pure re inputs; side-effect is the intended IndexedDB mutation on success.
- * @param {string} updateStr
- * @param {'default'|'named'} targetMode
- * @returns {Promise<{deleted:number, inserted:number, graphIRI:string}>}
- */
-const commitUpdateByMaterialization = async (updateStr, targetMode='default') => {
-  const previews = makePreviewConstructs(updateStr);
-  if (!previews.length) {
-    const detail = typeof describeUpdateShape === 'function'
-      ? describeUpdateShape(updateStr)
-      : { bodyPreview: String(updateStr ?? '').slice(0, 160) };
-    throw new Error(`Unsupported UPDATE shape for commit. Parsed first keyword: ${detail.firstKeyword || '(none)'}. Body preview: ${detail.bodyPreview || detail.textPreview || '(empty)'}`);
-  }
-
-  // We separate delete-like vs insert-like by their labels
-  const delQs = previews.filter(p=>/deleted/i.test(p.label)).map(p=>p.query);
-  const insQs = previews.filter(p=>/inserted/i.test(p.label)).map(p=>p.query);
-
-  let deleted = 0, inserted = 0;
-  const graphIRI = (targetMode === 'named') ? makeNamedGraphIRI('http://example.org/updated') : null;
-
-  // ---- apply deletes
-  for (const q of delQs) {
-    const nt = await runConstructPreview(q, 'application/n-triples');
-    const triples = nt.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
-      // naive NT line split: <s> <p> <o> .
-      // For literals with spaces, a full N-Triples parser would be safer; keep simple but robust:
-      const m = line.match(/^(\S+)\s+(\S+)\s+(.+)\s+\.\s*$/);
-      if (!m) return null;
-      const subj = m[1].replace(/^<|>$/g,'');
-      const pred = m[2].replace(/^<|>$/g,'');
-      // object could be IRI or literal; we store raw value as persisted in your schema
-      let obj = m[3];
-      let objectValue = obj.startsWith('<') ? obj.replace(/^<|>$/g,'')
-                        : obj; // literals stay as-is (rdflib persisted literal.value)
-      return { subject: subj, predicate: pred, object: objectValue, graph: '' }; // default graph key (deletes are exact)
-    }).filter(Boolean);
-
-    deleted += await deleteExactTriples(triples);
-  }
-
-  // ---- apply inserts
-  if (insQs.length) {
-    for (const q of insQs) {
-      const ttl = await runConstructPreview(q, 'text/turtle');
-
-      const parser = new N3.Parser({ format: 'text/turtle', baseIRI: 'http://example.org/' });
-      const quads = parser.parse(ttl);
-      const overlay = new N3.Store(quads);
-
-      await stashGraphToIndexedDB(overlay, targetMode, graphIRI);
-      inserted += quads.length;
+async function commitUpdateByMaterialization(updateStr, targetMode = 'default') {
+  const result = await applySparqlUpdateToQuadStore(updateStr, {
+    runConstructQuery: async (query, { format }) => runConstructPreview(query, format),
+    parseConstructResult: async (rdfText, { format }) => parseRdfTextWithAdapters(rdfText, {
+      format,
+      baseIri: 'http://example.org/',
+      runtime: { N3, jsonld: globalThis.jsonld, $rdf: globalThis.$rdf }
+    }),
+    deleteQuadRows: async (rows) => deleteExactTriples(rows),
+    insertQuadRows: async (rows, context) => {
+      const store = createStoreFromQuadRows(rows);
+      await stashGraphToIndexedDB(store, context.targetMode, context.graphIri || null);
+      return rows.length;
     }
+  }, {
+    targetMode,
+    createGraphIri: makeNamedGraphIRI,
+    autoGraphBase: 'http://example.org/updated'
+  });
+
+  return {
+    deleted: result.deleted,
+    inserted: result.inserted,
+    graphIRI: result.graphIri
+  };
+}
+
+function createStoreFromQuadRows(rows) {
+  const store = new N3.Store();
+  for (const row of rows || []) {
+    store.addQuad(N3.DataFactory.quad(
+      row.subjectType === 'BlankNode' ? N3.DataFactory.blankNode(row.subject) : N3.DataFactory.namedNode(row.subject),
+      N3.DataFactory.namedNode(row.predicate),
+      createObjectTermFromQuadRow(row),
+      row.graph ? N3.DataFactory.namedNode(row.graph) : N3.DataFactory.defaultGraph()
+    ));
   }
+  return store;
+}
 
-  return { deleted, inserted, graphIRI: graphIRI || '(default graph)' };
-};
-
+function createObjectTermFromQuadRow(row) {
+  if (row.objectType === 'NamedNode') return N3.DataFactory.namedNode(row.object);
+  if (row.objectType === 'BlankNode') return N3.DataFactory.blankNode(row.object);
+  if (row.objectLang) return N3.DataFactory.literal(row.object, row.objectLang);
+  if (row.objectDatatype) return N3.DataFactory.literal(row.object, N3.DataFactory.namedNode(row.objectDatatype));
+  return N3.DataFactory.literal(row.object);
+}
 // Display results in the designated div
 function displayQueryResults(resultsHtml) {
   const resultsDiv = document.getElementById('query-results');
@@ -992,7 +966,11 @@ function displayQueryResults(resultsHtml) {
 }
 
 addNewFileRow(); // start with one row
-renderPrefixBar(); // initial render of prefix bar
+hydrateActivePrefixes()
+  .catch((error) => {
+    if (debuggingConsoleEnabled) console.warn('[hydrateActivePrefixes] failed:', error);
+  })
+  .finally(renderPrefixBar);
 
 // Tab switching
 document.querySelectorAll('.tab').forEach((tab, idx) => {
@@ -1063,29 +1041,15 @@ async function renderOntologyList() {
 }
 
 /**
- * Generate a GUID-like identifier.
- * Uses crypto.randomUUID when available.
- * @returns {string}
- */
-function makeGuidLike() {
-  if (window.crypto?.randomUUID) {
-    return window.crypto.randomUUID().replaceAll('-', '');
-  }
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
-
-/**
  * Build one normalized saved-query record from textarea content.
  * @param {string} queryText
  * @returns {{id:string,type:string,value:string,createdAt:string}}
  */
 function buildSavedQueryRecord(queryText,queryLabel) {
-  const GUID = makeGuidLike();
   return {
-    id: `https://github.com/jonathanvajda/SemanticArtifactOntology/ont000007_SPARQLQuery_${GUID}`,
+    id: `urn:uuid:${createUuid()}`,
     label: String(queryLabel ?? 'Untitled'),
-    type: QUERY_IRI.class,
+    type: COMMON_NAMESPACE_IRIS.cco2.informationContentEntity,
     value: String(queryText ?? ''),
     createdAt: new Date().toISOString()
   };
@@ -1184,10 +1148,10 @@ function summarizeSavedQueryLabel(row) {
 async function handleDownloadSavedQueriesJsonLd() {
   try {
     const jsonld = await exportSavedQueriesAsJsonLd();
-    downloadText(
+    downloadTextFile(
       `saved-queries-${Date.now()}.jsonld`,
       JSON.stringify(jsonld, null, 2),
-      'application/ld+json'
+      { mimeType: 'application/ld+json' }
     );
     showToast('Saved queries JSON-LD download started.', 'success');
   } catch (err) {
@@ -1201,10 +1165,10 @@ async function handleDownloadSavedQueriesJsonLd() {
 async function handleDownloadSavedQueriesCsv() {
   try {
     const csv = await exportSavedQueriesAsCsv();
-    downloadText(
+    downloadTextFile(
       `saved-queries-${Date.now()}.csv`,
       csv,
-      'text/csv'
+      { mimeType: 'text/csv' }
     );
     showToast('Saved queries CSV download started.', 'success');
   } catch (err) {
@@ -1281,8 +1245,8 @@ function notifyIdbChange(payload) {
   // Call this AFTER your own IDB writes to sync other tabs & listeners
   try { bc?.postMessage(payload); } catch {}
   try {
-    const type = (payload?.store === 'Settings') ? 'settings-changed'
-              : (payload?.store === 'triples') ? 'triples-changed'
+    const type = (payload?.store === 'settings') ? 'settings-changed'
+              : (payload?.store === 'quadRows') ? 'triples-changed'
               : 'idb-changed';
     window.dispatchEvent(new CustomEvent(type, { detail: payload }));
   } catch {}
@@ -1294,44 +1258,51 @@ window.addEventListener('triples-changed', refreshWorkspaceStatus);
 
 bc?.addEventListener('message', (evt) => {
   const { db, store } = evt.data || {};
-  if (db === 'SPARQLSettings' && store === 'Settings') refreshSparqlStatus();
-  if (db === 'inferenceDB' && store === 'triples') refreshWorkspaceStatus();
+  if (db === 'OntologyWorkbenchProjects' && store === 'settings') refreshSparqlStatus();
+  if (db === 'OntologyWorkbenchProjects' && store === 'quadRows') refreshWorkspaceStatus();
 });
 
 // PURE: decide what the SPARQL status should look like
 function presentSparqlStatus(hasEndpoint) {
-  return {
-    text: hasEndpoint ? 'SPARQL Endpoint Assigned' : 'No SPARQL Endpoint Assigned',
-    isOk: !!hasEndpoint
-  };
+  return createStatusPresentation({
+    message: hasEndpoint ? 'SPARQL Endpoint Assigned' : 'No SPARQL Endpoint Assigned',
+    severity: hasEndpoint ? 'success' : 'idle',
+    metadata: {
+      isOk: !!hasEndpoint
+    }
+  });
 }
 
 // PURE: decide what the workspace status should look like
 function presentWorkspaceStatus(tripleCount, namedGraphCount) {
   const t = Number(tripleCount) || 0;
   const g = Number(namedGraphCount) || 0;
-  return {
-    text: `Active Workspace: ${t} triple${t===1?'':'s'}, ${g} named graph${g===1?'':'s'}`,
-    isOk: (t > 0 || g > 0)
-  };
+  const isOk = (t > 0 || g > 0);
+  return createStatusPresentation({
+    message: `Active Workspace: ${t} triple${t===1?'':'s'}, ${g} named graph${g===1?'':'s'}`,
+    severity: isOk ? 'success' : 'idle',
+    metadata: { isOk }
+  });
 }
 
 // IMPURE: apply a presentation to the SPARQL button
 function renderSparqlStatus(pres) {
   const el = document.getElementById('sparql-endpoint-status');
   if (!el) return;
-  el.textContent = pres.text;
-  el.classList.toggle('status-ok',   pres.isOk);
-  el.classList.toggle('status-idle', !pres.isOk);
+  renderStatusMessage(el, pres, { classPrefix: 'status' });
+  const isOk = !!pres.metadata?.isOk;
+  el.classList.toggle('status-ok', isOk);
+  el.classList.toggle('status-idle', !isOk);
 }
 
 // IMPURE: apply a presentation to the workspace button
 function renderWorkspaceStatus(pres) {
   const el = document.getElementById('active-workspace-status');
   if (!el) return;
-  el.textContent = pres.text;
-  el.classList.toggle('status-ok',   pres.isOk);
-  el.classList.toggle('status-idle', !pres.isOk);
+  renderStatusMessage(el, pres, { classPrefix: 'status' });
+  const isOk = !!pres.metadata?.isOk;
+  el.classList.toggle('status-ok', isOk);
+  el.classList.toggle('status-idle', !isOk);
 }
 
 // IMPURE: IO -> PURE -> DOM
@@ -1375,7 +1346,7 @@ function instantIdleWorkspaceStatus() {
  * Assumes:
  * - fetch(), parseIntoNamedGraph(text, g, base, mime), storeTriplesInNamedGraph(triples)
  * - showToast(msg, level)
- * - detectRdfMimeByName(filename)
+ * - shared format-registry MIME detection
  * - debuggingConsoleEnabled global for logging 
  */
 async function loadSelectedOntologiesToDB() {
@@ -1402,7 +1373,8 @@ async function loadSelectedOntologiesToDB() {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const text = await resp.text();
-      const mime = detectRdfMimeByName(filePath);
+      const detected = getSupportedMimeTypeForFilename(filePath);
+      const mime = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
       const g = $rdf.graph();
 
       await parseIntoNamedGraph(text, g, null, mime); // default graph
@@ -1499,29 +1471,13 @@ function renderQueryError(err) {
   resultsDiv.innerHTML = html;
 }
 
-// Drop-down id="output-format" has values: Turtle, n-Triples, JSON-LD, RDF/XML
-const commonMIMEType = {
-  'Turtle':    'text/turtle',
-  'n-Triples': 'application/n-triples',
-  'JSON-LD':   'application/ld+json',
-  'RDF/XML':   'application/rdf+xml',
-  'N-Quads':   'application/n-quads',
-  'TriG':      'application/trig',
-  'SPARQL Results JSON': 'application/sparql-results+json',
-  'SPARQL Results XML':  'application/sparql-results+xml',
-  'SPARQL Update':      'application/sparql-update',
-  'SPARQL Query':       'application/sparql-query',
-};
-
 // Utility to get selected output MIME type from dropdown
 function getSelectedOutputMime() {
   const sel = document.getElementById('output-format');
   const label = sel?.value || 'Turtle';
-  return commonMIMEType[label] || 'text/turtle';
+  const result = getMimeTypeForFormatKey(label);
+  return result.ok ? result.value.mimeType : 'text/turtle';
 }
-
-// Make callable from other modules if they need it
-window.renderQueryError = renderQueryError;
 
 /**
  * Run button handler (Read/Write aware with Preview/Commit for UPDATE).
@@ -1595,7 +1551,7 @@ document.getElementById('run-query').onclick = async () => {
       if (useEndpoint) {
         if (debuggingConsoleEnabled) {console.info('[run-query] Using remote endpoint for READ');}
         const endpoint = document.getElementById('endpoint-reference')?.value ?? '';
-        response = await runQueryOnEndpoint(endpoint, query); // expected { vars, rows } for SELECT
+        response = await runQueryOnEndpoint(endpoint, query, endpointAuthHeaders); // expected { vars, rows } for SELECT
       } else {
         if (debuggingConsoleEnabled) {console.info('[run-query] Using local database for READ');}
         response = await runQueryOnLocalDataset(query);

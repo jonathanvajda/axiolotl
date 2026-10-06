@@ -4,6 +4,12 @@
  */
 
 import { debuggerConsoleLogEnabled } from "./constants.js";
+import { createScopedConsoleLogger } from "../shared/ui-feedback/index.js";
+
+const logger = createScopedConsoleLogger({
+  scope: "sviz",
+  enabled: debuggerConsoleLogEnabled
+});
 
 /**
  * Log an event if logging is enabled.
@@ -11,9 +17,7 @@ import { debuggerConsoleLogEnabled } from "./constants.js";
  * @param {any} payload
  */
 export function logEvent(eventName, payload) {
-  if (!debuggerConsoleLogEnabled) return;
-  // eslint-disable-next-line no-console
-  console.log(`[sviz] ${eventName}`, payload ?? "");
+  logger.info(eventName, payload ?? "");
 }
 
 /**
@@ -23,7 +27,5 @@ export function logEvent(eventName, payload) {
  * @param {any} context
  */
 export function logError(eventName, err, context) {
-  if (!debuggerConsoleLogEnabled) return;
-  // eslint-disable-next-line no-console
-  console.error(`[sviz] ${eventName}`, err, context ?? "");
+  logger.error(eventName, { error: err, context: context ?? "" });
 }

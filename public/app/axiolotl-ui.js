@@ -2,6 +2,14 @@ import {
   listInconsistencyQueries,
   runInconsistencySelect,
 } from './axiolotl-inconsistency.js';
+import {
+  appendInferenceConsoleLine,
+  clearInferenceConsole,
+  inferUntilStable,
+  setInferenceBusy,
+} from './axiolotl-inference.js';
+import { loadGraphFromIndexedDB } from './comunica-indexeddb-bridge.js';
+import { showToast } from './semantic-core.js';
 
 const CONSISTENCY_PROFILES = Object.freeze({
   axiolotl: {
@@ -263,11 +271,11 @@ function getSelectedMaterializationRules() {
 }
 
 async function materializeForConsistency(rules) {
-  if (typeof globalThis.inferUntilStable !== 'function') {
+  if (typeof inferUntilStable !== 'function') {
     throw new Error('inferUntilStable is not available for consistency pre-materialization.');
   }
 
-  return await globalThis.inferUntilStable(rules);
+  return await inferUntilStable(rules);
 }
 
 function addOverlayQuadsToStore(store, overlayGraph) {

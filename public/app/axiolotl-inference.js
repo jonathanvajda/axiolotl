@@ -1,10 +1,27 @@
 // axiolotl-inference.js
 
-// Dependencies
-  // comunica-indexeddb-bridge.js
-    //  applyUpdateWithComunica
-  // semantic-core.js
-    // downloadText(filename, text, mime)  
+// Dependencies: semantic-core.js and shared RDF/namespace utilities.
+import {
+  COMMON_NAMESPACE_IRIS,
+  namespacePrefixMapFromRegistry
+} from './shared/namespace-registry/index.js';
+import {
+  canUseTermAsGraph,
+  canUseTermAsObject,
+  canUseTermAsPredicate,
+  canUseTermAsSubject,
+  hasBlankNodeTermInQuad,
+  isBlankNodeTerm,
+  isAbsoluteIri
+} from './shared/ontology-utils/index.js';
+import {
+  loadGraphFromIndexedDB,
+  stashGraphToIndexedDB
+} from './comunica-indexeddb-bridge.js';
+import { debuggingConsoleEnabled } from './semantic-core.js';
+
+const PREFIXES = namespacePrefixMapFromRegistry();
+const engine = new Comunica.QueryEngine();
 
 /**
  * Extract selected inference rule IDs from checked checkboxes.
@@ -46,16 +63,6 @@ function transitiveClosure(edges) {
   }
   return closure;
 }
-
-// TBox IRIs
-const RDFS_SC = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
-const RDFS_SP = 'http://www.w3.org/2000/01/rdf-schema#subPropertyOf';
-const OWL_INV = 'http://www.w3.org/2002/07/owl#inverseOf';
-const OWL_SYM = 'http://www.w3.org/2002/07/owl#SymmetricProperty';
-const OWL_TRANS = 'http://www.w3.org/2002/07/owl#TransitiveProperty';
-const RDFS_DOMAIN = 'http://www.w3.org/2000/01/rdf-schema#domain';
-const RDFS_RANGE  = 'http://www.w3.org/2000/01/rdf-schema#range';
-const RDF_TYPE    = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 
 const INFERENCE_RULE_ORDER = Object.freeze([
   'subpropertyof',
@@ -111,29 +118,19 @@ function setInferenceBusy(isBusy) {
   spinner.classList.toggle('is-busy', !!isBusy);
 }
 
-window.appendInferenceConsoleLine = appendInferenceConsoleLine;
-window.clearInferenceConsole = clearInferenceConsole;
-window.setInferenceBusy = setInferenceBusy;
-
 function inferenceInfo(message) {
   if (debuggingConsoleEnabled) console.info(message);
-  if (typeof window !== 'undefined' && typeof window.appendInferenceConsoleLine === 'function') {
-    window.appendInferenceConsoleLine(message);
-  }
+  appendInferenceConsoleLine(message);
 }
 
 function inferenceWarn(message) {
   if (debuggingConsoleEnabled) console.warn(message);
-  if (typeof window !== 'undefined' && typeof window.appendInferenceConsoleLine === 'function') {
-    window.appendInferenceConsoleLine(`WARN: ${message}`);
-  }
+  appendInferenceConsoleLine(`WARN: ${message}`);
 }
 
 function inferenceError(message) {
   if (debuggingConsoleEnabled) console.error(message);
-  if (typeof window !== 'undefined' && typeof window.appendInferenceConsoleLine === 'function') {
-    window.appendInferenceConsoleLine(`ERROR: ${message}`);
-  }
+  appendInferenceConsoleLine(`ERROR: ${message}`);
 }
 
 // set up the key:value structure
@@ -148,25 +145,19 @@ function quadKey(q) {
   ].join('¦');
 }
 
-function quadHasBlankNode(q) {
-  return q.subject.termType === 'BlankNode' ||
-         q.object.termType === 'BlankNode' ||
-         q.graph.termType === 'BlankNode';
-}
-
 function looseQuadKey(q) {
   const subj =
-    q.subject.termType === 'BlankNode'
+    isBlankNodeTerm(q.subject)
       ? 'BlankNode:_'
       : `${q.subject.termType}:${q.subject.value}`;
 
   const obj =
-    q.object.termType === 'BlankNode'
+    isBlankNodeTerm(q.object)
       ? 'BlankNode:_'
       : `${q.object.termType}:${q.object.value}:${q.object.language || ''}:${q.object.datatype?.value || ''}`;
 
   const graph =
-    q.graph.termType === 'BlankNode'
+    isBlankNodeTerm(q.graph)
       ? 'BlankNode:_'
       : `${q.graph.termType}:${q.graph.value || ''}`;
 
@@ -178,8 +169,28 @@ function looseQuadKey(q) {
   ].join('¦');
 }
 
-function canBeSubject(term) {
-  return !!term && (term.termType === 'NamedNode' || term.termType === 'BlankNode');
+function isSerializableInferenceQuad(q) {
+  return !!q
+    && canUseTermAsSubject(q.subject)
+    && canUseTermAsPredicate(q.predicate)
+    && canUseTermAsObject(q.object)
+    && canUseTermAsGraph(q.graph);
+}
+
+function selectSerializableInferenceQuads(quads, context = 'inference') {
+  let skipped = 0;
+  const selected = [];
+
+  for (const q of quads || []) {
+    if (isSerializableInferenceQuad(q)) selected.push(q);
+    else skipped++;
+  }
+
+  if (skipped) {
+    inferenceWarn(`[${context}] Skipped ${skipped} invalid constructed quad${skipped === 1 ? '' : 's'} before overlay serialization.`);
+  }
+
+  return selected;
 }
 /**
  * Applies a set of inference rules repeatedly until no new triples are added.
@@ -205,30 +216,30 @@ async function inferUntilStable(rules) {
   const seen = new Set(rdfjsStore.getQuads(null, null, null, null).map(quadKey));
 
   // ---- 1) Precompute TBox closures/maps ----
-  const subClassEdges = mapFromQuads(rdfjsStore, RDFS_SC);
-  const subPropEdges  = mapFromQuads(rdfjsStore, RDFS_SP);
+  const subClassEdges = mapFromQuads(rdfjsStore, COMMON_NAMESPACE_IRIS.rdfs.subClassOf);
+  const subPropEdges  = mapFromQuads(rdfjsStore, COMMON_NAMESPACE_IRIS.rdfs.subPropertyOf);
 
   const classSupers = transitiveClosure(subClassEdges); // Map<class -> Set<allSuperClasses>>
   const propSupers  = transitiveClosure(subPropEdges);  // Map<prop  -> Set<allSuperProps>>
 
-  const domainMap = mapFromQuads(rdfjsStore, RDFS_DOMAIN); // Map<prop -> Set<class>>
-  const rangeMap  = mapFromQuads(rdfjsStore, RDFS_RANGE);  // Map<prop -> Set<class>>
+  const domainMap = mapFromQuads(rdfjsStore, COMMON_NAMESPACE_IRIS.rdfs.domain); // Map<prop -> Set<class>>
+  const rangeMap  = mapFromQuads(rdfjsStore, COMMON_NAMESPACE_IRIS.rdfs.range);  // Map<prop -> Set<class>>
 
   const symmetricProps = new Set(
     rdfjsStore
-      .getQuads(null, namedNode(RDF_TYPE), namedNode(OWL_SYM), null)
+      .getQuads(null, namedNode(COMMON_NAMESPACE_IRIS.rdf.type), namedNode(COMMON_NAMESPACE_IRIS.owl.SymmetricProperty), null)
       .map(q => q.subject.value)
   );
 
   const transitiveProps = new Set(
     rdfjsStore
-      .getQuads(null, namedNode(RDF_TYPE), namedNode(OWL_TRANS), null)
+      .getQuads(null, namedNode(COMMON_NAMESPACE_IRIS.rdf.type), namedNode(COMMON_NAMESPACE_IRIS.owl.TransitiveProperty), null)
       .map(q => q.subject.value)
   );
 
   // Make owl:inverseOf two-way
   const inversePairs = new Map(); // Map<p -> Set<inv>>
-  for (const q of rdfjsStore.getQuads(null, namedNode(OWL_INV), null, null)) {
+  for (const q of rdfjsStore.getQuads(null, namedNode(COMMON_NAMESPACE_IRIS.owl.inverseOf), null, null)) {
     const p = q.subject.value;
     const inv = q.object.value;
 
@@ -240,10 +251,10 @@ async function inferUntilStable(rules) {
   }
 
   // ---- 2) Work queues and enqueue logic ----
-  const workTypes = rdfjsStore.getQuads(null, namedNode(RDF_TYPE), null, null).slice();
+  const workTypes = rdfjsStore.getQuads(null, namedNode(COMMON_NAMESPACE_IRIS.rdf.type), null, null).slice();
   const workProps = rdfjsStore
     .getQuads(null, null, null, null)
-    .filter(q => q.predicate.value !== RDF_TYPE);
+    .filter(q => q.predicate.value !== COMMON_NAMESPACE_IRIS.rdf.type);
 
   function enqueue(quads) {
     for (const q of quads) {
@@ -254,7 +265,7 @@ async function inferUntilStable(rules) {
       overlayStore.addQuad(q);
       seen.add(key);
 
-      if (q.predicate.value === RDF_TYPE) workTypes.push(q);
+      if (q.predicate.value === COMMON_NAMESPACE_IRIS.rdf.type) workTypes.push(q);
       else workProps.push(q);
     }
   }
@@ -276,7 +287,7 @@ async function inferUntilStable(rules) {
 
         out.push(quad(
           q.subject,
-          namedNode(RDF_TYPE),
+          namedNode(COMMON_NAMESPACE_IRIS.rdf.type),
           namedNode(sup),
           q.graph
         ));
@@ -327,7 +338,7 @@ async function inferUntilStable(rules) {
     for (const q of newProps) {
       const p = q.predicate.value;
 
-      if (!canBeSubject(q.object)) continue;
+      if (!canUseTermAsSubject(q.object)) continue;
 
       if (symmetricProps.has(p)) {
         out.push(quad(
@@ -372,7 +383,7 @@ async function inferUntilStable(rules) {
 
           out.push(quad(
             q.subject,
-            namedNode(RDF_TYPE),
+            namedNode(COMMON_NAMESPACE_IRIS.rdf.type),
             namedNode(d),
             q.graph
           ));
@@ -380,7 +391,7 @@ async function inferUntilStable(rules) {
       }
 
       const Rs = rangeMap.get(p);
-      if (Rs && canBeSubject(q.object)) {
+      if (Rs && canUseTermAsSubject(q.object)) {
         for (const r of Rs) {
           if (typeof isAbsoluteIri === 'function' && !isAbsoluteIri(r)) {
             skipRng++;
@@ -389,7 +400,7 @@ async function inferUntilStable(rules) {
 
           out.push(quad(
             q.object,
-            namedNode(RDF_TYPE),
+            namedNode(COMMON_NAMESPACE_IRIS.rdf.type),
             namedNode(r),
             q.graph
           ));
@@ -417,7 +428,7 @@ async function inferUntilStable(rules) {
       const pred = namedNode(p);
 
       // x p y & y p z -> x p z
-      if (canBeSubject(q.object)) {
+      if (canUseTermAsSubject(q.object)) {
         for (const yz of rdfjsStore.getQuads(q.object, pred, null, q.graph)) {
           out.push(quad(
             q.subject,
@@ -508,7 +519,7 @@ async function inferUntilStable(rules) {
 
       const newQuads = await runRuleOnce(rule, rdfjsStore);
 
-      const blankCount = newQuads.filter(quadHasBlankNode).length;
+      const blankCount = newQuads.filter(hasBlankNodeTermInQuad).length;
       const looseCount = new Set(newQuads.map(looseQuadKey)).size;
 
       inferenceInfo(
@@ -606,30 +617,7 @@ function selectUnseen(quads, seenKeys) {
   return { $new: uniq, batchUnique: batchSet.size };
 }
 
-function pad2(n){ return String(n).padStart(2,'0'); }
-
-/**
- * Return a stable UTC timestamp: YYYYMMDDThhmmssZ
- */
-function timestampUTC() {
-  const d = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  return `${d.getUTCFullYear()}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
-}
-
-/**
- * Return a UUID (uses crypto.randomUUID if available).
- * Pure; no side effects.
- */
-function uuid() {
-  if (crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random()*16|0, v = (c === 'x') ? r : ((r & 0x3) | 0x8);
-    return v.toString(16);
-  });
-}
-
-async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, graphIRI }) {
+async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, graphIRI, authHeaders = {} }) {
   if (!overlayGraph) throw new Error('Nothing to insert. Run inference first.');
   if (!endpointUrl) throw new Error('Missing endpoint URL.');
 
@@ -656,7 +644,7 @@ async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, grap
 
   const res = await fetch(endpointUrl, {
     method: 'POST',
-    headers: { 'content-type': 'application/sparql-update', ...endpointAuthHeaders },
+    headers: { 'content-type': 'application/sparql-update', ...authHeaders },
     body: update
   });
 
@@ -676,10 +664,10 @@ async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, grap
  * @returns {string} SPARQL CONSTRUCT query
  */
 function getConstructQueryForRule(rule) {
-  const PREFIXES = `
-    PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    PREFIX owl:  <http://www.w3.org/2002/07/owl#>
+  const prefixDeclarations = `
+    PREFIX rdf:  <${PREFIXES.rdf}>
+    PREFIX rdfs: <${PREFIXES.rdfs}>
+    PREFIX owl:  <${PREFIXES.owl}>
   `;
 
   const RULES = {
@@ -691,12 +679,14 @@ function getConstructQueryForRule(rule) {
         {
           ?x ?p ?y .
           ?p owl:inverseOf ?inverse .
+          FILTER(isIRI(?y) || isBlank(?y))
           BIND(?y AS ?S) BIND(?inverse AS ?P) BIND(?x AS ?O)
         }
         UNION
         {
           ?x ?inverse ?y .
           ?p owl:inverseOf ?inverse .
+          FILTER(isIRI(?y) || isBlank(?y))
           BIND(?y AS ?S) BIND(?p AS ?P) BIND(?x AS ?O)
         }
         FILTER NOT EXISTS {
@@ -753,6 +743,7 @@ function getConstructQueryForRule(rule) {
       WHERE {
         ?x ?p ?y .
         ?p rdfs:range ?range .
+        FILTER(isIRI(?y) || isBlank(?y))
         FILTER NOT EXISTS {
           { ?y rdf:type ?range }
           UNION
@@ -779,6 +770,7 @@ function getConstructQueryForRule(rule) {
       WHERE {
         ?x ?p ?y .
         ?p a owl:SymmetricProperty .
+        FILTER(isIRI(?y) || isBlank(?y))
         FILTER NOT EXISTS {
           { ?y ?p ?x }
           UNION
@@ -995,7 +987,7 @@ function getConstructQueryForRule(rule) {
     return '';
   }
 
-  return PREFIXES + RULES[rule];
+  return prefixDeclarations + RULES[rule];
 }
 
 /**
@@ -1060,13 +1052,28 @@ async function applyConstructWithComunica(constructQuery, rdfjsStore) {
     distinctConstruct: true,
   });
 
-  return await new Promise((resolve, reject) => {
+  const quads = await new Promise((resolve, reject) => {
     const quads = [];
     quadStream.on('data', q => quads.push(q));
     quadStream.on('end', () => resolve(quads));
     quadStream.on('error', reject);
   });
+
+  return selectSerializableInferenceQuads(quads, 'applyConstructWithComunica');
 }
 
-window.applyConstructWithComunica = applyConstructWithComunica;
-window.inferUntilStable = inferUntilStable;
+export {
+  appendInferenceConsoleLine,
+  applyConstructWithComunica,
+  clearInferenceConsole,
+  getConstructQueryForRule,
+  getSelectedRulesFromCheckboxes,
+  inferUntilStable,
+  insertOverlayIntoEndpoint,
+  mapFromQuads,
+  runInferenceOverlay,
+  runRuleOnce,
+  selectSerializableInferenceQuads,
+  setInferenceBusy,
+  transitiveClosure
+};

@@ -3,7 +3,6 @@
     //  parseIntoNamedGraph,
     //  loadGraphFromIndexedDB,
     //  stashGraphToIndexedDB
-    //  detectRdfMimeByName      (good candidate for moving to semantic-core.js)
 
 // List of functions in this file:
   // debuggingConsoleEnabled
@@ -15,13 +14,15 @@
   // commonSPARQLPrefixes
   // defaultActivePrefixes
   // readFileAsText
-  // commonMIMEType
-
   // getSelectedOutputMime
-  // downloadText
 
+import { getSupportedMimeTypeForFilename } from './shared/format-registry/index.js';
+import { readFileAsText } from './shared/browser-file-io/index.js';
+import { namespacePrefixMapFromRegistry } from './shared/namespace-registry/index.js';
+import { renderToastNotification } from './shared/ui-feedback/index.js';
 
-debuggingConsoleEnabled = true; // set to false to disable debug logs
+export const debuggingConsoleEnabled = true; // set to false to disable debug logs
+const PREFIXES = namespacePrefixMapFromRegistry();
 
 /**
  * Safely logs a variable to the console, limiting the output size for large data.
@@ -29,7 +30,7 @@ debuggingConsoleEnabled = true; // set to false to disable debug logs
  * @param {*} argument - The argument passed to the function.
  * @param {number} [maxLength=500] - The maximum number of characters to preview.
  */
-function safeConsoleLog(functionName, argument, maxLength = 500) {
+export function safeConsoleLog(functionName, argument, maxLength = 500) {
     if (typeof argument === 'string') {
         // Handle large strings
         const preview = argument.length > maxLength
@@ -84,7 +85,7 @@ function __logSuccess(name, summary) {
 function __logError(name, err) {
   try {
     // Surface to your UI log as well
-    transformationLogWarn?.(`${name} failed: ${err?.message || err}`);
+    globalThis.transformationLogWarn?.(`${name} failed: ${err?.message || err}`);
   } catch {}
   if (!debuggingConsoleEnabled) return;
   try {
@@ -104,7 +105,7 @@ function __logError(name, err) {
  * @param {F} fn
  * @returns {F}
  */
-function withDebug(name, fn) {
+export function withDebug(name, fn) {
   return /** @type {F} */ (function (...args) {
     __logStart(name, args);
     try {
@@ -125,60 +126,18 @@ function withDebug(name, fn) {
 }
 
 // Simple toast notification system
-function showToast(message, type = 'info', { timeout = 3500 } = {}) {
-  let container = document.getElementById('toast-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'toast-container';
-    container.setAttribute('aria-live', 'polite');
-    container.setAttribute('aria-atomic', 'true');
-    document.body.appendChild(container);
-  }
-
-  // Optional: cap the queue to avoid a flood
-  const MAX_TOASTS = 8;
-  while (container.children.length >= MAX_TOASTS) {
-    container.firstElementChild?.remove();
-  }
-
-  const div = document.createElement('div');
-  div.className = `toast toast--${type}`;
-  div.setAttribute('role', type === 'error' ? 'alert' : 'status'); // a11y
-  div.tabIndex = 0; // focusable for screenreaders / keyboard
-
-  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ︎';
-  // Build nodes safely (avoid injecting HTML from message)
-  const iconSpan = document.createElement('span');
-  iconSpan.className = 'toast__icon';
-  iconSpan.textContent = icon;
-
-  const msgDiv = document.createElement('div');
-  msgDiv.textContent = message;
-
-  div.appendChild(iconSpan);
-  div.appendChild(msgDiv);
-  container.appendChild(div);
-
-  let hideTimer = null;
-  const startHide = () => {
-    hideTimer = setTimeout(() => {
-      div.classList.add('hide');
-      setTimeout(() => div.remove(), 250);
-    }, timeout);
-  };
-  const stopHide = () => { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } };
-
-  // auto-dismiss, but pause on hover/focus
-  startHide();
-  div.addEventListener('mouseenter', stopHide);
-  div.addEventListener('mouseleave', startHide);
-  div.addEventListener('focusin',   stopHide);
-  div.addEventListener('focusout',  startHide);
-  div.addEventListener('click',     () => { stopHide(); div.classList.add('hide'); setTimeout(() => div.remove(), 200); });
+export function showToast(message, type = 'info', { timeout = 3500 } = {}) {
+  const result = renderToastNotification({
+    message,
+    severity: type,
+    timeoutMs: timeout,
+    containerId: 'toast-container'
+  });
+  if (!result.ok && debuggingConsoleEnabled) console.error('[showToast] failed', result.error);
 }
 
 // Show user-friendly toast from a query error object/message
-function toastFromQueryError(err) {
+export function toastFromQueryError(err) {
   const msg = (err && (err.userMessage || err.message || String(err))) || 'Unknown error';
 
   // Normalize common issues
@@ -202,55 +161,40 @@ function toastFromQueryError(err) {
 }
 
 // Convenience wrappers for different toast types
-const toastInfo    = (m, t=3500) => showToast(m, 'info',    { timeout: t });
-const toastSuccess = (m, t=3500) => showToast(m, 'success', { timeout: t });
-const toastError   = (m, t=4500) => showToast(m, 'error',   { timeout: t });
+export const toastInfo    = (m, t=3500) => showToast(m, 'info',    { timeout: t });
+export const toastSuccess = (m, t=3500) => showToast(m, 'success', { timeout: t });
+export const toastError   = (m, t=4500) => showToast(m, 'error',   { timeout: t });
 
 
 /** 
  * Defines common prefixes in SPARQL
  */
-  const commonSPARQLPrefixes = {
-    "rdf": "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-    "rdfs": "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>",
-    "owl": "PREFIX owl: <http://www.w3.org/2002/07/owl#>",
-    "xsd": "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>",
-    "skos": "PREFIX skos: <http://www.w3.org/2004/02/skos/core#>",
-    "dc": "PREFIX dc: <http://purl.org/dc/elements/1.1/>",
-    "dcterms": "PREFIX dcterms: <http://purl.org/dc/terms/>",
-    "obo": "PREFIX obo: <http://purl.obolibrary.org/obo/>",
-    "cco2": "PREFIX cco2: <https://www.commoncoreontologies.org/>",
-    "cceo": "PREFIX cceo: <http://www.ontologyrepository.com/CommonCoreOntologies/>",
-    "geo": "PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>",
-    "geojson": "PREFIX geojson: <https://purl.org/geojson/vocab#>",
-    "foaf": "PREFIX foaf: <http://xmlns.com/foaf/0.1/>",
-    "prov": "PREFIX prov: <http://www.w3.org/ns/prov#>",
-    "dcat": "PREFIX dcat: <http://www.w3.org/ns/dcat#>",
-    "vcard": "PREFIX vcard: <http://www.w3.org/2006/vcard/ns#>",
+  export const commonSPARQLPrefixes = {
+    "rdf": `PREFIX rdf: <${PREFIXES.rdf}>`,
+    "rdfs": `PREFIX rdfs: <${PREFIXES.rdfs}>`,
+    "owl": `PREFIX owl: <${PREFIXES.owl}>`,
+    "xsd": `PREFIX xsd: <${PREFIXES.xsd}>`,
+    "skos": `PREFIX skos: <${PREFIXES.skos}>`,
+    "dc": `PREFIX dc: <${PREFIXES.dc}>`,
+    "dcterms": `PREFIX dcterms: <${PREFIXES.dcterms}>`,
+    "obo": `PREFIX obo: <${PREFIXES.obo}>`,
+    "cco2": `PREFIX cco2: <${PREFIXES.cco2}>`,
+    "cceo": `PREFIX cceo: <${PREFIXES.cceo}>`,
+    "geo": `PREFIX geo: <${PREFIXES.geo}>`,
+    "geojson": `PREFIX geojson: <${PREFIXES.geojson}>`,
+    "foaf": `PREFIX foaf: <${PREFIXES.foaf}>`,
+    "prov": `PREFIX prov: <${PREFIXES.prov}>`,
+    "dcat": `PREFIX dcat: <${PREFIXES.dcat}>`,
+    "vcard": `PREFIX vcard: <${PREFIXES.vcard}>`,
     "wd": "PREFIX wd: <http://www.wikidata.org/entity/>",
     "bd": "PREFIX bd: <http://www.bigdata.com/rdf#>"
   }
 
 /**
- * Read a File as text.
- * Pure w.r.t. app state; side-effect is FileReader I/O only.
- * @param {File} file
- * @returns {Promise<string>}
- */
-function readFileAsText(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsText(file);
-  });
-}
-
-/**
  * Reads file content and loads it into IndexedDB under its own graph name.
  * @param {File} file
  */
-async function handleFileUpload(file) {
+export async function handleFileUpload(file) {
   if (!file) {
     if (debuggingConsoleEnabled) {console.warn('[handleFileUpload] No file provided.');}
     return;
@@ -259,7 +203,9 @@ async function handleFileUpload(file) {
 
   try {
     const content = await readFileAsText(file);
-    const mimeType = detectRdfMimeByName(file.name);
+    const { parseIntoNamedGraph } = await import('./comunica-indexeddb-bridge.js');
+    const detected = getSupportedMimeTypeForFilename(file.name);
+    const mimeType = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
     const graphIRI = `urn:upload:${encodeURIComponent(file.name)}`;
 
     await parseIntoNamedGraph(content, store, graphIRI, mimeType);
@@ -270,17 +216,3 @@ async function handleFileUpload(file) {
   }
 }
 
-/**
- * Download text as a file (e.g. Turtle or N-Triples).
- * @param {string} filename
- * @param {string} text
- * @param {string} mime
- * @returns {string}
- */
-function downloadText(filename, text, mime) {
-  const blob = new Blob([text], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}

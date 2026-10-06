@@ -4,19 +4,16 @@
  */
 
 import { logEvent, logError } from "./sparql-pattern-visualizer/log.js";
-import { parseSparqlToAst } from "./sparql-pattern-visualizer/core_parse.js";
-import { buildGraphModel } from "./sparql-pattern-visualizer/core_graph.js";
+import {
+  buildSparqlGraphModelFromAst,
+  parseSparqlQueryToAst
+} from "./shared/sparql-utils/index.js";
+import { commonSPARQLPrefixes, showToast } from "./semantic-core.js";
 
 let hasRenderedDiagram = false;
 
 function notify(message, type = "info") {
-  if (typeof window.showToast === "function") {
-    window.showToast(message, type);
-    return;
-  }
-
-  const method = type === "error" ? "error" : "log";
-  console[method](message);
+  showToast(message, type);
 }
 
 function setDiagramVisible(isVisible) {
@@ -113,7 +110,7 @@ function renderDiagram(graphModel) {
   if (!container) return;
 
   if (!window.cytoscape) {
-    notify("Cytoscape not found. Did you load app/vendor/cytoscape.min.js?", "error");
+    notify("Cytoscape not found. Did you load app/shared/vendor/cytoscape.min.js?", "error");
     return;
   }
 
@@ -148,7 +145,7 @@ function composeAxiolotlQuery() {
   }
 
   const prefixHeader = prefixes
-    .map(pfx => window.commonSPARQLPrefixes?.[pfx])
+    .map(pfx => commonSPARQLPrefixes?.[pfx])
     .filter(Boolean)
     .join("\n");
 
@@ -163,8 +160,8 @@ function handleRenderRequest() {
     const queryText = composeAxiolotlQuery();
     logEvent("axiolotl.render.start", { showPrefixes, attachFilters });
 
-    const ast = parseSparqlToAst(queryText);
-    const graphModel = buildGraphModel(ast, { attachFilters });
+    const ast = parseSparqlQueryToAst(queryText, { runtime: window });
+    const graphModel = buildSparqlGraphModelFromAst(ast, { attachFilters });
 
     renderDiagram(graphModel);
     renderPrefixLegend(graphModel.prefixes, showPrefixes);

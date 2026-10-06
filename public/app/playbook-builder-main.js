@@ -162,15 +162,6 @@ function getBranchKeyForIndex(queryType, index) {
   return keys[index] || null;
 }
 
-function slugifyStepLabel(text) {
-  return String(text || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 40);
-}
-
 function createDefaultStep(labelText) {
   var firstQuery = state.queryManifest.queries[0] || null;
   var branchKeys = firstQuery ? getBranchKeysForQueryType(firstQuery.type) : ['true', 'false'];
@@ -1021,13 +1012,12 @@ function initEvents() {
   });
 
   document.getElementById('exportPipelineBtn').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify(getActivePipeline(), null, 2)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.href = url;
-    link.download = 'pipeline.json';
-    link.click();
-    URL.revokeObjectURL(url);
+    import('./shared/browser-file-io/index.js')
+      .then(({ downloadTextFile }) => {
+        downloadTextFile('pipeline.json', JSON.stringify(getActivePipeline(), null, 2), {
+          mimeType: 'application/json'
+        });
+      });
   });
 }
 

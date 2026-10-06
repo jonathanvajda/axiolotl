@@ -572,6 +572,10 @@ button.prefix-button {
   background: var(--app-toast-success);
 }
 
+.toast--warning {
+  background: var(--ont-warning, #d97706);
+}
+
 .toast--error {
   background: var(--app-toast-error);
 }
