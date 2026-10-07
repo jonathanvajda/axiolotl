@@ -37,10 +37,17 @@ is not evidence of a tested reporting pipeline.
 | `disjointUnionMissingMemberHeuristic` | Warning, not contradiction | Union instance lacks a known member type. Missing information is compatible with open-world consistency. |
 | `allValuesFromMissingTypeHeuristic` | Warning, not contradiction | Restriction value lacks a known filler type. Warning can disappear after `owl:allValuesFrom` materialization. |
 
-The current UI counts heuristic rows together with contradiction rows and uses
-"violation" for both. This presentation is a known limitation, not a semantic
-classification. Profiles select subsets of these checks; they do not implement
-complete OWL 2 EL, DL, or Full reasoning.
+The registry and runtime explicitly distinguish `violation` and `warning`.
+The UI displays separate row totals; warnings do not establish a contradiction.
+Coverage notices set a separate `incomplete` status. Each finding retains its
+check ID, bindings, and RDF context, with the query, scope, and phase recorded at
+check level. Reports include all findings, RDF terms with datatype/language tags,
+graph identity, and asserted/materialized origin when supplied by the caller.
+RDF context is not a minimal proof: it can contain adjacent assertions, and does
+not explain every inference step. Missing-type warnings retain the query showing
+the absence condition; absence itself is not an asserted RDF triple.
+Warning CONSTRUCTs use `axi:ConsistencyWarning`, not `axi:InconsistencyViolation`.
+Profiles select subsets; they do not implement complete OWL 2 EL, DL, or Full.
 
 ## Materialization actually implemented
 
@@ -150,7 +157,7 @@ negative assertion 1, AllDifferent 2, key 1. These are smoke observations, not
 HermiT/Pellet comparative benchmark results.
 
 The invalid converse rules have been corrected and tested against the shipped engine.
-Before declaring the default consistency workflow reliable: separate warning totals/verdicts, normalize graph scope, and
+Before declaring the default consistency workflow reliable: normalize graph scope, and
 surface incomplete rule execution. Add actual N3/Comunica fixture execution and
 asserted-data prechecks. Satisfiability, query-file extraction, and performance
 comparisons remain deferred; see consistency-scope-and-backlog.md.

@@ -153,9 +153,20 @@ export async function runInconsistencySelect(id, rdfjsStore, options = {}) {
       }),
     });
     console.info(`[axiolotl-inconsistency] ${id} returned ${rows.length} row(s).`);
-    return unsupported.size
-      ? { id, rows, notices: [...unsupported].map(pair => `Datatype comparison unsupported or invalid: ${pair}. This check is incomplete for these values.`) }
-      : { id, rows };
+    const definition = INCONSISTENCY_QUERIES[id];
+    const scope = normalizeQueryOptions(options);
+    const notices = [...unsupported].map(pair => `Datatype comparison unsupported or invalid: ${pair}. This check is incomplete for these values.`);
+    return {
+      id, rows, findingKind: definition.findingKind,
+      status: notices.length ? 'incomplete' : 'complete',
+      query, scope: scope.scope, graphIri: scope.graphIri,
+      phase: options.phase || 'unspecified',
+      findings: rows.map((bindings, index) => ({
+        id: `${id}/${index + 1}`, checkId: id, kind: definition.findingKind,
+        bindings, evidence: findingEvidence(rdfjsStore, bindings, options),
+      })),
+      ...(notices.length ? { notices } : {}),
+    };
   } catch (error) {
     console.error(`[axiolotl-inconsistency] ${id} failed`, error);
     throw error;
@@ -384,6 +395,7 @@ const INCONSISTENCY_QUERIES = Object.freeze({
 
   disjointUnionMissingMemberHeuristic: makeQueryDefinition({
     id: 'disjointUnionMissingMemberHeuristic',
+    findingKind: 'warning',
     label: 'owl:disjointUnionOf missing member heuristic',
     family: 'class-disjointness',
     description: 'Heuristic: find instances of a disjoint union class lacking any known union member type.',
@@ -398,6 +410,7 @@ const INCONSISTENCY_QUERIES = Object.freeze({
 
   allValuesFromMissingTypeHeuristic: makeQueryDefinition({
     id: 'allValuesFromMissingTypeHeuristic',
+    findingKind: 'warning',
     label: 'owl:allValuesFrom missing type heuristic',
     family: 'restriction-heuristic',
     description: 'Heuristic: find values of an allValuesFrom restriction with no known filler type.',
@@ -575,6 +588,7 @@ function makeQueryDefinition(input) {
     label: input.label,
     description: input.description,
     family: input.family,
+    findingKind: input.findingKind || 'violation',
     supported: input.supported !== false,
     select: options => `SELECT DISTINCT ${input.variables.map(name => `?${name}`).join(' ')} WHERE {\n${indent(input.where(options))}\n}`,
     ask: options => `ASK WHERE {\n${indent(input.where(options))}\n}`,
@@ -589,10 +603,10 @@ function makeViolationConstruct(input, options) {
 
   return `
     CONSTRUCT {
-      ?violation rdf:type axi:InconsistencyViolation ;
+      ?violation rdf:type axi:${input.findingKind === 'warning' ? 'ConsistencyWarning' : 'InconsistencyViolation'} ;
                  axi:violationKind "${input.id}" ;
                  rdfs:label "${escapeString(input.label)}" ;
-                 axi:severity "error" .
+                 axi:severity "${input.findingKind === 'warning' ? 'warning' : 'error'}" .
       ${bindings}
     }
     WHERE {
@@ -672,6 +686,32 @@ async function collectTextStream(stream) {
     stream.on('end', () => resolve(text));
     stream.on('error', reject);
   });
+}
+
+// Capture the RDF context alongside the query/bindings. This is contextual
+// evidence, not a minimal proof or a rule-by-rule materialization derivation.
+function findingEvidence(store, bindings, options) {
+  if (typeof store?.getQuads !== 'function') return [];
+  const resources = new Set(Object.values(bindings)
+    .filter(t => ['NamedNode', 'BlankNode'].includes(t?.termType) || ['uri', 'bnode'].includes(t?.type))
+    .map(t => t.value));
+  const quads = store.getQuads(null, null, null, null).filter(q =>
+    (options.scope !== 'default' || q.graph.termType === 'DefaultGraph') &&
+    (options.scope !== 'named' || q.graph.value === options.graphIri));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const q of quads) {
+      if (!resources.has(q.subject.value) && !resources.has(q.object.value)) continue;
+      for (const term of [q.subject, q.object]) {
+        if ((term.termType === 'BlankNode' || q.predicate.value === OWL + 'sameAs') && !resources.has(term.value)) {
+          resources.add(term.value); changed = true;
+        }
+      }
+    }
+  }
+  return quads.filter(q => resources.has(q.subject.value) || resources.has(q.object.value) || resources.has(q.predicate.value))
+    .map(quad => ({ quad, origin: options.materializedStore?.has(quad) ? 'materialized' : options.phase === 'after-materialization' && options.materializedStore ? 'asserted' : 'dataset' }));
 }
 
 function bindingName(key) {

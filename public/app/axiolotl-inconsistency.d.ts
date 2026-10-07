@@ -10,6 +10,8 @@ export interface AxiolotlQueryOptions {
 export interface AxiolotlRuntimeOptions extends AxiolotlQueryOptions {
   engine?: unknown;
   baseIRI?: string;
+  phase?: string;
+  materializedStore?: { has(quad: unknown): boolean };
 }
 
 export interface AxiolotlConstructOptions extends AxiolotlQueryOptions {
@@ -36,6 +38,7 @@ export interface AxiolotlQueryDefinition {
   description: string;
   family: string;
   supported: boolean;
+  findingKind: 'violation' | 'warning';
   select: (options?: AxiolotlQueryOptions) => string;
   ask: (options?: AxiolotlQueryOptions) => string;
   construct: (options?: AxiolotlQueryOptions) => string;
@@ -47,14 +50,33 @@ export interface AxiolotlHydrationDefinition {
   description: string;
 }
 
+export interface AxiolotlCheckResult {
+  id: string;
+  rows: Array<Record<string, unknown>>;
+  findingKind: 'violation' | 'warning';
+  status: 'complete' | 'incomplete';
+  query: string;
+  scope: AxiolotlGraphScope;
+  graphIri: string | null;
+  phase: string;
+  notices?: string[];
+  findings: Array<{
+    id: string;
+    checkId: string;
+    kind: 'violation' | 'warning';
+    bindings: Record<string, unknown>;
+    evidence: Array<{ quad: unknown; origin: 'asserted' | 'materialized' | 'dataset' }>;
+  }>;
+}
+
 export function normalizeQueryOptions(options?: AxiolotlQueryOptions): Required<AxiolotlQueryOptions>;
 export function scopedWhere(body: string, options?: AxiolotlQueryOptions): string;
 export function hasInconsistencyQuery(id: string): boolean;
 export function listInconsistencyQueries(): AxiolotlQueryDefinition[];
 export function getInconsistencyQuery(id: string, options?: AxiolotlQueryOptions): string;
 export function getAllInconsistencySelectQueries(options?: AxiolotlQueryOptions): Array<{ id: string; label: string; query: string }>;
-export function runInconsistencySelect(id: string, rdfjsStore: unknown, options?: AxiolotlRuntimeOptions): Promise<{ id: string; rows: Array<Record<string, unknown>>; notices?: string[] }>;
-export function runAllInconsistencySelects(rdfjsStore: unknown, options?: AxiolotlRuntimeOptions): Promise<Array<{ id: string; rows: Array<Record<string, unknown>>; notices?: string[] }>>;
+export function runInconsistencySelect(id: string, rdfjsStore: unknown, options?: AxiolotlRuntimeOptions): Promise<AxiolotlCheckResult>;
+export function runAllInconsistencySelects(rdfjsStore: unknown, options?: AxiolotlRuntimeOptions): Promise<AxiolotlCheckResult[]>;
 export function constructInconsistencyReport(id: string, rdfjsStore: unknown, options?: AxiolotlConstructOptions): Promise<unknown[]>;
 export function listInconsistencyCoverage(): AxiolotlCoverageItem[];
 export function listHydrationQueries(): AxiolotlHydrationDefinition[];

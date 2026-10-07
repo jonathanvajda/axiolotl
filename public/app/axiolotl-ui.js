@@ -1,3 +1,4 @@
+import { formatConsistencyReport, summarizeConsistencyResults } from './consistency-report.js';
 import {
   listInconsistencyQueries,
   runInconsistencySelect,
@@ -235,25 +236,19 @@ async function handleConsistencyRunClick(event) {
     const results = [];
 
     for (const id of selectedChecks) {
-      const result = await runInconsistencySelect(id, rdfjsStore);
+      const result = await runInconsistencySelect(id, rdfjsStore, { phase: 'after-materialization', materializedStore: overlayGraph });
       results.push(result);
-      appendInferenceConsoleLine?.(`[checkConsistency] ${id}: ${result.rows.length} violation row(s).`);
+      appendInferenceConsoleLine?.(`[checkConsistency] ${id}: ${result.rows.length} ${result.findingKind} row(s).`);
     }
 
     const report = formatConsistencyReport(results);
     const preview = document.getElementById('rdf-preview');
     if (preview) preview.value = report;
 
-    const violationCount = results.reduce((sum, result) => sum + result.rows.length, 0);
-    const incompleteCount = results.filter(result => result.notices?.length).length;
-    const message = incompleteCount
-      ? `Consistency check incomplete: ${incompleteCount} check(s) encountered unsupported datatype comparisons; ${violationCount} finding row(s).`
-      : violationCount
-      ? `Consistency checks found ${violationCount} violation row${violationCount === 1 ? '' : 's'}.`
-      : 'Consistency checks found no violation rows.';
-
-    showToast?.(message, incompleteCount || violationCount ? 'warning' : 'success');
-    appendInferenceConsoleLine?.(`[checkConsistency] ${incompleteCount ? "Incomplete" : "Complete"}. ${message}`);
+    const summary = summarizeConsistencyResults(results);
+    const message = `${summary.verdict}. ${summary.violations} violation row(s), ${summary.warnings} warning row(s).`;
+    showToast?.(message, summary.status === 'incomplete' || summary.violations || summary.warnings ? 'warning' : 'success');
+    appendInferenceConsoleLine?.(`[checkConsistency] ${summary.status}. ${message}`);
   } catch (error) {
     console.error('[checkConsistency] failed', error);
     appendInferenceConsoleLine?.(`ERROR: ${error.message || error}`);
@@ -288,43 +283,6 @@ function addOverlayQuadsToStore(store, overlayGraph) {
   for (const quad of overlayGraph.getQuads(null, null, null, null)) {
     store.addQuad(quad);
   }
-}
-
-function formatConsistencyReport(results) {
-  const lines = [
-    'Axiolotl consistency report',
-    `Generated: ${new Date().toISOString()}`,
-    '',
-  ];
-
-  for (const result of results) {
-    lines.push(`${result.id}: ${result.rows.length} violation row(s)`);
-    for (const notice of result.notices || []) lines.push(`  COVERAGE NOTICE: ${notice}`);
-    result.rows.slice(0, 25).forEach((row, index) => {
-      lines.push(`  ${index + 1}. ${formatBindingRow(row)}`);
-    });
-    if (result.rows.length > 25) {
-      lines.push(`  ... ${result.rows.length - 25} additional row(s) omitted from preview`);
-    }
-    lines.push('');
-  }
-
-  return lines.join('\n');
-}
-
-function formatBindingRow(row) {
-  const entries = Object.entries(row);
-  if (!entries.length) return '(no bindings)';
-  return entries
-    .map(([key, value]) => `${key}=${formatTerm(value)}`)
-    .join(', ');
-}
-
-function formatTerm(term) {
-  if (!term) return '';
-  if (typeof term === 'string') return term;
-  if (term.termType === 'Literal') return JSON.stringify(term.value);
-  return term.value || String(term);
 }
 
 function getInferenceTaskMode() {

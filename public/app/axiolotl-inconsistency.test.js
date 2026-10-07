@@ -193,3 +193,12 @@ test('RDF/JS variable keys preserve every evidence column', async () => {
   const result = await runInconsistencySelect('disjointWithTypeOverlap', {}, { engine });
   expect(result.rows).toEqual([{ x: entries[0][1], A: entries[1][1], B: entries[2][1] }]);
 });
+
+
+test('heuristic CONSTRUCT reports warnings rather than violations', () => {
+  const query = getInconsistencyQuery('disjointUnionMissingMemberHeuristic', { resultForm: 'construct' });
+  expect(query).toContain('axi:ConsistencyWarning');
+  expect(query).toContain('axi:severity "warning"');
+  expect(query).not.toContain('axi:InconsistencyViolation');
+  expect(listInconsistencyQueries().filter(q => q.findingKind === 'warning')).toHaveLength(2);
+});
