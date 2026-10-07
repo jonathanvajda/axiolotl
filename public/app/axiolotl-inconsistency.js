@@ -6,8 +6,8 @@ import { datatypeComparisonExtensions } from './datatype-value-comparison.js';
 const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
 const RDFS = 'http://www.w3.org/2000/01/rdf-schema#';
 const OWL = 'http://www.w3.org/2002/07/owl#';
-const AXI = 'http://example.org/axiolotl/inconsistency#';
-const HYD = 'http://example.org/hydration/';
+const AXI = 'http://example.org/axiolotl/inconsistency/';
+const HYD = 'http://example.org/axiolotl/hydration/';
 
 const COMMON_PREFIXES = `
 PREFIX rdf:  <${RDF}>

@@ -56,7 +56,7 @@ function stringTerm(value) {
 
 export function datatypeComparisonExtensions(onUnsupported = () => {}) {
   return {
-    'http://example.org/axiolotl/inconsistency#compareValues': ([left, right]) => {
+    'http://example.org/axiolotl/inconsistency/compareValues': ([left, right]) => {
       const comparison = compareDatatypeValues(left, right);
       if (comparison === 'unsupported') onUnsupported(left, right);
       return stringTerm(comparison);

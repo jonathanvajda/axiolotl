@@ -100,7 +100,7 @@ describe('hydration queries', () => {
 
     expect(query).toContain('CONSTRUCT');
     expect(query).toContain('hyd:hydratedFromClass');
-    expect(query).toContain('http://example.org/hydration/node/');
+    expect(query).toContain('http://example.org/axiolotl/hydration/node/');
     expect(query).toContain('<http://example.org/run/1>');
   });
 
