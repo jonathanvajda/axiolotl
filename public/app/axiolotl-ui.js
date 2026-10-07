@@ -245,12 +245,15 @@ async function handleConsistencyRunClick(event) {
     if (preview) preview.value = report;
 
     const violationCount = results.reduce((sum, result) => sum + result.rows.length, 0);
-    const message = violationCount
+    const incompleteCount = results.filter(result => result.notices?.length).length;
+    const message = incompleteCount
+      ? `Consistency check incomplete: ${incompleteCount} check(s) encountered unsupported datatype comparisons; ${violationCount} finding row(s).`
+      : violationCount
       ? `Consistency checks found ${violationCount} violation row${violationCount === 1 ? '' : 's'}.`
       : 'Consistency checks found no violation rows.';
 
-    showToast?.(message, violationCount ? 'warning' : 'success');
-    appendInferenceConsoleLine?.(`[checkConsistency] Complete. ${message}`);
+    showToast?.(message, incompleteCount || violationCount ? 'warning' : 'success');
+    appendInferenceConsoleLine?.(`[checkConsistency] ${incompleteCount ? "Incomplete" : "Complete"}. ${message}`);
   } catch (error) {
     console.error('[checkConsistency] failed', error);
     appendInferenceConsoleLine?.(`ERROR: ${error.message || error}`);
@@ -296,6 +299,7 @@ function formatConsistencyReport(results) {
 
   for (const result of results) {
     lines.push(`${result.id}: ${result.rows.length} violation row(s)`);
+    for (const notice of result.notices || []) lines.push(`  COVERAGE NOTICE: ${notice}`);
     result.rows.slice(0, 25).forEach((row, index) => {
       lines.push(`  ${index + 1}. ${formatBindingRow(row)}`);
     });

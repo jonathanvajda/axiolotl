@@ -42,3 +42,10 @@ The broader manual fixture remains in
 general satisfiability, and synthetic hydration are outside this collection.
 
 Functional-object regression cases cover reverse inequality, both AllDifferent list predicates, equality aliases, and consistent controls. These cases run in Jest using the shipped N3/Comunica bundles.
+
+Datatype/key regression fixtures require `axi:compareValues` from
+`datatype-value-comparison.js` in the Comunica context. The normal SELECT runner
+registers it. `coverageNotice` expectations identify unsupported/invalid values;
+these do not count as detected contradictions. Those cases can be inconsistent
+semantically despite zero findings. Jest exercises these files with the shipped
+engine; datatype scope and key restrictions are documented in the coverage map.

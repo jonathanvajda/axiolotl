@@ -1,0 +1,5 @@
+@prefix ex: <https://example.org/consistency-fixture/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:p a owl:DatatypeProperty, owl:FunctionalProperty .
+ex:x ex:p "1"^^xsd:string, "1"^^xsd:integer .

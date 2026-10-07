@@ -1,0 +1,7 @@
+@prefix ex: <https://example.org/consistency-fixture/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+ex:C a owl:Class; owl:hasKey (ex:k) .
+ex:k a owl:DatatypeProperty .
+ex:a a ex:C; ex:k "01"^^xsd:integer; owl:differentFrom ex:b .
+ex:b a ex:C; ex:k "1.00"^^xsd:decimal .

@@ -1,0 +1,7 @@
+@prefix ex: <https://example.org/class-recognition/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+ex:C a owl:Class .
+ex:R a owl:Restriction; owl:onProperty ex:p; owl:hasValue ex:value .
+ex:C owl:equivalentClass ex:R .
+ex:x ex:p ex:value .

@@ -1,3 +1,4 @@
+import { datatypeComparisonExtensions } from './datatype-value-comparison.js';
 // axiolotl-inference.js
 
 // Dependencies: semantic-core.js and shared RDF/namespace utilities.
@@ -892,7 +893,8 @@ function getConstructQueryForRule(rule) {
     hasvalueclass: `
       CONSTRUCT { ?x rdf:type ?class }
       WHERE {
-        ?class rdfs:subClassOf ?restriction .
+        ?class (owl:equivalentClass|^owl:equivalentClass) ?restriction .
+        FILTER(isIRI(?class))
         ?restriction rdf:type owl:Restriction ;
                      owl:onProperty ?p ;
                      owl:hasValue ?v .
@@ -926,7 +928,8 @@ function getConstructQueryForRule(rule) {
     somevaluesfromclass: `
       CONSTRUCT { ?x rdf:type ?class }
       WHERE {
-        ?class rdfs:subClassOf ?restriction .
+        ?class (owl:equivalentClass|^owl:equivalentClass) ?restriction .
+        FILTER(isIRI(?class))
         ?restriction rdf:type owl:Restriction ;
                      owl:onProperty ?p ;
                      owl:someValuesFrom ?filler .
@@ -1075,6 +1078,7 @@ async function applyConstructWithComunica(constructQuery, rdfjsStore) {
     sources: [{ type: 'rdfjsSource', value: rdfjsStore }],
     baseIRI: 'http://example.org/',
     distinctConstruct: true,
+    extensionFunctions: datatypeComparisonExtensions(),
   });
 
   const quads = await new Promise((resolve, reject) => {

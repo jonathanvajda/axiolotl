@@ -28,12 +28,12 @@ is not evidence of a tested reporting pipeline.
 | `disjointWithTypeOverlap` | Direct contradiction | Available types on both sides of a binary disjointness axiom; includes types inferred from subclass/domain/range rules. |
 | `allDisjointClassesTypeOverlap` | Direct contradiction | Available types overlap two members of an RDF disjoint-class list. |
 | `complementOfTypeOverlap` | Direct contradiction | Available types include a class and its complement; mirrored rows possible. No general class-expression solver. |
-| `datatypeFunctionalPropertyConflict` | Partial contradiction check | Functional property with literal values unequal under SPARQL comparison. No full datatype canonicalization or validation. |
+| `datatypeFunctionalPropertyConflict` | Partial contradiction check | Functional property with literal values proven unequal by the bounded exact value comparator. Supports `xsd:string`, `rdf:langString`, `xsd:boolean`, `xsd:decimal`, and the `xsd:integer` family with range validation. Invalid or unsupported values produce incomplete-coverage notices. |
 | `objectFunctionalPropertyDifferentFromConflict` | Partial contradiction check | Nonliteral functional fillers linked by `owl:differentFrom` in either direction or an `owl:AllDifferent` list, including aliases reached through bidirectional `owl:sameAs` paths. Distinct names alone do not prove inequality. Equality substitution can create repeated/self-inequality evidence. |
 | `negativePropertyAssertionConflict` | Direct contradiction | Positive triple conflicts with a negative assertion using `owl:targetIndividual`. Negative data assertions using `owl:targetValue` are not covered. |
 | `allDifferentSameAsConflict` | Direct contradiction | `owl:AllDifferent` `owl:distinctMembers` list contains two syntactically distinct terms connected by available `owl:sameAs`. Equality may be asserted or materialized. |
 | `allDisjointPropertiesSharedPair` | Direct contradiction | Same subject/object pair uses two members of an `owl:AllDisjointProperties` list. Binary `owl:propertyDisjointWith` is not covered. |
-| `singlePropertyHasKeyDifferentFromConflict` | Partial contradiction check | Exactly one key property; two typed individuals share a value and have available `owl:differentFrom`. No multi-property key processing. |
+| `singlePropertyHasKeyDifferentFromConflict` | Partial contradiction check | Named class, exactly one explicitly typed data/object key property, and named individuals. Data values use the shared bounded comparator; object values must be named and may match through `owl:sameAs`. Inequality uses bidirectional `owl:differentFrom` or `owl:AllDifferent` through equality aliases. No multi-property keys or arbitrary class expressions. |
 | `disjointUnionMissingMemberHeuristic` | Warning, not contradiction | Union instance lacks a known member type. Missing information is compatible with open-world consistency. |
 | `allValuesFromMissingTypeHeuristic` | Warning, not contradiction | Restriction value lacks a known filler type. Warning can disappear after `owl:allValuesFrom` materialization. |
 
@@ -59,9 +59,9 @@ complete OWL 2 EL, DL, or Full reasoning.
 | `owl:FunctionalProperty` | `functional` | SPARQL derives `owl:sameAs` between nonliteral fillers. No general datatype solver. |
 | `owl:InverseFunctionalProperty` | `inversefunctional` | SPARQL derives `owl:sameAs` between subjects sharing an object. |
 | `owl:hasValue` | `hasvalue` | Derives a property assertion for an instance of a class subclassing an `owl:hasValue` restriction. |
-| `owl:hasValue` | `hasvalueclass` | Semantically unsafe reverse inference of class membership from a subclass restriction. Selected by default; can produce false contradictions. |
+| `owl:hasValue` | `hasvalueclass` | Recognizes a named class explicitly equivalent to a matching `owl:hasValue` restriction, in either equivalence direction. Subclass-only restrictions cannot trigger class recognition. |
 | `owl:allValuesFrom` | `allvaluesfrom` | Derives named filler types from a direct superclass restriction; can expose disjointness. No general recursive restriction solver. |
-| `owl:someValuesFrom` | `somevaluesfromclass` | Semantically unsafe reverse inference of class membership from a subclass restriction. Selected by default; can produce false contradictions. No ordinary witness creation. |
+| `owl:someValuesFrom` | `somevaluesfromclass` | Recognizes a named class explicitly equivalent to a matching `owl:someValuesFrom` restriction, in either equivalence direction. Subclass-only restrictions cannot trigger class recognition. No ordinary witness creation. |
 | `owl:intersectionOf` | `intersectionof` | Recognizes an intersection expression when all listed member types are available. No complete normalization or reverse decomposition. |
 | `owl:propertyChainAxiom` | `propertychain` | Exactly two property-chain members. Arbitrary-length chains are unsupported. |
 
@@ -94,12 +94,12 @@ actual comparisons. ELK/profile conformance is not benchmarked here.
 | `owl:AllDisjointClasses` type overlap | Available types and list members | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:complementOf` type overlap | Available types only | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:FunctionalProperty` object-value conflict | Available `owl:differentFrom` or `owl:AllDifferent`, with equality-aware alias matching | OWL 2 DL reasoning | OWL 2 DL reasoning |
-| `owl:FunctionalProperty` literal-value conflict | SPARQL inequality; datatype limitations | OWL 2 DL reasoning | OWL 2 DL reasoning |
+| `owl:FunctionalProperty` literal-value conflict | Exact bounded datatype comparison; unsupported/invalid values yield coverage notices | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:NegativePropertyAssertion` object conflict | Direct `owl:targetIndividual` pattern | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:NegativePropertyAssertion` data conflict | `owl:targetValue` unsupported | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:AllDifferent` equality conflict | Available `owl:sameAs` and `owl:distinctMembers` | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:AllDisjointProperties` shared pair | Direct shared subject/object pair | OWL 2 DL reasoning | OWL 2 DL reasoning |
-| `owl:hasKey` contradiction | Single-property explicit pattern | OWL 2 DL reasoning | OWL 2 DL reasoning |
+| `owl:hasKey` contradiction | Named-class single-property key; typed property, bounded value equality and equality-aware inequality | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:allValuesFrom` filler proven disjoint | Indirectly via materialized filler type and disjointness | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:sameAs` conflicting with `owl:differentFrom` | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:Nothing` membership | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
@@ -137,7 +137,7 @@ proof and should remain isolated from user data.
 
 ## Evidence and readiness
 
-`public/test-fixtures/consistency/manifest.json` lists 42 fixtures spanning all 11
+`public/test-fixtures/consistency/manifest.json` lists 57 fixtures spanning all 11
 registered checks, with controls and stage expectations. Original fixture syntax and 72 stage
 expectations were validated with RDFLib and independent derivations, not a full
 browser N3/Comunica pipeline. Jest includes a real N3 equality convergence test;
@@ -149,8 +149,29 @@ checks after materialization: disjointness 2, complement 2, object functional 4,
 negative assertion 1, AllDifferent 2, key 1. These are smoke observations, not
 HermiT/Pellet comparative benchmark results.
 
-Before declaring the default consistency workflow reliable: correct the reversed
-subclass rules, separate warning totals/verdicts, normalize graph scope, and
+The invalid converse rules have been corrected and tested against the shipped engine.
+Before declaring the default consistency workflow reliable: separate warning totals/verdicts, normalize graph scope, and
 surface incomplete rule execution. Add actual N3/Comunica fixture execution and
 asserted-data prechecks. Satisfiability, query-file extraction, and performance
 comparisons remain deferred; see consistency-scope-and-backlog.md.
+
+## Bounded datatype comparison and key update
+
+`datatype-value-comparison.js` compares integer/decimal values exactly using
+BigInt rational arithmetic, preserving values beyond JavaScript Number precision.
+Integer-derived datatypes enforce their bounds. Boolean lexical aliases and
+case-insensitive language tags are handled. `xsd:float`, `xsd:double`, dates/times,
+custom datatypes, string-derived datatypes, and full datatype-range reasoning
+remain unsupported. No casts between string and numeric value spaces are inferred.
+
+Generated datatype/key queries use `axi:compareValues`, a Comunica extension
+function registered by the SELECT runner and built-in CONSTRUCT adapter. They
+require this extension context when run elsewhere; they are no longer standalone
+portable SPARQL queries. A supplied external CONSTRUCT adapter must register it.
+Unsupported comparisons generate coverage notices in SELECT results and the UI,
+not contradiction rows; ASK/CONSTRUCT forms do not carry that coverage status.
+
+Fifteen additional public fixtures and real bundled-engine tests cover value
+normalization, cross-datatype conflicts, exact large numbers, invalid/unsupported
+values, named-individual/object-witness restrictions, equality aliases, and
+AllDifferent. Multi-property keys and complete OWL datatype reasoning are deferred.

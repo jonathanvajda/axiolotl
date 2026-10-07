@@ -1,3 +1,5 @@
+import { datatypeComparisonExtensions } from './datatype-value-comparison.js';
+
 // axiolotl-inconsistency.js
 // Additive helpers for ontology inconsistency checks and hydration queries.
 
@@ -131,7 +133,7 @@ export function getAllInconsistencySelectQueries(options = {}) {
  * @param {string} id
  * @param {any} rdfjsStore
  * @param {{ engine?: any, baseIRI?: string } & AxiolotlQueryOptions} [options]
- * @returns {Promise<{ id: string, rows: Record<string, any>[] }>}
+ * @returns {Promise<{ id: string, rows: Record<string, any>[], notices?: string[] }>}
  */
 export async function runInconsistencySelect(id, rdfjsStore, options = {}) {
   const queryEngine = resolveComunicaEngine(options.engine);
@@ -143,9 +145,17 @@ export async function runInconsistencySelect(id, rdfjsStore, options = {}) {
   console.info(`[axiolotl-inconsistency] Running ${id}`);
 
   try {
-    const rows = await runSelectWithComunica(queryEngine, query, rdfjsStore, options);
+    const unsupported = new Set();
+    const rows = await runSelectWithComunica(queryEngine, query, rdfjsStore, {
+      ...options,
+      extensionFunctions: datatypeComparisonExtensions((left, right) => {
+        unsupported.add(`${left.datatype?.value || 'unknown'} / ${right.datatype?.value || 'unknown'}`);
+      }),
+    });
     console.info(`[axiolotl-inconsistency] ${id} returned ${rows.length} row(s).`);
-    return { id, rows };
+    return unsupported.size
+      ? { id, rows, notices: [...unsupported].map(pair => `Datatype comparison unsupported or invalid: ${pair}. This check is incomplete for these values.`) }
+      : { id, rows };
   } catch (error) {
     console.error(`[axiolotl-inconsistency] ${id} failed`, error);
     throw error;
@@ -287,7 +297,8 @@ const INCONSISTENCY_QUERIES = Object.freeze({
         ?x ?p ?v1 .
         ?x ?p ?v2 .
       `, options)}
-      FILTER(isLiteral(?v1) && isLiteral(?v2) && ?v1 != ?v2)
+      FILTER(isLiteral(?v1) && isLiteral(?v2) && !sameTerm(?v1, ?v2))
+      FILTER(axi:compareValues(?v1, ?v2) = "unequal")
     `,
   }),
 
@@ -415,12 +426,36 @@ const INCONSISTENCY_QUERIES = Object.freeze({
     id: 'singlePropertyHasKeyDifferentFromConflict',
     label: 'Single-property owl:hasKey differentFrom conflict',
     family: 'key-identity',
-    description: 'Find same-key individuals that are explicitly owl:differentFrom. Single-property keys only.',
-    variables: ['A', 'x1', 'x2', 'k', 'v'],
+    description: 'Find named individuals with equal single-property key values and proven inequality, including equality aliases and AllDifferent.',
+    variables: ['A', 'x1', 'x2', 'k', 'v', 'v2'],
     where: options => `
-      ${scopedWhere('?A owl:hasKey ?keyList .\n?keyList rdf:first ?k .\n?keyList rdf:rest rdf:nil .', options)}
-      ${scopedWhere('?x1 rdf:type ?A .\n?x2 rdf:type ?A .\n?x1 ?k ?v .\n?x2 ?k ?v .\n?x1 owl:differentFrom ?x2 .', options)}
-      FILTER(?x1 != ?x2)
+      ${scopedWhere(`
+        ?A owl:hasKey ?keyList .
+        FILTER(isIRI(?A))
+        ?keyList rdf:first ?k; rdf:rest rdf:nil .
+        ?x1 rdf:type ?A; ?k ?v .
+        ?x2 rdf:type ?A; ?k ?v2 .
+        FILTER(isIRI(?x1) && isIRI(?x2) && !sameTerm(?x1, ?x2))
+        FILTER(IF(isLiteral(?v) && isLiteral(?v2),
+          EXISTS { ?k rdf:type owl:DatatypeProperty } && axi:compareValues(?v, ?v2) = "equal",
+          isIRI(?v) && isIRI(?v2) && EXISTS {
+            ?k rdf:type owl:ObjectProperty .
+            ?v (owl:sameAs|^owl:sameAs)* ?v2 .
+          }
+        ))
+        ?x1 (owl:sameAs|^owl:sameAs)* ?different1 .
+        ?x2 (owl:sameAs|^owl:sameAs)* ?different2 .
+        {
+          ?different1 (owl:differentFrom|^owl:differentFrom) ?different2 .
+        }
+        UNION
+        {
+          ?set rdf:type owl:AllDifferent .
+          ?set (owl:distinctMembers|owl:members)/rdf:rest*/rdf:first ?different1 .
+          ?set (owl:distinctMembers|owl:members)/rdf:rest*/rdf:first ?different2 .
+          FILTER(!sameTerm(?different1, ?different2))
+        }
+      `, options)}
     `,
   }),
 });
@@ -526,9 +561,9 @@ const COVERAGE = Object.freeze([
   coverage('class-complement', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects explicit complement type overlap. It does not attempt full class expression satisfiability.'),
   coverage('property-disjointness', 'OWL2 EL-ish', 'supported', 'Detects shared subject/object pairs for owl:AllDisjointProperties.'),
   coverage('individual-identity', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects owl:AllDifferent conflicts with explicit owl:sameAs. It does not compute complete equality closure by itself.'),
-  coverage('property-cardinality', 'OWL2 DL construct, direct ABox check', 'partial', 'Detects literal functional conflicts and object conflicts from differentFrom or AllDifferent, including sameAs aliases. Arbitrary inferred inequality and full datatype semantics remain unsupported.'),
+  coverage('property-cardinality', 'OWL2 DL construct, direct ABox check', 'partial', 'Detects bounded datatype value conflicts and object conflicts from differentFrom or AllDifferent, including sameAs aliases. Unsupported/invalid datatype comparisons produce coverage notices. Arbitrary inferred inequality remains unsupported.'),
   coverage('negative-assertion', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects explicitly asserted triples that contradict owl:NegativePropertyAssertion nodes.'),
-  coverage('key-identity', 'OWL2 DL construct, direct ABox check', 'partial', 'Single-property owl:hasKey only. Multi-property keys need additional equality joins.'),
+  coverage('key-identity', 'OWL2 DL construct, direct ABox check', 'partial', 'Named-class single-property keys on named individuals only; typed data/object properties, bounded datatype equality, named object witnesses, and explicit/AllDifferent inequality through sameAs aliases. Multi-property keys remain unsupported.'),
   coverage('restriction-heuristic', 'OWL2 DL construct, heuristic', 'partial', 'allValuesFrom missing-type checks are open-world heuristics, not proof of inconsistency.'),
   coverage('implicit-model-hydration', 'OWL2 EL-oriented heuristic', 'partial', 'Hydration creates synthetic witnesses for named classes, named superclasses, and shallow someValuesFrom/intersection patterns.'),
   coverage('full-owl-dl-satisfiability', 'OWL2 DL', 'unsupported', 'No complete tableau reasoning for constructs such as arbitrary allValuesFrom, cardinality, property chains, or complex negation.'),
@@ -613,6 +648,7 @@ async function runSelectWithComunica(queryEngine, query, rdfjsStore, options) {
   const queryOptions = {
     sources: [{ type: 'rdfjsSource', value: rdfjsStore }],
     baseIRI: options.baseIRI || 'http://example.org/',
+    extensionFunctions: options.extensionFunctions || datatypeComparisonExtensions(),
   };
 
   if (typeof queryEngine.queryBindings === 'function') {

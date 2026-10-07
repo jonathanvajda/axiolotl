@@ -808,6 +808,291 @@
         }
       },
       "notes": "Direct check uses equality paths; does not require materialization."
+    },
+    {
+      "id": "datatypeFunctionalPropertyConflict/string-integer-conflict",
+      "checkId": "datatypeFunctionalPropertyConflict",
+      "variant": "string-integer-conflict",
+      "path": "datatypeFunctionalPropertyConflict/string-integer-conflict.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "datatypeFunctionalPropertyConflict/integer-lexical-control",
+      "checkId": "datatypeFunctionalPropertyConflict",
+      "variant": "integer-lexical-control",
+      "path": "datatypeFunctionalPropertyConflict/integer-lexical-control.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "datatypeFunctionalPropertyConflict/integer-decimal-control",
+      "checkId": "datatypeFunctionalPropertyConflict",
+      "variant": "integer-decimal-control",
+      "path": "datatypeFunctionalPropertyConflict/integer-decimal-control.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "datatypeFunctionalPropertyConflict/large-integer-conflict",
+      "checkId": "datatypeFunctionalPropertyConflict",
+      "variant": "large-integer-conflict",
+      "path": "datatypeFunctionalPropertyConflict/large-integer-conflict.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "datatypeFunctionalPropertyConflict/boolean-lexical-control",
+      "checkId": "datatypeFunctionalPropertyConflict",
+      "variant": "boolean-lexical-control",
+      "path": "datatypeFunctionalPropertyConflict/boolean-lexical-control.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "datatypeFunctionalPropertyConflict/unsupported-float",
+      "checkId": "datatypeFunctionalPropertyConflict",
+      "variant": "unsupported-float",
+      "path": "datatypeFunctionalPropertyConflict/unsupported-float.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": true
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": true
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "datatypeFunctionalPropertyConflict/invalid-integer",
+      "checkId": "datatypeFunctionalPropertyConflict",
+      "variant": "invalid-integer",
+      "path": "datatypeFunctionalPropertyConflict/invalid-integer.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": true
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": true
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "singlePropertyHasKeyDifferentFromConflict/numeric-value-collision",
+      "checkId": "singlePropertyHasKeyDifferentFromConflict",
+      "variant": "numeric-value-collision",
+      "path": "singlePropertyHasKeyDifferentFromConflict/numeric-value-collision.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "singlePropertyHasKeyDifferentFromConflict/mixed-datatype-control",
+      "checkId": "singlePropertyHasKeyDifferentFromConflict",
+      "variant": "mixed-datatype-control",
+      "path": "singlePropertyHasKeyDifferentFromConflict/mixed-datatype-control.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "singlePropertyHasKeyDifferentFromConflict/anonymous-individual-control",
+      "checkId": "singlePropertyHasKeyDifferentFromConflict",
+      "variant": "anonymous-individual-control",
+      "path": "singlePropertyHasKeyDifferentFromConflict/anonymous-individual-control.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "singlePropertyHasKeyDifferentFromConflict/anonymous-object-value-control",
+      "checkId": "singlePropertyHasKeyDifferentFromConflict",
+      "variant": "anonymous-object-value-control",
+      "path": "singlePropertyHasKeyDifferentFromConflict/anonymous-object-value-control.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "singlePropertyHasKeyDifferentFromConflict/object-equality-collision",
+      "checkId": "singlePropertyHasKeyDifferentFromConflict",
+      "variant": "object-equality-collision",
+      "path": "singlePropertyHasKeyDifferentFromConflict/object-equality-collision.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "singlePropertyHasKeyDifferentFromConflict/all-different-collision",
+      "checkId": "singlePropertyHasKeyDifferentFromConflict",
+      "variant": "all-different-collision",
+      "path": "singlePropertyHasKeyDifferentFromConflict/all-different-collision.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "singlePropertyHasKeyDifferentFromConflict/reverse-inequality-collision",
+      "checkId": "singlePropertyHasKeyDifferentFromConflict",
+      "variant": "reverse-inequality-collision",
+      "path": "singlePropertyHasKeyDifferentFromConflict/reverse-inequality-collision.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true,
+          "coverageNotice": false
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "singlePropertyHasKeyDifferentFromConflict/unsupported-key-value",
+      "checkId": "singlePropertyHasKeyDifferentFromConflict",
+      "variant": "unsupported-key-value",
+      "path": "singlePropertyHasKeyDifferentFromConflict/unsupported-key-value.ttl",
+      "findingKind": "contradiction",
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": true
+        },
+        "afterMaterialization": {
+          "targetFinding": false,
+          "coverageNotice": true
+        }
+      },
+      "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
     }
   ]
 }
