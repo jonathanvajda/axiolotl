@@ -358,18 +358,44 @@ const INCONSISTENCY_QUERIES = Object.freeze({
     `,
   }),
 
+  sameAsKnownDifferentConflict: makeQueryDefinition({
+    id: 'sameAsKnownDifferentConflict',
+    label: 'owl:sameAs conflicts with known inequality',
+    family: 'individual-identity',
+    description: 'Find equality conflicting with either direction of differentFrom or AllDifferent membership, including bidirectional sameAs paths.',
+    variables: ['a', 'b', 'set', 'inequalitySource'],
+    where: options => `
+      ${scopedWhere(`
+        {
+          ?a (owl:differentFrom|^owl:differentFrom) ?b .
+          BIND("differentFrom" AS ?inequalitySource)
+        }
+        UNION
+        {
+          ?set rdf:type owl:AllDifferent .
+          ?set (owl:distinctMembers|owl:members)/rdf:rest*/rdf:first ?a .
+          ?set (owl:distinctMembers|owl:members)/rdf:rest*/rdf:first ?b .
+          FILTER(!sameTerm(?a, ?b))
+          BIND("AllDifferent" AS ?inequalitySource)
+        }
+        ?a (owl:sameAs|^owl:sameAs)* ?b .
+        FILTER(!isLiteral(?a) && !isLiteral(?b))
+      `, options)}
+    `,
+  }),
+
   allDifferentSameAsConflict: makeQueryDefinition({
     id: 'allDifferentSameAsConflict',
     label: 'owl:AllDifferent sameAs conflict',
     family: 'individual-identity',
-    description: 'Find members of owl:AllDifferent that are also linked with owl:sameAs.',
+    description: 'Find members of owl:AllDifferent that are also connected through bidirectional owl:sameAs paths.',
     variables: ['set', 'a', 'b'],
     where: options => `
       ${scopedWhere(`
         ?set rdf:type owl:AllDifferent ;
-             owl:distinctMembers/rdf:rest*/rdf:first ?a ;
-             owl:distinctMembers/rdf:rest*/rdf:first ?b .
-        ?a owl:sameAs ?b .
+             (owl:distinctMembers|owl:members)/rdf:rest*/rdf:first ?a ;
+             (owl:distinctMembers|owl:members)/rdf:rest*/rdf:first ?b .
+        ?a (owl:sameAs|^owl:sameAs)* ?b .
       `, options)}
       FILTER(?a != ?b)
     `,
@@ -573,7 +599,7 @@ const COVERAGE = Object.freeze([
   coverage('class-disjointness', 'OWL2 EL-ish', 'supported', 'Direct owl:disjointWith and owl:AllDisjointClasses overlaps are checked after available rdf:type materialization.'),
   coverage('class-complement', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects explicit complement type overlap. It does not attempt full class expression satisfiability.'),
   coverage('property-disjointness', 'OWL2 EL-ish', 'supported', 'Detects shared subject/object pairs for owl:AllDisjointProperties.'),
-  coverage('individual-identity', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects owl:AllDifferent conflicts with explicit owl:sameAs. It does not compute complete equality closure by itself.'),
+  coverage('individual-identity', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects equality conflicting with either direction of differentFrom or AllDifferent membership through bidirectional sameAs paths. Available equality may be asserted or materialized; arbitrary inferred inequality remains outside this check.'),
   coverage('property-cardinality', 'OWL2 DL construct, direct ABox check', 'partial', 'Detects bounded datatype value conflicts and object conflicts from differentFrom or AllDifferent, including sameAs aliases. Unsupported/invalid datatype comparisons produce coverage notices. Arbitrary inferred inequality remains unsupported.'),
   coverage('negative-assertion', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects explicitly asserted triples that contradict owl:NegativePropertyAssertion nodes.'),
   coverage('key-identity', 'OWL2 DL construct, direct ABox check', 'partial', 'Named-class single-property keys on named individuals only; typed data/object properties, bounded datatype equality, named object witnesses, and explicit/AllDifferent inequality through sameAs aliases. Multi-property keys remain unsupported.'),

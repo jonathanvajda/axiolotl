@@ -1,0 +1,3 @@
+@prefix ex: <https://example.org/consistency-fixture/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+ex:p a owl:ObjectProperty, owl:InverseFunctionalProperty . ex:a ex:p ex:value; owl:differentFrom ex:b . ex:b ex:p ex:value .

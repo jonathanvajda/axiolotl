@@ -1,0 +1,3 @@
+@prefix ex: <https://example.org/consistency-fixture/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+ex:set a owl:AllDifferent; owl:distinctMembers (ex:a ex:b) . ex:a owl:sameAs ex:c .

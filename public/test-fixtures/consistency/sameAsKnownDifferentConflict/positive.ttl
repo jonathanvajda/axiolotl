@@ -1,0 +1,3 @@
+@prefix ex: <https://example.org/consistency-fixture/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+ex:a owl:sameAs ex:b; owl:differentFrom ex:b .

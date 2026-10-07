@@ -17,7 +17,7 @@ Checks against a remote endpoint are not supported by this UI.
 
 ## Registered checks
 
-The registry contains nine contradiction-pattern checks (some narrowly partial)
+The registry contains ten contradiction-pattern checks (some narrowly partial)
 and two open-world heuristics. SELECT, ASK, and reporting CONSTRUCT query forms
 are generated, but the UI executes SELECT. CONSTRUCT reports require an injected
 `applyConstruct` function or the legacy global adapter; query generation alone
@@ -31,7 +31,8 @@ is not evidence of a tested reporting pipeline.
 | `datatypeFunctionalPropertyConflict` | Partial contradiction check | Functional property with literal values proven unequal by the bounded exact value comparator. Supports `xsd:string`, `rdf:langString`, `xsd:boolean`, `xsd:decimal`, and the `xsd:integer` family with range validation. Invalid or unsupported values produce incomplete-coverage notices. |
 | `objectFunctionalPropertyDifferentFromConflict` | Partial contradiction check | Nonliteral functional fillers linked by `owl:differentFrom` in either direction or an `owl:AllDifferent` list, including aliases reached through bidirectional `owl:sameAs` paths. Distinct names alone do not prove inequality. Equality substitution can create repeated/self-inequality evidence. |
 | `negativePropertyAssertionConflict` | Direct contradiction | Positive triple conflicts with a negative assertion using `owl:targetIndividual`. Negative data assertions using `owl:targetValue` are not covered. |
-| `allDifferentSameAsConflict` | Direct contradiction | `owl:AllDifferent` `owl:distinctMembers` list contains two syntactically distinct terms connected by available `owl:sameAs`. Equality may be asserted or materialized. |
+| `sameAsKnownDifferentConflict` | Direct contradiction | Equality via bidirectional `owl:sameAs` paths conflicts with either direction of `owl:differentFrom` or an `owl:AllDifferent` list. Includes self-inequality. Available equality may be asserted or materialized. |
+| `allDifferentSameAsConflict` | Direct contradiction | `owl:AllDifferent` `owl:distinctMembers` list contains two syntactically distinct terms connected by bidirectional `owl:sameAs` paths. Equality may be asserted or materialized. |
 | `allDisjointPropertiesSharedPair` | Direct contradiction | Same subject/object pair uses two members of an `owl:AllDisjointProperties` list. Binary `owl:propertyDisjointWith` is not covered. |
 | `singlePropertyHasKeyDifferentFromConflict` | Partial contradiction check | Named class, exactly one explicitly typed data/object key property, and named individuals. Data values use the shared bounded comparator; object values must be named and may match through `owl:sameAs`. Inequality uses bidirectional `owl:differentFrom` or `owl:AllDifferent` through equality aliases. No multi-property keys or arbitrary class expressions. |
 | `disjointUnionMissingMemberHeuristic` | Warning, not contradiction | Union instance lacks a known member type. Missing information is compatible with open-world consistency. |
@@ -108,7 +109,7 @@ actual comparisons. ELK/profile conformance is not benchmarked here.
 | `owl:AllDisjointProperties` shared pair | Direct shared subject/object pair | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:hasKey` contradiction | Named-class single-property key; typed property, bounded value equality and equality-aware inequality | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:allValuesFrom` filler proven disjoint | Indirectly via materialized filler type and disjointness | OWL 2 DL reasoning | OWL 2 DL reasoning |
-| `owl:sameAs` conflicting with `owl:differentFrom` | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
+| `owl:sameAs` conflicting with `owl:differentFrom` | `sameAsKnownDifferentConflict`; both directions and equality paths | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:Nothing` membership | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:minCardinality` | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:maxCardinality` | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
@@ -119,7 +120,7 @@ actual comparisons. ELK/profile conformance is not benchmarked here.
 | `owl:IrreflexiveProperty` | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:AsymmetricProperty` | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:propertyDisjointWith` | No dedicated check | OWL 2 DL reasoning | OWL 2 DL reasoning |
-| `owl:InverseFunctionalProperty` inequality conflict | Equality materialized; no dedicated contradiction check | OWL 2 DL reasoning | OWL 2 DL reasoning |
+| `owl:InverseFunctionalProperty` inequality conflict | Materialized equality checked by `sameAsKnownDifferentConflict` | OWL 2 DL reasoning | OWL 2 DL reasoning |
 | `owl:disjointUnionOf` missing member type | Heuristic warning | Missing type alone is not a contradiction | Missing type alone is not a contradiction |
 | `owl:allValuesFrom` missing filler type | Heuristic warning | Missing type alone is not a contradiction | Missing type alone is not a contradiction |
 | Datatype value/range contradictions | Unsupported | Supported datatype semantics | Supported datatype semantics |
@@ -144,7 +145,7 @@ proof and should remain isolated from user data.
 
 ## Evidence and readiness
 
-`public/test-fixtures/consistency/manifest.json` lists 57 fixtures spanning all 11
+`public/test-fixtures/consistency/manifest.json` lists 70 fixtures spanning all 12
 registered checks, with controls and stage expectations. Original fixture syntax and 72 stage
 expectations were validated with RDFLib and independent derivations, not a full
 browser N3/Comunica pipeline. Jest includes a real N3 equality convergence test;
@@ -182,3 +183,20 @@ Fifteen additional public fixtures and real bundled-engine tests cover value
 normalization, cross-datatype conflicts, exact large numbers, invalid/unsupported
 values, named-individual/object-witness restrictions, equality aliases, and
 AllDifferent. Multi-property keys and complete OWL datatype reasoning are deferred.
+
+## General equality conflict coverage
+
+`sameAsKnownDifferentConflict` anchors evidence at the unequal terms and checks
+bidirectional `owl:sameAs` reachability. Its zero-length path also catches explicit
+self-inequality. `owl:AllDifferent` accepts `owl:distinctMembers` and `owl:members`.
+The report includes `?a`, `?b`, optional `?set`, and `?inequalitySource`.
+The existing list-specific check now also supports equality paths and both list
+predicates. Enabling both checks may report the same underlying contradiction;
+row totals are not distinct-contradiction totals. Arbitrary inferred inequality,
+malformed OWL validation, and cross-graph joins remain outside this addition.
+
+Thirteen additional fixtures execute before and after selected inference rules
+using the shipped engine. They include functionality/inverse-functionality derived
+equality, reversed assertions, aliases, self-inequality, and consistent controls.
+The earlier broad-fixture row counts above are historical observations taken
+before this general check was added, not expectations for the expanded registry.

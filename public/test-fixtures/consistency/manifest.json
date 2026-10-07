@@ -1093,6 +1093,249 @@
         }
       },
       "notes": "Bounded datatype/key regression. Unsupported comparisons are not contradiction findings."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/positive",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "positive",
+      "path": "sameAsKnownDifferentConflict/positive.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/reverse-different-from",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "reverse-different-from",
+      "path": "sameAsKnownDifferentConflict/reverse-different-from.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/reverse-same-as",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "reverse-same-as",
+      "path": "sameAsKnownDifferentConflict/reverse-same-as.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/aliased-inequality",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "aliased-inequality",
+      "path": "sameAsKnownDifferentConflict/aliased-inequality.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/all-different",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "all-different",
+      "path": "sameAsKnownDifferentConflict/all-different.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/aliased-all-different",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "aliased-all-different",
+      "path": "sameAsKnownDifferentConflict/aliased-all-different.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/control",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "control",
+      "path": "sameAsKnownDifferentConflict/control.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": false,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/equality-control",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "equality-control",
+      "path": "sameAsKnownDifferentConflict/equality-control.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": false,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/unrelated-all-different-control",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "unrelated-all-different-control",
+      "path": "sameAsKnownDifferentConflict/unrelated-all-different-control.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": false,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/self-inequality",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "self-inequality",
+      "path": "sameAsKnownDifferentConflict/self-inequality.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/after-materialization",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "after-materialization",
+      "path": "sameAsKnownDifferentConflict/after-materialization.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [
+        "functional",
+        "sameas"
+      ],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/after-inverse-functional",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "after-inverse-functional",
+      "path": "sameAsKnownDifferentConflict/after-inverse-functional.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [
+        "inversefunctional",
+        "sameas"
+      ],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
+    },
+    {
+      "id": "sameAsKnownDifferentConflict/all-different-after-materialization",
+      "checkId": "sameAsKnownDifferentConflict",
+      "variant": "all-different-after-materialization",
+      "path": "sameAsKnownDifferentConflict/all-different-after-materialization.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [
+        "functional",
+        "sameas"
+      ],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "General equality versus known inequality; no unique-name assumption."
     }
   ]
 }

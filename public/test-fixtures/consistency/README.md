@@ -1,6 +1,6 @@
 # Consistency fixtures
 
-These public fixtures cover all 11 checks currently registered in
+These public fixtures cover all 12 checks currently registered in
 `public/app/axiolotl-inconsistency.js`. `manifest.json` is the machine-readable
 inventory for automated tests and a future dashboard. Paths are relative to this
 folder. Each fixture is self-contained and uses a fresh store; no imports or
@@ -49,3 +49,8 @@ registers it. `coverageNotice` expectations identify unsupported/invalid values;
 these do not count as detected contradictions. Those cases can be inconsistent
 semantically despite zero findings. Jest exercises these files with the shipped
 engine; datatype scope and key restrictions are documented in the coverage map.
+
+`sameAsKnownDifferentConflict` adds direct and aliased equality/inequality cases,
+self-inequality, controls, and functional/inverse-functional materialization cases.
+The general equality check and list-specific AllDifferent check overlap by design.
+Their report rows should not be summed as unique contradictions.
