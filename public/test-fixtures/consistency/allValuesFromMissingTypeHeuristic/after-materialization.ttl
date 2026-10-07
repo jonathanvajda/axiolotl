@@ -1,0 +1,19 @@
+# Check: allValuesFromMissingTypeHeuristic
+# Case: after-materialization
+# Expected target finding: before=False, after=True
+# Finding kind: warning
+# Materialization rules: subclassof
+# A missing-type warning is not an OWL contradiction.
+
+@prefix ex: <https://example.org/consistency-fixture/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:A a owl:Class; rdfs:subClassOf ex:R .
+ex:R a owl:Restriction; owl:onProperty ex:p; owl:allValuesFrom ex:C .
+ex:C a owl:Class .
+ex:p a owl:ObjectProperty .
+ex:Child a owl:Class; rdfs:subClassOf ex:A .
+ex:x a ex:Child; ex:p ex:y .

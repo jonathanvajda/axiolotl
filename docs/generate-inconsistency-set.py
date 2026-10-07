@@ -1,0 +1,227 @@
+from pathlib import Path
+
+ttl = r'''@prefix ex:   <https://example.org/inconsistency-fixture/> .
+@prefix bfo:  <http://purl.obolibrary.org/obo/BFO_> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+ex:ontology
+    a owl:Ontology ;
+    rdfs:label "OWL inconsistency fixture for HermiT / Pellet / Axiolotl testing" .
+
+#################################################################
+# Supporting class/property axioms
+#################################################################
+
+# Make the BFO top-level disjointness explicit so this fixture is
+# self-contained and does not depend on importing BFO.
+bfo:0000002 a owl:Class ;   # continuant
+    owl:disjointWith bfo:0000003 .  # occurrent
+
+ex:Person a owl:Class .
+ex:Cat a owl:Class .
+ex:Dog a owl:Class ;
+    owl:disjointWith ex:Cat .
+
+ex:Parent a owl:Class .
+ex:Child a owl:Class .
+
+ex:hasSpouse
+    a owl:ObjectProperty, owl:FunctionalProperty .
+
+ex:hasParent
+    a owl:ObjectProperty .
+
+ex:hasAncestor
+    a owl:ObjectProperty, owl:IrreflexiveProperty .
+
+ex:strictlyOlderThan
+    a owl:ObjectProperty, owl:AsymmetricProperty .
+
+ex:likes
+    a owl:ObjectProperty .
+
+ex:forbiddenToLike
+    a owl:ObjectProperty .
+
+#################################################################
+# 1. Instance of two disjoint classes:
+#    BFO Continuant and BFO Occurrent
+#################################################################
+
+ex:continuantOccurrentConflict
+    a bfo:0000002, bfo:0000003 .
+
+#################################################################
+# 2. owl:sameAs + owl:differentFrom contradiction
+#################################################################
+
+ex:sameDifferentA
+    a ex:Person ;
+    owl:sameAs ex:sameDifferentB ;
+    owl:differentFrom ex:sameDifferentB .
+
+ex:sameDifferentB
+    a ex:Person .
+
+#################################################################
+# 3. Complement-class contradiction
+#################################################################
+
+ex:NonCat
+    a owl:Class ;
+    owl:complementOf ex:Cat .
+
+ex:catAndNonCat
+    a ex:Cat, ex:NonCat .
+
+#################################################################
+# 4. Functional object property + explicitly different fillers
+#################################################################
+
+ex:alice
+    a ex:Person ;
+    ex:hasSpouse ex:bob, ex:carol .
+
+ex:bob
+    a ex:Person ;
+    owl:differentFrom ex:carol .
+
+ex:carol
+    a ex:Person .
+
+#################################################################
+# 5. Max-cardinality 1 restriction + two known-different fillers
+#################################################################
+
+ex:AtMostOneParent
+    a owl:Class ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty ex:hasParent ;
+        owl:maxCardinality "1"^^xsd:nonNegativeInteger
+    ] .
+
+ex:dave
+    a ex:AtMostOneParent ;
+    ex:hasParent ex:parent1, ex:parent2 .
+
+ex:parent1
+    owl:differentFrom ex:parent2 .
+
+#################################################################
+# 6. allValuesFrom restriction violated by a value proven disjoint
+#    with the required filler class
+#################################################################
+
+ex:OnlyCatLovers
+    a owl:Class ;
+    rdfs:subClassOf [
+        a owl:Restriction ;
+        owl:onProperty ex:likes ;
+        owl:allValuesFrom ex:Cat
+    ] .
+
+ex:erin
+    a ex:OnlyCatLovers ;
+    ex:likes ex:fido .
+
+ex:fido
+    a ex:Dog .
+
+#################################################################
+# 7. Irreflexive-property contradiction
+#################################################################
+
+ex:frank
+    a ex:Person ;
+    ex:hasAncestor ex:frank .
+
+#################################################################
+# 8. Asymmetric-property contradiction
+#################################################################
+
+ex:gina ex:strictlyOlderThan ex:henry .
+ex:henry ex:strictlyOlderThan ex:gina .
+
+#################################################################
+# 9. NegativePropertyAssertion contradicted by a positive assertion
+#################################################################
+
+ex:ivy ex:forbiddenToLike ex:jack .
+
+[
+    a owl:NegativePropertyAssertion ;
+    owl:sourceIndividual ex:ivy ;
+    owl:assertionProperty ex:forbiddenToLike ;
+    owl:targetIndividual ex:jack
+] .
+
+#################################################################
+# 10. owl:AllDifferent contradicted by owl:sameAs
+#################################################################
+
+ex:kate owl:sameAs ex:luke .
+
+[
+    a owl:AllDifferent ;
+    owl:distinctMembers ( ex:kate ex:luke )
+] .
+
+#################################################################
+# 11. Binary property disjointness contradiction
+#################################################################
+
+ex:likes owl:propertyDisjointWith ex:forbiddenToLike .
+
+ex:mona
+    ex:likes ex:nick ;
+    ex:forbiddenToLike ex:nick .
+
+#################################################################
+# 12. Inverse-functional property + different subjects
+#################################################################
+
+ex:hasGovernmentId
+    a owl:ObjectProperty, owl:InverseFunctionalProperty .
+
+ex:olivia
+    ex:hasGovernmentId ex:id123 ;
+    owl:differentFrom ex:peter .
+
+ex:peter
+    ex:hasGovernmentId ex:id123 .
+
+#################################################################
+# 13. hasKey collision + explicit inequality
+#################################################################
+
+ex:hasEmployeeNumber
+    a owl:DatatypeProperty .
+
+ex:Employee
+    a owl:Class ;
+    owl:hasKey ( ex:hasEmployeeNumber ) .
+
+ex:quinn
+    a ex:Employee ;
+    ex:hasEmployeeNumber "E-100" ;
+    owl:differentFrom ex:riley .
+
+ex:riley
+    a ex:Employee ;
+    ex:hasEmployeeNumber "E-100" .
+
+#################################################################
+# 14. Explicit owl:Nothing membership
+#################################################################
+
+ex:impossibleIndividual
+    a owl:Nothing .
+'''
+
+path = Path("owl-inconsistency-instance-fixture.ttl")
+path.write_text(ttl, encoding="utf-8")
+print(f"Created {path} with {len(ttl.splitlines())} lines.")

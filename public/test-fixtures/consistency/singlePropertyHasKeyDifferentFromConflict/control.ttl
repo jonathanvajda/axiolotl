@@ -1,0 +1,16 @@
+# Check: singlePropertyHasKeyDifferentFromConflict
+# Case: control
+# Expected target finding: before=False, after=False
+# Finding kind: contradiction
+# Materialization rules: subclassof
+
+@prefix ex: <https://example.org/consistency-fixture/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:Employee a owl:Class; owl:hasKey (ex:key) .
+ex:key a owl:DatatypeProperty .
+ex:a a ex:Employee; ex:key "K1"; owl:differentFrom ex:b .
+ex:b a ex:Employee; ex:key "K2" .
