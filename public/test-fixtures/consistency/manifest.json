@@ -700,6 +700,114 @@
         }
       },
       "notes": ""
+    },
+    {
+      "id": "objectFunctionalPropertyDifferentFromConflict/reverse-inequality",
+      "checkId": "objectFunctionalPropertyDifferentFromConflict",
+      "variant": "reverse-inequality",
+      "path": "objectFunctionalPropertyDifferentFromConflict/reverse-inequality.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "Direct check uses equality paths; does not require materialization."
+    },
+    {
+      "id": "objectFunctionalPropertyDifferentFromConflict/all-different",
+      "checkId": "objectFunctionalPropertyDifferentFromConflict",
+      "variant": "all-different",
+      "path": "objectFunctionalPropertyDifferentFromConflict/all-different.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "Direct check uses equality paths; does not require materialization."
+    },
+    {
+      "id": "objectFunctionalPropertyDifferentFromConflict/aliased-inequality",
+      "checkId": "objectFunctionalPropertyDifferentFromConflict",
+      "variant": "aliased-inequality",
+      "path": "objectFunctionalPropertyDifferentFromConflict/aliased-inequality.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "Direct check uses equality paths; does not require materialization."
+    },
+    {
+      "id": "objectFunctionalPropertyDifferentFromConflict/aliased-all-different",
+      "checkId": "objectFunctionalPropertyDifferentFromConflict",
+      "variant": "aliased-all-different",
+      "path": "objectFunctionalPropertyDifferentFromConflict/aliased-all-different.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": true,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": true
+        },
+        "afterMaterialization": {
+          "targetFinding": true
+        }
+      },
+      "notes": "Direct check uses equality paths; does not require materialization."
+    },
+    {
+      "id": "objectFunctionalPropertyDifferentFromConflict/all-different-control",
+      "checkId": "objectFunctionalPropertyDifferentFromConflict",
+      "variant": "all-different-control",
+      "path": "objectFunctionalPropertyDifferentFromConflict/all-different-control.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": false,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false
+        }
+      },
+      "notes": "Direct check uses equality paths; does not require materialization."
+    },
+    {
+      "id": "objectFunctionalPropertyDifferentFromConflict/same-as-control",
+      "checkId": "objectFunctionalPropertyDifferentFromConflict",
+      "variant": "same-as-control",
+      "path": "objectFunctionalPropertyDifferentFromConflict/same-as-control.ttl",
+      "findingKind": "contradiction",
+      "ontologyInconsistent": false,
+      "materializationRules": [],
+      "expected": {
+        "beforeMaterialization": {
+          "targetFinding": false
+        },
+        "afterMaterialization": {
+          "targetFinding": false
+        }
+      },
+      "notes": "Direct check uses equality paths; does not require materialization."
     }
   ]
 }

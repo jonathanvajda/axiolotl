@@ -40,3 +40,5 @@ additional dataset setup (or TriG), since Turtle does not encode named graphs.
 The broader manual fixture remains in
 `docs/owl-inconsistency-instance-fixture.ttl`. Unimplemented roadmap checks,
 general satisfiability, and synthetic hydration are outside this collection.
+
+Functional-object regression cases cover reverse inequality, both AllDifferent list predicates, equality aliases, and consistent controls. These cases run in Jest using the shipped N3/Comunica bundles.

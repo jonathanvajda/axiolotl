@@ -997,6 +997,9 @@ function getConstructQueryForRule(rule) {
  * @returns {Promise<Array<any>>}
  */
 async function runRuleOnce(rule, rdfjsStore) {
+  // Equality substitutes existing terms. Going through CONSTRUCT can rescope
+  // source blank nodes, turning list cells into fresh nodes on every pass.
+  if (rule === 'sameas') return materializeSameAs(rdfjsStore);
   const q = getConstructQueryForRule(rule);
   if (!q) return [];
 
@@ -1017,6 +1020,28 @@ async function runRuleOnce(rule, rdfjsStore) {
     }
     return [];
   }
+}
+
+function materializeSameAs(store) {
+  const { namedNode, quad, defaultGraph } = N3.DataFactory;
+  const sameAs = namedNode(COMMON_NAMESPACE_IRIS.owl.sameAs);
+  const additions = new Map();
+  const add = (subject, predicate, object) => {
+    const candidate = quad(subject, predicate, object, defaultGraph());
+    if (!isSerializableInferenceQuad(candidate)) return;
+    if (store.countQuads(subject, predicate, object, null)) return;
+    additions.set(quadKey(candidate), candidate);
+  };
+
+  // Match the existing rule's default-graph input scope; retain the exact RDF/JS
+  // terms, including distinct blank-node identities, in every substitution.
+  for (const { subject: x, object: y } of store.getQuads(null, sameAs, null, defaultGraph())) {
+    add(y, sameAs, x);
+    for (const { object: z } of store.getQuads(y, sameAs, null, defaultGraph())) add(x, sameAs, z);
+    for (const { predicate, object } of store.getQuads(x, null, null, defaultGraph())) add(y, predicate, object);
+    for (const { subject, predicate } of store.getQuads(null, null, x, defaultGraph())) add(subject, predicate, y);
+  }
+  return [...additions.values()];
 }
 
 function isConstructQueryText(queryText) {

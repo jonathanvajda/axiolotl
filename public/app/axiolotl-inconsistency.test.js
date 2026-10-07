@@ -181,3 +181,15 @@ describe('Comunica select runner compatibility', () => {
     }
   });
 });
+
+
+test('RDF/JS variable keys preserve every evidence column', async () => {
+  const entries = [
+    [{ termType: 'Variable', value: 'x' }, { termType: 'NamedNode', value: 'urn:individual' }],
+    [{ termType: 'Variable', value: 'A' }, { termType: 'NamedNode', value: 'urn:class:A' }],
+    [{ termType: 'Variable', value: 'B' }, { termType: 'NamedNode', value: 'urn:class:B' }],
+  ];
+  const engine = { queryBindings: async () => Readable.from([new Map(entries)]) };
+  const result = await runInconsistencySelect('disjointWithTypeOverlap', {}, { engine });
+  expect(result.rows).toEqual([{ x: entries[0][1], A: entries[1][1], B: entries[2][1] }]);
+});

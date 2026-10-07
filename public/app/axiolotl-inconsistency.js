@@ -295,14 +295,26 @@ const INCONSISTENCY_QUERIES = Object.freeze({
     id: 'objectFunctionalPropertyDifferentFromConflict',
     label: 'Object functional property differentFrom conflict',
     family: 'property-cardinality',
-    description: 'Find object values that violate a functional property via owl:differentFrom.',
+    description: 'Find functional object fillers proven unequal by differentFrom or AllDifferent, including sameAs-linked aliases.',
     variables: ['x', 'p', 'y1', 'y2'],
     where: options => `
       ${scopedWhere(`
         ?p rdf:type owl:FunctionalProperty .
         ?x ?p ?y1 .
         ?x ?p ?y2 .
-        ?y1 owl:differentFrom ?y2 .
+        FILTER(!isLiteral(?y1) && !isLiteral(?y2))
+        ?y1 (owl:sameAs|^owl:sameAs)* ?different1 .
+        ?y2 (owl:sameAs|^owl:sameAs)* ?different2 .
+        {
+          ?different1 (owl:differentFrom|^owl:differentFrom) ?different2 .
+        }
+        UNION
+        {
+          ?differentSet rdf:type owl:AllDifferent .
+          ?differentSet (owl:distinctMembers|owl:members)/rdf:rest*/rdf:first ?different1 .
+          ?differentSet (owl:distinctMembers|owl:members)/rdf:rest*/rdf:first ?different2 .
+          FILTER(!sameTerm(?different1, ?different2))
+        }
       `, options)}
     `,
   }),
@@ -514,7 +526,7 @@ const COVERAGE = Object.freeze([
   coverage('class-complement', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects explicit complement type overlap. It does not attempt full class expression satisfiability.'),
   coverage('property-disjointness', 'OWL2 EL-ish', 'supported', 'Detects shared subject/object pairs for owl:AllDisjointProperties.'),
   coverage('individual-identity', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects owl:AllDifferent conflicts with explicit owl:sameAs. It does not compute complete equality closure by itself.'),
-  coverage('property-cardinality', 'OWL2 DL construct, direct ABox check', 'partial', 'Detects literal functional conflicts and object functional conflicts when owl:differentFrom is explicit.'),
+  coverage('property-cardinality', 'OWL2 DL construct, direct ABox check', 'partial', 'Detects literal functional conflicts and object conflicts from differentFrom or AllDifferent, including sameAs aliases. Arbitrary inferred inequality and full datatype semantics remain unsupported.'),
   coverage('negative-assertion', 'OWL2 DL construct, direct ABox check', 'supported', 'Detects explicitly asserted triples that contradict owl:NegativePropertyAssertion nodes.'),
   coverage('key-identity', 'OWL2 DL construct, direct ABox check', 'partial', 'Single-property owl:hasKey only. Multi-property keys need additional equality joins.'),
   coverage('restriction-heuristic', 'OWL2 DL construct, heuristic', 'partial', 'allValuesFrom missing-type checks are open-world heuristics, not proof of inconsistency.'),
@@ -626,15 +638,19 @@ async function collectTextStream(stream) {
   });
 }
 
+function bindingName(key) {
+  return String(key?.value ?? key).replace(/^\?/, '');
+}
+
 function bindingsToObject(bindings) {
   if (bindings && typeof bindings.entries === 'function') {
-    return Object.fromEntries(Array.from(bindings.entries()).map(([key, value]) => [String(key), value]));
+    return Object.fromEntries(Array.from(bindings.entries()).map(([key, value]) => [bindingName(key), value]));
   }
 
   if (bindings && typeof bindings.forEach === 'function') {
     const row = {};
     bindings.forEach((value, key) => {
-      row[String(key).replace(/^\?/, '')] = value;
+      row[bindingName(key)] = value;
     });
     return row;
   }
