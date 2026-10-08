@@ -618,45 +618,6 @@ function selectUnseen(quads, seenKeys) {
   return { $new: uniq, batchUnique: batchSet.size };
 }
 
-async function insertOverlayIntoEndpoint(overlayGraph, endpointUrl, { mode, graphIRI, authHeaders = {} }) {
-  if (!overlayGraph) throw new Error('Nothing to insert. Run inference first.');
-  if (!endpointUrl) throw new Error('Missing endpoint URL.');
-
-  const { Writer, DataFactory } = N3;
-  const { quad, defaultGraph } = DataFactory;
-
-  // Flatten to triples for INSERT DATA; target graph is controlled by mode/graphIRI.
-  const flattened = overlayGraph
-    .getQuads(null, null, null, null)
-    .map(q => quad(q.subject, q.predicate, q.object, defaultGraph()));
-
-  const nt = await new Promise((resolve, reject) => {
-    const writer = new Writer({ format: 'N-Triples' });
-    writer.addQuads(flattened);
-    writer.end((error, result) => {
-      if (error) reject(error);
-      else resolve((result || '').trim());
-    });
-  });
-
-  const open = (mode === 'named' && graphIRI) ? `GRAPH <${graphIRI}> {` : '';
-  const close = (mode === 'named' && graphIRI) ? `}` : '';
-  const update = `INSERT DATA { ${open}\n${nt}\n${close} }`;
-
-  const res = await fetch(endpointUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/sparql-update', ...authHeaders },
-    body: update
-  });
-
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`Endpoint responded ${res.status}: ${t || res.statusText}`);
-  }
-
-  return true;
-}
-
 /**
  * Returns a SPARQL CONSTRUCT string for a given rule name.
  * Each rule is a single CONSTRUCT query (no semicolons between queries).
@@ -1098,7 +1059,6 @@ export {
   getConstructQueryForRule,
   getSelectedRulesFromCheckboxes,
   inferUntilStable,
-  insertOverlayIntoEndpoint,
   mapFromQuads,
   runInferenceOverlay,
   runRuleOnce,

@@ -1345,9 +1345,6 @@ z" />
 	</nav>-->
 
 	<div class="tabs" role="tablist">
-		<button class="status-row" id="sparql-endpoint-status" class="status-btn status-idle" type="button"
-			aria-live="polite" title="Shows whether a SPARQL endpoint is configured">No SPARQL Endpoint
-			Assigned</button>
 		<button class="tab-btn" role="tab" data-tab="tab-manage-data" aria-controls="tab-manage-data">Manage
 			Data</button>
 		<button class="tab-btn" role="tab" data-tab="tab-query" aria-controls="tab-query">SPARQL Query</button>
@@ -1361,29 +1358,6 @@ z" />
 		<!-- Manage Data Tab -->
 		<div id="tab-manage-data" class="tab-panel" role="tabpanel">
 			<div class="sidebar-left">
-				
-				<h3>Graph Database Settings</h3>
-				<!-- SPARQL Endpoint -->
-				<input type="text" id="endpoint-reference" placeholder="SPARQL Endpoint URL" style="width: 60%">
-				<button id="set-endpoint">Set SPARQL Endpoint</button>
-				<div id="current-endpoint"></div>
-
-				<!-- Auth Method Selection -->
-				<select id="auth-type" style="margin-top: 0.5em;">
-					<option value="none">No Authentication</option>
-					<option value="basic">Basic (username/password)</option>
-					<option value="bearer">Bearer Token</option>
-					<option value="custom">Custom Header</option>
-				</select>
-
-				<!-- Auth Fields -->
-				<div id="auth-fields" style="margin-top: 0.5em;">
-					<!-- Populated dynamically based on selected method -->
-				</div>
-
-				<!-- Set Auth Button -->
-				<button id="set-endpoint-auth">Set SPARQL Authentication</button>
-				<div id="current-endpoint-auth-status"></div>
 			</div>
 			<div class="mid-section">
 				<h3>Add Custom Ontology Files</h3>
@@ -1434,7 +1408,7 @@ z" />
 
 					<button id="clear-active-settings" class="danger">Clear User Settings</button>
 					<small>
-						Clears SPARQL endpoint settings, prefix bindings, and other preferences.
+						Clears prefix bindings and other preferences.
 					</small><br />
 
 					<button id="flush-active-workspace" class="danger">Remove Workspace Databases</button>
@@ -1458,19 +1432,6 @@ z" />
 		<div id="tab-query" class="tab-panel" role="tabpanel">
 			<div id="query-settings-sidebar" class="sidebar-left">
 				<h3>Settings</h3>
-				<div id="endpoint-selection-query">
-					<strong>Select DB to Query:</strong><br />
-					<label for="endpoint-radio">
-						<input type="radio" name="query-source" id="endpoint-radio" value="endpoint">
-						SPARQL Endpoint
-					</label>
-					<label for="indexeddb-radio">
-						<input type="radio" name="query-source" id="indexeddb-radio" value="indexeddb" checked>
-						Active Workspace
-					</label><br />
-					<div id="current-query-endpoint"></div>
-				</div>
-				<br />
 				<div id="rw-controls" style="margin:.5em 0 0.75em 0;">
 					<strong>Select Query Type:</strong><br />
 					<label>
@@ -1647,13 +1608,6 @@ z" />
 						role="img" aria-label="Profile help"
 						title="Axiolotl maximum includes every implemented check, including heuristics. OWL2 EL is ELK-like. OWL2 full is Pellet/HermiT-like, limited to checks implemented in Axiolotl. Direct ABox only avoids heuristic missing-type checks.">?</span>
 					<div id="consistency-rule-options"></div>
-				</div>
-				<div id="endpoint-selection-inference">
-					<strong>Select DB to Reason Over:</strong><br />
-					<label for="reasoner-source-endpoint"><input type="radio" name="reasoner-source"
-							id="reasoner-source-endpoint" value="endpoint"> SPARQL Endpoint</label>
-					<label for="reasoner-source-indexeddb"><input type="radio" name="reasoner-source"
-							id="reasoner-source-indexeddb" value="indexeddb" checked> Active Workspace</label>
 				</div>
 			</div>
 			<div id="inference-main" class="mid-section">

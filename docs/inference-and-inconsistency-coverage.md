@@ -16,7 +16,7 @@ contradiction counts. Deterministic execution does not imply complete OWL semant
 Sources: `public/app/axiolotl-inference.js`, `public/app/axiolotl-inconsistency.js`,
 and `public/app/axiolotl-ui.js`. The normal UI materializes first, then checks the
 active workspace in memory. It does not currently run an asserted-data precheck.
-Checks against a remote endpoint are not supported by this UI.
+Checks run against the browser-local Active Workspace.
 
 ## Registered checks
 

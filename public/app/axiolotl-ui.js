@@ -209,10 +209,6 @@ async function handleConsistencyRunClick(event) {
     setInferenceBusy?.(true);
     appendInferenceConsoleLine?.('[checkConsistency] Starting consistency checks...');
 
-    if (document.getElementById('reasoner-source-endpoint')?.checked) {
-      throw new Error('Consistency checks currently run against the Active Workspace only.');
-    }
-
     if (typeof loadGraphFromIndexedDB !== 'function') {
       throw new Error('loadGraphFromIndexedDB is not available.');
     }

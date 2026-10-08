@@ -169,10 +169,10 @@ describe('Axiolotl shared project triplestore', () => {
     globalThis.indexedDB = originalIndexedDB;
   });
 
-  test('stores and reads SPARQL settings through shared project settings', async () => {
-    await saveSetting('sparqlEndpoint', 'https://example.org/sparql');
+  test('stores and reads user settings through shared project settings', async () => {
+    await saveSetting('activePrefixes', ['rdf', 'owl']);
 
-    await expect(getSetting('sparqlEndpoint')).resolves.toBe('https://example.org/sparql');
+    await expect(getSetting('activePrefixes')).resolves.toEqual(['rdf', 'owl']);
   });
 
   test('stores saved SPARQL queries as project artifacts', async () => {
@@ -261,8 +261,11 @@ describe('Axiolotl shared project triplestore', () => {
       createdAt: '2026-07-01T12:00:00.000Z'
     }]);
     globalThis.indexedDB.seed('SPARQLSettings', 'Settings', [{
-      key: 'sparqlEndpoint',
-      value: 'https://legacy.example/sparql'
+      key: 'activePrefixes',
+      value: ['rdf', 'rdfs']
+    }, {
+      key: 'sparqlAuthToken',
+      value: 'retired-secret'
     }], { keyPath: 'key' });
 
     await expect(getAllTriples()).resolves.toEqual([
@@ -274,6 +277,7 @@ describe('Axiolotl shared project triplestore', () => {
     await expect(getAllSavedQueries()).resolves.toEqual([
       expect.objectContaining({ id: 'query:legacy' })
     ]);
-    await expect(getSetting('sparqlEndpoint')).resolves.toBe('https://legacy.example/sparql');
+    await expect(getSetting('activePrefixes')).resolves.toEqual(['rdf', 'rdfs']);
+    await expect(getSetting('sparqlAuthToken')).resolves.toBeNull();
   });
 });

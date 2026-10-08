@@ -32,6 +32,15 @@ const AXIOLOTL_PROJECT_LABEL = 'Default Cross-App Workspace';
 const QUERY_ARTIFACT_KIND = 'sparql-query';
 const DEFAULT_GRAPH_LABEL = 'Default graph';
 const SPARQL_QUERY_FORMAT_KEY = 'sparqlQuery';
+const RETIRED_REMOTE_ENDPOINT_SETTING_KEYS = new Set([
+  'sparqlEndpoint',
+  'sparqlAuthType',
+  'sparqlAuthToken',
+  'sparqlAuthUser',
+  'sparqlAuthPass',
+  'sparqlAuthHeaderName',
+  'sparqlAuthHeaderValue'
+]);
 
 let portfolioPromise = null;
 let legacyMigrationPromise = null;
@@ -81,6 +90,15 @@ async function migrateLegacyAxiolotlData() {
     stores.settings.listSettingRecords()
   ]);
 
+  await Promise.all(
+    settings
+      .filter((record) => RETIRED_REMOTE_ENDPOINT_SETTING_KEYS.has(record?.key))
+      .map((record) => stores.settings.deleteSettingRecord(record.key))
+  );
+  const retainedSettings = settings.filter(
+    (record) => !RETIRED_REMOTE_ENDPOINT_SETTING_KEYS.has(record?.key)
+  );
+
   if (quadCount === 0) {
     const legacyTriples = await safeReadLegacyRows(LEGACY_TRIPLE_DB_NAME, LEGACY_TRIPLE_STORE_NAME);
     if (legacyTriples.length) {
@@ -102,10 +120,10 @@ async function migrateLegacyAxiolotlData() {
     }
   }
 
-  if (settings.length === 0) {
+  if (retainedSettings.length === 0) {
     const legacySettings = await safeReadLegacyRows(LEGACY_SETTINGS_DB_NAME, LEGACY_SETTINGS_STORE_NAME);
     for (const row of legacySettings) {
-      if (!row?.key) continue;
+      if (!row?.key || RETIRED_REMOTE_ENDPOINT_SETTING_KEYS.has(row.key)) continue;
       await saveSettingInternal(row.key, row.value, {
         migratedFromLegacy: true,
         dispatchEvent: false

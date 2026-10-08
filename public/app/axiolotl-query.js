@@ -5,7 +5,6 @@ import {
   clearInferenceConsole,
   getSelectedRulesFromCheckboxes,
   inferUntilStable,
-  insertOverlayIntoEndpoint,
   setInferenceBusy
 } from './axiolotl-inference.js';
 import {
@@ -21,7 +20,6 @@ import {
   getQueryKind,
   parseIntoNamedGraph,
   runConstructPreview,
-  runQueryOnEndpoint,
   runQueryOnLocalDataset,
   stashGraphToIndexedDB
 } from './comunica-indexeddb-bridge.js';
@@ -467,7 +465,7 @@ async function runInference() {
   }
 }
 
-// Insert overlay graph into SPARQL endpoint
+// Save an inferred overlay graph to the local workspace.
 async function saveOverlayToIndexedDB(overlayGraph, { mode, graphIRI }) {
   if (!overlayGraph) throw new Error('No overlay graph to save.');
   // one canonical write path (default or named)
@@ -486,24 +484,6 @@ async function saveInferredTriplesToDB() {
     if (debuggingConsoleEnabled) {console.error(e);}
     showToast(e.message || String(e), 'error');
   }
-};
-
-// Insert inferred overlay graph into SPARQL endpoint
-async function insertInferredTriplesIntoEndpoint() {
-  try {
-      const g = window.__lastOverlayGraph;
-      if (!g) throw new Error('Nothing to insert. Run inference first.');
-      const endpointUrl = document.getElementById('endpoint-reference')?.value?.trim();
-      const target = getSaveTarget();
-      if (target.mode === 'named' && !target.graphIRI) {
-        target.graphIRI = makeNamedGraphIRI('http://example.org/inferred');
-      }
-      await insertOverlayIntoEndpoint(g, endpointUrl, { ...target, authHeaders: endpointAuthHeaders });
-      showToast('Inserted inferred data into SPARQL endpoint.', 'success');
-    } catch (e) {
-      if (debuggingConsoleEnabled) {console.error(e);}
-      showToast(e.message || String(e), 'error');
-    }
 };
 
 // Export inferred overlay graph as a file in chosen format
@@ -561,18 +541,6 @@ function addNewFileRow() {
   container.appendChild(row);
 }
 
-// This function shows/hides the save/insert buttons based on reasoner source choice
-function toggleReasonerButtons() {
-  const useDB = document.getElementById('reasoner-source-indexeddb')?.checked;
-  const saveBtn = document.getElementById('save-inferred-to-db');
-  if (saveBtn)   saveBtn.style.display   = useDB ? '' : 'none';
-}
-// run at load + when radios change
-['reasoner-source-indexeddb','reasoner-source-endpoint'].forEach(id=>{
-  document.getElementById(id)?.addEventListener('change', toggleReasonerButtons);
-});
-toggleReasonerButtons();
-
 // Event handlers
 document.getElementById('run-inference')?.addEventListener('click', runInference);
 document.getElementById('save-inferred-to-db')?.addEventListener('click', saveInferredTriplesToDB);
@@ -591,120 +559,6 @@ document.getElementById('add-to-db').addEventListener('click', () => {
   const errors = [];
   const namedGraphError = document.getElementById('namedGraphError');
   addFilesToDB(rows, errors, namedGraphError);
-});
-
-// Auth type selector changes visible fields
-document.getElementById('auth-type').addEventListener('change', () => {
-  const authType = document.getElementById('auth-type').value;
-  const container = document.getElementById('auth-fields');
-  container.innerHTML = '';
-  setAuthTypeFromSettings(authType, container);
-});
-
-// Set auth fields based on saved settings on load
-async function setAuthTypeFromSettings (authType, container) {
-  if (authType === 'basic') {
-    container.innerHTML = `
-      <input type="text" id="auth-username" placeholder="Username" style="width: 40%; margin-right: 1em;">
-      <input type="password" id="auth-password" placeholder="Password" style="width: 40%;">
-    `;
-  } else if (authType === 'bearer') {
-    container.innerHTML = `
-      <input type="text" id="auth-token" placeholder="Bearer token" style="width: 80%;">
-    `;
-  } else if (authType === 'custom') {
-    container.innerHTML = `
-      <input type="text" id="auth-header-name" placeholder="Header Name (e.g., X-API-Key)" style="width: 40%; margin-right: 1em;">
-      <input type="text" id="auth-header-value" placeholder="Header Value" style="width: 40%;">
-    `;
-  }
-};
-
-
-
-// Global variable to hold current auth headers for endpoint queries
-let endpointAuthHeaders = {};
-
-// Helper to read and trim input values
-function readValue(id) { return (document.getElementById(id)?.value || '').trim(); }
-
-// Set and persist SPARQL endpoint + auth settings
-document.getElementById('set-endpoint-auth')?.addEventListener('click', async () => {
-  const authType = readValue('auth-type');
-  let headers = {};
-  const toSave = { sparqlAuthType: authType }; // keys you can persist
-
-  try {
-    if (authType === 'none') {
-      headers = {};
-      // Clear any previously saved creds
-      toSave.sparqlAuthToken = '';
-      toSave.sparqlAuthUser  = '';
-      toSave.sparqlAuthPass  = '';
-      toSave.sparqlAuthHeaderName  = '';
-      toSave.sparqlAuthHeaderValue = '';
-    }
-
-    else if (authType === 'basic') {
-      const username = readValue('auth-username');
-      const password = readValue('auth-password');
-      if (!username || !password) throw new Error('Username and password are required for Basic auth.');
-      headers = { 'Authorization': `Basic ${btoa(`${username}:${password}`)}` };
-      toSave.sparqlAuthUser = username;
-      toSave.sparqlAuthPass = password;
-    }
-
-    else if (authType === 'bearer') {
-      // Support either #auth-token or legacy #endpoint-authentication
-      const token = readValue('auth-token') || readValue('endpoint-authentication');
-      if (!token) throw new Error('Token is required for Bearer auth.');
-      headers = { 'Authorization': `Bearer ${token}` };
-      toSave.sparqlAuthToken = token;
-    }
-
-    else if (authType === 'custom') {
-      const name  = readValue('auth-header-name');
-      const value = readValue('auth-header-value');
-      if (!name || !value) throw new Error('Header name and value are required for Custom auth.');
-      headers = { [name]: value };
-      toSave.sparqlAuthHeaderName  = name;
-      toSave.sparqlAuthHeaderValue = value;
-    }
-
-    // 1) make headers available to the query code
-    endpointAuthHeaders = headers;
-
-    // 2) persist settings (adjust if your saveSetting accepts only one key/value)
-    for (const [k, v] of Object.entries(toSave)) {
-      await saveSetting(k, v);
-    }
-    // Fire one event for the batch and repaint:
-    try { notifyIdbChange?.({ db: 'OntologyWorkbenchProjects', store: 'settings', type: 'put' }); } catch {}
-    await refreshSparqlStatus();
-
-    // 3) UI feedback
-    document.getElementById('current-endpoint-auth-status').textContent =
-      authType === 'none' ? 'Auth disabled' : `Auth set for: ${authType}`;
-    showToast(authType === 'none' ? 'Authentication disabled.' : `Authentication set: ${authType}`, 'success');
-
-  } catch (e) {
-    if (debuggingConsoleEnabled) {console.error('[set-endpoint-auth] failed:', e);}
-    showToast(e.message || String(e), 'error');
-  }
-});
-
-// Set and persist SPARQL endpoint URL
-document.getElementById('set-endpoint')?.addEventListener('click', async () => {
-  const endpoint = document.getElementById('endpoint-reference').value;
-  await saveSetting('sparqlEndpoint', endpoint);
-
-  // Tell listeners (and other tabs) that settings changed:
-  try { notifyIdbChange?.({ db: 'OntologyWorkbenchProjects', store: 'settings', type: 'put', key: 'sparqlEndpoint' }); } catch {}
-
-  // Paint immediately in this tab:
-  await refreshSparqlStatus();
-
-  document.getElementById('current-endpoint').textContent = `Current: ${endpoint}`;
 });
 
 // Call this whenever you switch tabs
@@ -764,25 +618,7 @@ document.getElementById('clear-active-settings') ?.addEventListener('click', cle
 // Removes databases
 document.getElementById('flush-active-workspace') ?.addEventListener('click', flushActiveWorkspace);
 
-window.addEventListener('DOMContentLoaded', async () => {
-  // Load saved endpoint + auth settings
-  const endpoint = await getSetting('sparqlEndpoint');
-  if (endpoint) {
-    document.getElementById('endpoint-reference').value = endpoint;
-    document.getElementById('current-endpoint').textContent = `Current: ${endpoint}`;
-  }
-  // Auth type
-  const token = await getSetting('sparqlAuthToken');
-  if (token) {
-    document.getElementById('endpoint-authentication').value = token;
-    document.getElementById('current-endpoint-auth-status').textContent = 'Token loaded';
-  }
-  // Refresh status display
-  await Promise.all([
-    refreshSparqlStatus(),
-    refreshWorkspaceStatus()
-  ]);
-});
+window.addEventListener('DOMContentLoaded', refreshWorkspaceStatus);
 
 // -- UI wire-up: read/write radios --
 const $modeRead  = document.getElementById('mode-read');
@@ -847,7 +683,7 @@ function summarizeResults(results) {
     return { kind: 'select', rowCount: results.length };
   }
 
-  // Endpoint path returns plain bindings array (same detection as above)
+  // Empty or otherwise unclassified binding arrays are SELECT results.
   if (Array.isArray(results)) {
     return { kind: 'select', rowCount: results.length };
   }
@@ -1253,25 +1089,12 @@ function notifyIdbChange(payload) {
 }
 
 // Listen for events
-window.addEventListener('settings-changed', refreshSparqlStatus);
 window.addEventListener('triples-changed', refreshWorkspaceStatus);
 
 bc?.addEventListener('message', (evt) => {
   const { db, store } = evt.data || {};
-  if (db === 'OntologyWorkbenchProjects' && store === 'settings') refreshSparqlStatus();
   if (db === 'OntologyWorkbenchProjects' && store === 'quadRows') refreshWorkspaceStatus();
 });
-
-// PURE: decide what the SPARQL status should look like
-function presentSparqlStatus(hasEndpoint) {
-  return createStatusPresentation({
-    message: hasEndpoint ? 'SPARQL Endpoint Assigned' : 'No SPARQL Endpoint Assigned',
-    severity: hasEndpoint ? 'success' : 'idle',
-    metadata: {
-      isOk: !!hasEndpoint
-    }
-  });
-}
 
 // PURE: decide what the workspace status should look like
 function presentWorkspaceStatus(tripleCount, namedGraphCount) {
@@ -1285,16 +1108,6 @@ function presentWorkspaceStatus(tripleCount, namedGraphCount) {
   });
 }
 
-// IMPURE: apply a presentation to the SPARQL button
-function renderSparqlStatus(pres) {
-  const el = document.getElementById('sparql-endpoint-status');
-  if (!el) return;
-  renderStatusMessage(el, pres, { classPrefix: 'status' });
-  const isOk = !!pres.metadata?.isOk;
-  el.classList.toggle('status-ok', isOk);
-  el.classList.toggle('status-idle', !isOk);
-}
-
 // IMPURE: apply a presentation to the workspace button
 function renderWorkspaceStatus(pres) {
   const el = document.getElementById('active-workspace-status');
@@ -1305,12 +1118,6 @@ function renderWorkspaceStatus(pres) {
   el.classList.toggle('status-idle', !isOk);
 }
 
-// IMPURE: IO -> PURE -> DOM
-// refresh SPARQL status from IndexedDB
-async function refreshSparqlStatus() {
-  const val = await getSetting('sparqlEndpoint');                // IO
-  renderSparqlStatus(presentSparqlStatus(!!(val && val.trim()))); // PURE -> DOM
-}
 // refresh workspace status from IndexedDB
 async function refreshWorkspaceStatus() {
   try {
@@ -1330,10 +1137,7 @@ async function refreshWorkspaceStatus() {
   }
 }
 
-// Initial idle states
-function instantIdleSparqlStatus() {
-  renderSparqlStatus(presentSparqlStatus(false));
-}
+// Initial idle state
 function instantIdleWorkspaceStatus() {
   renderWorkspaceStatus(presentWorkspaceStatus(0, 0));
 }
@@ -1483,16 +1287,14 @@ function getSelectedOutputMime() {
  * Run button handler (Read/Write aware with Preview/Commit for UPDATE).
  * - Builds the final query from active prefixes + editor text.
  * - Validates that the query kind (READ vs UPDATE) matches the chosen UI mode.
- * - READ mode:
- *    * If "endpoint" selected -> runQueryOnEndpoint and render as usual.
- *    * Else -> runQueryOnLocalDataset and render as usual.
+ * - READ mode: runs against the browser-local Active Workspace.
  * - WRITE mode:
  *    * If action=Preview -> transforms UPDATE into 1..n CONSTRUCTs, runs each locally, renders serialized RDF.
  *    * If action=Commit -> materializes INSERT/DELETE deltas against IndexedDB and reports counts.
  *
  * Assumptions:
  *   getActivePrefixes(), buildQuery(prefixes, queryText),
- *   runQueryOnEndpoint(endpoint, query), runQueryOnLocalDataset(selectedGraphs, query),
+ *   runQueryOnLocalDataset(query),
  *   structureQueryResults(response), displayQueryResults(html),
  *   renderQueryError(err), toastFromQueryError(err), showToast(msg, level)
  *
@@ -1521,8 +1323,6 @@ document.getElementById('run-query').onclick = async () => {
     if (debuggingConsoleEnabled) {console.info('[run-query] Start');}
     const prefixes       = getActivePrefixes();
     const queryText      = document.getElementById('sparql-query')?.value ?? '';
-    const useEndpoint    = !!document.getElementById('endpoint-radio')?.checked;
-
     // Read/Write UI state
     const isWriteMode    = !!document.getElementById('mode-write')?.checked;
     const writeAction    = (document.querySelector('input[name="write-action"]:checked')?.value) || 'preview';
@@ -1546,16 +1346,8 @@ document.getElementById('run-query').onclick = async () => {
     // -------------------------------------------------------------------
     if (!isWriteMode) {
       if (debuggingConsoleEnabled) {console.info('[run-query] READ mode');}
-      let response;
-
-      if (useEndpoint) {
-        if (debuggingConsoleEnabled) {console.info('[run-query] Using remote endpoint for READ');}
-        const endpoint = document.getElementById('endpoint-reference')?.value ?? '';
-        response = await runQueryOnEndpoint(endpoint, query, endpointAuthHeaders); // expected { vars, rows } for SELECT
-      } else {
-        if (debuggingConsoleEnabled) {console.info('[run-query] Using local database for READ');}
-        response = await runQueryOnLocalDataset(query);
-      }
+      if (debuggingConsoleEnabled) {console.info('[run-query] Using Active Workspace for READ');}
+      const response = await runQueryOnLocalDataset(query);
 
       // Render using your existing pipeline
       const resultsHtml = structureQueryResults(response);
@@ -1575,14 +1367,6 @@ document.getElementById('run-query').onclick = async () => {
     // WRITE MODE
     // -------------------------------------------------------------------
     if (debuggingConsoleEnabled) {console.info('[run-query] WRITE mode');}
-
-    // Guard: UPDATE queries against remote endpoints are not supported here (preview or commit).
-    if (useEndpoint) {
-      const msg = 'Update queries against a remote endpoint are not supported in this UI. Switch to local database.';
-      if (debuggingConsoleEnabled) {console.warn('[run-query] Blocked UPDATE to endpoint');}
-      showToast(msg, 'warning');
-      return;
-    }
 
     // Safety gate for CLEAR/DROP/LOAD/CREATE/COPY/MOVE/ADD
     if (/\b(CLEAR|DROP|LOAD|CREATE|COPY|MOVE|ADD)\b/i.test(query)) {

@@ -534,25 +534,6 @@ async function collectStreamText(stream) {
   });
 }
 
-// Execute a SPARQL query on a remote SPARQL endpoint
-async function runQueryOnEndpoint(endpoint, query, authHeaders = {}) {
-  const headers = {
-    'Content-Type': 'application/sparql-query',
-    ...authHeaders,
-  };
-  const response = await fetch(endpoint, { method: 'POST', headers, body: query });
-  if (!response.ok) {
-    const txt = await response.text().catch(()=> '');
-    throw new Error(`Endpoint error ${response.status}: ${txt || response.statusText}`);
-  }
-  const data = await response.json();
-  const vars = data?.head?.vars || [];
-  const rows = data?.results?.bindings || [];
-  return { vars, rows };
-}
-
-
-
 /**
 /**
  * Turn an UPDATE into 0..n CONSTRUCT previews.
@@ -900,7 +881,6 @@ export {
   previewInsertFromUpdate,
   queryAllNamedGraphs,
   queryFromNamedGraph,
-  runQueryOnEndpoint,
   runQueryOnLocalDataset,
   runConstructPreview,
   stashGraphToIndexedDB
