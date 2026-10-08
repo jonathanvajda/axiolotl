@@ -2,6 +2,9 @@
 
 Reviewed against the current implementation on 2026-10-07.
 
+For implementation order, architecture diagrams, and the next three milestones,
+see the [consistency roadmap](consistency-roadmap.md).
+
 ## Scope and interpretation
 
 This feature detects selected contradictions in asserted RDF and materialized

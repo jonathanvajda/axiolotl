@@ -2,6 +2,11 @@
 
 Recorded 2026-10-07.
 
+These are historical scope and research notes. The
+[consistency roadmap](consistency-roadmap.md) records current implementation
+status and supersedes the implementation priorities below. Some work described
+here has since been completed; consult the coverage map for current support.
+
 ## Current scope
 
 This feature targets inconsistency detection over asserted RDF and supported
