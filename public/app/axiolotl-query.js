@@ -8,16 +8,17 @@ import {
   setInferenceBusy
 } from './axiolotl-inference.js';
 import {
-  addFilesToDB,
   buildQuery,
   clearActiveSavedQueries,
   clearActiveSettings,
   clearActiveTriples,
   flushActiveWorkspace,
+  isAbsoluteIri,
   loadGraphFromIndexedDB,
   makeNamedGraphIRI,
   makePreviewConstructs,
   getQueryKind,
+  parseRdfTextToGraph,
   runConstructPreview,
   runQueryOnLocalDataset,
   stashGraphToIndexedDB
@@ -32,13 +33,13 @@ import {
   getSetting,
   importSavedQueriesFromCsv,
   saveSavedQuery,
-  saveSetting
+  saveSetting,
+  storeTriplesInNamedGraph
 } from './indexeddb-triplestore.js';
 import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
 import {
   commonSPARQLPrefixes,
   debuggingConsoleEnabled,
-  handleFileUpload,
   showToast,
   toastFromQueryError
 } from './semantic-core.js';
@@ -48,7 +49,8 @@ import {
 } from './axiolotl-workspace-export.js';
 import {
   getMimeTypeForFormatKey,
-  getPreferredExtensionForMimeType
+  getPreferredExtensionForMimeType,
+  getSupportedMimeTypeForFilename
 } from './shared/format-registry/index.js';
 import {
   serializeRdfGraphExport,
@@ -478,38 +480,229 @@ async function exportInferredOverlay() {
   }
 }
 
-// Dynamically add file + IRI input rows
-function createFileInputRow(index) {
-  const row = document.createElement('div');
-  row.classList.add('file-upload-row');
-  row.style.marginBottom = '0.5em';
+const RDF_TYPE_IRI = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+const OWL_ONTOLOGY_IRI = 'http://www.w3.org/2002/07/owl#Ontology';
+const OWL_IMPORTS_IRI = 'http://www.w3.org/2002/07/owl#imports';
+const OWL_VERSION_IRI = 'http://www.w3.org/2002/07/owl#versionIRI';
+const ASSIGNABLE_GRAPH_MIMES = new Set([
+  'text/turtle',
+  'application/n-triples',
+  'application/ld+json'
+]);
+const STAGEABLE_RDF_MIMES = new Set([
+  ...ASSIGNABLE_GRAPH_MIMES,
+  'application/trig',
+  'application/n-quads'
+]);
 
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.classList.add('rdf-file');
-  fileInput.setAttribute('data-index', index);
+let stagedOntologySequence = 0;
+const stagedOntologies = [];
 
-  const iriInput = document.createElement('input');
-  iriInput.type = 'text';
-  iriInput.placeholder = "Named Graph IRI (leave blank for default)";
-  iriInput.classList.add('graph-iri');
-  iriInput.setAttribute('data-index', index);
-  iriInput.style.marginLeft = '1em';
-  iriInput.style.width = '40%';
-
-  row.appendChild(fileInput);
-  row.appendChild(iriInput);
-
-  return row;
+function termLabel(term) {
+  if (!term || term.termType === 'DefaultGraph') return '';
+  return term.termType === 'BlankNode' ? `_:${term.value}` : term.value;
 }
 
-let fileRowCounter = 0;
+function inspectStagedOntology(graph) {
+  const statements = Array.from(graph?.statements || []);
+  const namedGraphs = Array.from(new Set(
+    statements.map(statement => termLabel(statement.why)).filter(Boolean)
+  )).sort();
+  const ontologyIris = new Set();
+  const imports = new Set();
 
-// Add initial row on load
-function addNewFileRow() {
+  for (const statement of statements) {
+    const predicate = statement.predicate?.value;
+    const object = statement.object?.value;
+    if (predicate === RDF_TYPE_IRI && object === OWL_ONTOLOGY_IRI && statement.subject?.value) {
+      ontologyIris.add(statement.subject.value);
+    }
+    if (predicate === OWL_IMPORTS_IRI && object) imports.add(object);
+    if (predicate === OWL_VERSION_IRI && object) ontologyIris.add(object);
+  }
+
+  return {
+    imports: Array.from(imports).sort(),
+    namedGraphs,
+    ontologyIris: Array.from(ontologyIris).sort(),
+    tripleCount: statements.length
+  };
+}
+
+async function stageOntologyFiles(files, suppliesImport = '') {
+  const errors = [];
+  for (const file of Array.from(files || [])) {
+    try {
+      const detected = getSupportedMimeTypeForFilename(file.name);
+      const mimeType = detected.ok && detected.value.category === 'rdf'
+        ? detected.value.mimeType
+        : '';
+      if (!STAGEABLE_RDF_MIMES.has(mimeType)) {
+        throw new Error('Use Turtle, N-Triples, TriG, N-Quads, or JSON-LD.');
+      }
+
+      const text = await readFileAsText(file);
+      const graph = await parseRdfTextToGraph(text, mimeType);
+      const inspection = inspectStagedOntology(graph);
+      stagedOntologies.push({
+        id: `staged-ontology-${stagedOntologySequence++}`,
+        file,
+        graph,
+        mimeType,
+        assignedGraphIri: '',
+        suppliesImport,
+        ...inspection
+      });
+    } catch (error) {
+      errors.push(`${file.name}: ${error.message || error}`);
+    }
+  }
+
+  renderStagedOntologies();
+  const errorElement = document.getElementById('namedGraphError');
+  if (errorElement) errorElement.textContent = errors.join(' | ');
+  if (errors.length) showToast(`Could not stage ${errors.length} file(s).`, 'error');
+}
+
+function renderImportRows(item) {
+  if (!item.imports.length) {
+    return '<p class="staged-ontology-muted">No declared imports found.</p>';
+  }
+
+  return item.imports.map(importIri => {
+    const supplied = stagedOntologies.find(candidate =>
+      candidate.id !== item.id
+      && (candidate.suppliesImport === importIri || candidate.ontologyIris.includes(importIri))
+    );
+    return `
+      <div class="staged-import-row">
+        <div>
+          <span class="staged-import-state" aria-hidden="true">${supplied ? '✓' : '!'}</span>
+          <code>${escapeHtml(importIri)}</code>
+          <div class="staged-ontology-muted">
+            ${supplied ? `Supplied by ${escapeHtml(supplied.file.name)}` : 'File not supplied'}
+          </div>
+        </div>
+        <button type="button" data-add-import="${escapeHtml(importIri)}">
+          ${supplied ? 'Add another file' : 'Add ontology file'}
+        </button>
+      </div>`;
+  }).join('');
+}
+
+function renderGraphControls(item) {
+  if (item.namedGraphs.length) {
+    return `
+      <div class="staged-graph-summary">
+        <strong>Named graph${item.namedGraphs.length === 1 ? '' : 's'} in file</strong>
+        ${item.namedGraphs.map(graph => `<code>${escapeHtml(graph)}</code>`).join('')}
+      </div>`;
+  }
+
+  if (ASSIGNABLE_GRAPH_MIMES.has(item.mimeType)) {
+    return `
+      <label class="staged-graph-assignment">
+        <span>Named graph IRI <small>(optional; blank loads into the default graph)</small></span>
+        <input type="url" class="graph-iri" data-graph-iri-for="${item.id}"
+          value="${escapeHtml(item.assignedGraphIri)}" placeholder="https://example.org/graph">
+      </label>`;
+  }
+
+  return '<div class="staged-graph-summary"><strong>Graph</strong><span>Default graph declared by dataset file</span></div>';
+}
+
+function renderStagedOntologies() {
   const container = document.getElementById('file-upload-container');
-  const row = createFileInputRow(fileRowCounter++);
-  container.appendChild(row);
+  const loadButton = document.getElementById('add-to-db');
+  if (!container) return;
+  if (loadButton) loadButton.disabled = stagedOntologies.length === 0;
+
+  if (!stagedOntologies.length) {
+    container.innerHTML = '<p class="staged-ontology-empty">No files staged.</p>';
+    return;
+  }
+
+  container.innerHTML = stagedOntologies.map(item => `
+    <article class="staged-ontology-card" data-staged-id="${item.id}">
+      <header>
+        <div>
+          <h4>${escapeHtml(item.file.name)}</h4>
+          <div class="staged-ontology-muted">
+            ${escapeHtml(item.mimeType)} · ${item.tripleCount.toLocaleString()} triple${item.tripleCount === 1 ? '' : 's'}
+          </div>
+        </div>
+        <button type="button" class="danger" data-remove-staged="${item.id}">Remove</button>
+      </header>
+      <div class="staged-ontology-metadata">
+        <strong>Ontology IRI</strong>
+        <code>${escapeHtml(item.ontologyIris[0] || 'Not declared')}</code>
+      </div>
+      ${renderGraphControls(item)}
+      <section class="staged-imports">
+        <h5>Declared imports</h5>
+        ${renderImportRows(item)}
+      </section>
+    </article>`).join('');
+
+  container.querySelectorAll('[data-remove-staged]').forEach(button => {
+    button.addEventListener('click', () => {
+      const index = stagedOntologies.findIndex(item => item.id === button.dataset.removeStaged);
+      if (index >= 0) stagedOntologies.splice(index, 1);
+      renderStagedOntologies();
+    });
+  });
+  container.querySelectorAll('[data-graph-iri-for]').forEach(input => {
+    input.addEventListener('input', () => {
+      const item = stagedOntologies.find(candidate => candidate.id === input.dataset.graphIriFor);
+      if (item) item.assignedGraphIri = input.value.trim();
+    });
+  });
+  container.querySelectorAll('[data-add-import]').forEach(button => {
+    button.addEventListener('click', () => openOntologyFilePicker(button.dataset.addImport));
+  });
+}
+
+function openOntologyFilePicker(suppliesImport = '') {
+  const picker = document.getElementById('ontology-file-picker');
+  if (!picker) return;
+  picker.dataset.suppliesImport = suppliesImport;
+  picker.click();
+}
+
+async function loadStagedOntologies() {
+  const errors = [];
+  let loaded = 0;
+  for (const item of stagedOntologies) {
+    try {
+      let statements = item.graph.statements;
+      if (!item.namedGraphs.length && item.assignedGraphIri) {
+        if (!isAbsoluteIri(item.assignedGraphIri)) {
+          throw new Error('Named graph IRI must be an absolute IRI.');
+        }
+        const target = $rdf.graph();
+        const graph = $rdf.sym(item.assignedGraphIri);
+        statements.forEach(statement => target.add(
+          statement.subject,
+          statement.predicate,
+          statement.object,
+          graph
+        ));
+        statements = target.statements;
+      }
+      await storeTriplesInNamedGraph(statements);
+      loaded += 1;
+    } catch (error) {
+      errors.push(`${item.file.name}: ${error.message || error}`);
+    }
+  }
+
+  const errorElement = document.getElementById('namedGraphError');
+  if (errorElement) errorElement.textContent = errors.join(' | ');
+  if (errors.length) {
+    showToast(`Loaded ${loaded} file(s); ${errors.length} failed.`, 'error');
+  } else {
+    showToast(`Loaded ${loaded} staged ontology file${loaded === 1 ? '' : 's'}.`, 'success');
+  }
 }
 
 // Event handlers
@@ -522,15 +715,37 @@ document.getElementById('output-format')?.addEventListener('change', async () =>
   await updatePreviewFromOverlay();
 });
 
-// Event handler for adding new rows
-document.getElementById('add-file-row').addEventListener('click', addNewFileRow);
+document.getElementById('add-file-row')?.addEventListener('click', () => openOntologyFilePicker());
+document.getElementById('add-to-db')?.addEventListener('click', loadStagedOntologies);
 
-document.getElementById('add-to-db').addEventListener('click', () => {
-  const rows = document.querySelectorAll('.file-upload-row');
-  const errors = [];
-  const namedGraphError = document.getElementById('namedGraphError');
-  addFilesToDB(rows, errors, namedGraphError);
+const ontologyPicker = document.getElementById('ontology-file-picker');
+ontologyPicker?.addEventListener('change', async () => {
+  await stageOntologyFiles(ontologyPicker.files, ontologyPicker.dataset.suppliesImport || '');
+  ontologyPicker.value = '';
+  delete ontologyPicker.dataset.suppliesImport;
 });
+
+const ontologyDropZone = document.getElementById('ontology-drop-zone');
+ontologyDropZone?.addEventListener('click', () => openOntologyFilePicker());
+ontologyDropZone?.addEventListener('keydown', event => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    openOntologyFilePicker();
+  }
+});
+for (const eventName of ['dragenter', 'dragover']) {
+  ontologyDropZone?.addEventListener(eventName, event => {
+    event.preventDefault();
+    ontologyDropZone.classList.add('is-dragging');
+  });
+}
+for (const eventName of ['dragleave', 'drop']) {
+  ontologyDropZone?.addEventListener(eventName, event => {
+    event.preventDefault();
+    ontologyDropZone.classList.remove('is-dragging');
+  });
+}
+ontologyDropZone?.addEventListener('drop', event => stageOntologyFiles(event.dataTransfer?.files));
 
 // Call this whenever you switch tabs
 function activateTab(panelId, inferenceMode = 'materialize') {
@@ -581,11 +796,6 @@ function initTabs() {
 window.addEventListener('DOMContentLoaded', () => {
   setInferenceBusy(false);
   initTabs();
-  document.getElementById('file-upload')?.addEventListener('change', async (e) => {
-    for (const file of e.target.files) {
-      await handleFileUpload(file);
-    }
-  });
   document.getElementById('download-overlay')?.addEventListener('click', () => handleDownloadPreview('text/turtle'));
 });
 
@@ -782,7 +992,6 @@ function displayQueryResults(resultsHtml) {
   resultsDiv.innerHTML = resultsHtml;
 }
 
-addNewFileRow(); // start with one row
 hydrateActivePrefixes()
   .catch((error) => {
     if (debuggingConsoleEnabled) console.warn('[hydrateActivePrefixes] failed:', error);

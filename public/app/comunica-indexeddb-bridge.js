@@ -571,45 +571,6 @@ async function flushActiveWorkspace() {
   }
 }
 
-// Row-based uploader: stash each selected file into IndexedDB (skip empty rows)
-async function addFilesToDB(rows, errors, namedGraphError) {
-  for (const row of rows) {
-    const file = row.querySelector('.rdf-file')?.files?.[0];
-    const iriRaw = (row.querySelector('.graph-iri')?.value || '').trim();
-
-    // Skip rows with no file chosen
-    if (!file) continue;
-
-    try {
-      const text = await readFileAsText(file);
-      const detected = getSupportedMimeTypeForFilename(file.name);
-      const mime = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
-
-      const g = $rdf.graph();
-      // 4-arg signature; pass null/undefined for default graph when IRI blank
-      await parseIntoNamedGraph(text, g, iriRaw || null, mime);
-
-      // persist rdflib statements to IndexedDB
-      await storeTriplesInNamedGraph(g.statements);
-      if (debuggingConsoleEnabled) {console.info(`[add-to-db] Stored ${g.statements.length} triples into ${iriRaw ? `<${iriRaw}>` : 'default graph'}`);}
-      const label = iriRaw ? `<${iriRaw}>` : 'default graph';
-      showToast(`Loaded ${g.statements.length} triple(s) into ${label}`, 'success');
-    } catch (e) {
-      errors.push(`Failed to parse ${file?.name || '(no file name)'}: ${e.message}`);
-      if (debuggingConsoleEnabled) {console.error(e);}
-      showToast(`Failed to load ${file?.name || '(file)'}: ${e.message}`, 'error');
-    }
-  }
-
-  if (errors.length) {
-    showToast(`Completed with ${errors.length} error(s). See console for details.`, 'error');
-  } else {
-    showToast('All selected files loaded successfully.', 'success');
-  }
-
-  namedGraphError.textContent = errors.join(' | ');
-};
-
 /**
  * Parse RDF text to an rdflib graph.
  * Pure w.r.t. persistence; returns a new graph.
@@ -863,7 +824,6 @@ async function previewInsertFromUpdate(updateStr, opt={}) {
 
 export {
   clearActiveSavedQueries,
-  addFilesToDB,
   buildQuery,
   clearActiveSettings,
   clearActiveTriples,

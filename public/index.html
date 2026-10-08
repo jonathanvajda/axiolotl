@@ -1360,11 +1360,24 @@ z" />
 			<div class="sidebar-left">
 			</div>
 			<div class="mid-section">
-				<h3>Add Custom Ontology Files</h3>
-				<div id="file-upload-container"><!-- Dynamic file input rows will appear here --></div>
-				<button id="add-file-row">+ Add File</button>
-				<button id="add-to-db">Stash to Active Workspace</button>
-				<span id="namedGraphError" style="color:red"></span>
+				<h3>Stage Ontology Files</h3>
+				<div id="ontology-drop-zone" class="ontology-drop-zone" tabindex="0" role="button"
+					aria-controls="ontology-file-picker"
+					aria-label="Choose ontology files or drop them here">
+					<strong>Drop ontology files here</strong>
+					<span>or click to choose any number of files</span>
+					<small>Turtle, N-Triples, TriG, N-Quads, and JSON-LD</small>
+				</div>
+				<input id="ontology-file-picker" type="file" multiple hidden
+					accept=".ttl,.nt,.trig,.nq,.jsonld,application/ld+json,text/turtle,application/n-triples,application/trig,application/n-quads">
+				<div id="file-upload-container" class="staged-ontology-list" aria-live="polite">
+					<p class="staged-ontology-empty">No files staged.</p>
+				</div>
+				<div class="staged-ontology-actions">
+					<button id="add-file-row" type="button">+ Add ontology files</button>
+					<button id="add-to-db" type="button" class="primary" disabled>Load staged files</button>
+				</div>
+				<span id="namedGraphError" class="staged-ontology-error" role="alert"></span>
 				<div id="graph-list"></div>
 				<br />
 				<br />

@@ -327,8 +327,119 @@ button.prefix-button {
   margin: 0.1em 0.1em;
 }
 
-.file-upload-row input[type="file"] {
-  width: 45%;
+.ontology-drop-zone {
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  min-height: 8rem;
+  padding: 1.25rem;
+  border: 2px dashed var(--ont-border);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--app-control-bg) 75%, transparent);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.ontology-drop-zone:hover,
+.ontology-drop-zone:focus-visible,
+.ontology-drop-zone.is-dragging {
+  border-color: var(--ont-link-hover);
+  background: color-mix(in srgb, var(--ont-focus) 10%, var(--app-control-bg));
+}
+
+.ontology-drop-zone.is-dragging {
+  transform: scale(1.01);
+}
+
+.ontology-drop-zone span,
+.ontology-drop-zone small,
+.staged-ontology-muted {
+  color: var(--ont-muted);
+}
+
+.staged-ontology-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.staged-ontology-empty {
+  padding: 1rem;
+  border: 1px solid var(--ont-border);
+  border-radius: 0.45rem;
+  color: var(--ont-muted);
+  text-align: center;
+}
+
+.staged-ontology-card {
+  padding: 1rem;
+  border: 1px solid var(--ont-border);
+  border-radius: 0.55rem;
+  background: var(--app-control-bg);
+}
+
+.staged-ontology-card > header,
+.staged-import-row,
+.staged-ontology-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.staged-ontology-card h4,
+.staged-ontology-card h5 {
+  margin: 0;
+}
+
+.staged-ontology-metadata,
+.staged-graph-summary,
+.staged-graph-assignment,
+.staged-imports {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+}
+
+.staged-ontology-card code {
+  overflow-wrap: anywhere;
+}
+
+.staged-graph-summary code {
+  display: block;
+}
+
+.staged-graph-assignment input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.staged-imports {
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--ont-border);
+}
+
+.staged-import-row {
+  align-items: flex-start;
+  padding: 0.55rem 0;
+}
+
+.staged-import-state {
+  display: inline-block;
+  width: 1.25rem;
+  font-weight: 700;
+}
+
+.staged-ontology-actions {
+  justify-content: flex-start;
+  margin-top: 1rem;
+}
+
+.staged-ontology-error {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--ont-danger, #b42318);
 }
 
 .workspace-export-panel {
