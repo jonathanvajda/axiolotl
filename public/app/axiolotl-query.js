@@ -18,15 +18,12 @@ import {
   makeNamedGraphIRI,
   makePreviewConstructs,
   getQueryKind,
-  parseIntoNamedGraph,
   runConstructPreview,
   runQueryOnLocalDataset,
   stashGraphToIndexedDB
 } from './comunica-indexeddb-bridge.js';
 import {
   clearSavedQueries,
-  countAllTriples,
-  countNamedGraphs,
   deleteExactTriples,
   deleteSavedQuery,
   exportSavedQueriesAsCsv,
@@ -35,8 +32,7 @@ import {
   getSetting,
   importSavedQueriesFromCsv,
   saveSavedQuery,
-  saveSetting,
-  storeTriplesInNamedGraph
+  saveSetting
 } from './indexeddb-triplestore.js';
 import { COMMON_NAMESPACE_IRIS } from './shared/namespace-registry/index.js';
 import {
@@ -52,8 +48,7 @@ import {
 } from './axiolotl-workspace-export.js';
 import {
   getMimeTypeForFormatKey,
-  getPreferredExtensionForMimeType,
-  getSupportedMimeTypeForFilename
+  getPreferredExtensionForMimeType
 } from './shared/format-registry/index.js';
 import {
   serializeRdfGraphExport,
@@ -62,30 +57,6 @@ import {
 } from './shared/rdf-io/index.js';
 import { createUuid } from './shared/ontology-utils/index.js';
 import { applySparqlUpdateToQuadStore } from './shared/sparql-utils/index.js';
-import {
-  createStatusPresentation,
-  renderStatusMessage
-} from './shared/ui-feedback/index.js';
-
-// Where the ontology files live (folder that also contains ontology-list.json)
-const CANON_ONTOLOGIES_BASE = 'ontology-files/' ;
-const CANON_ONTOLOGIES_LIST = CANON_ONTOLOGIES_BASE + 'ontology-list.json' ;
-
-/**
- * Build a fetchable ontology URL from a name or path
- * @param {*} name 
- * @returns {string} Absolute URL or path
- */
-function buildOntologyUrlFromName(name) {
-  if (!name) return '';
-  if (/^[a-z]+:\/\//i.test(name) || name.startsWith('/')) return name; // already absolute
-  return `${CANON_ONTOLOGIES_BASE.replace(/\/+$/,'')}/${String(name).replace(/^\/+/,'')}`;
-}
-
-// Treat JSON "None" (string) like null
-function nullIfNone(v) {
-  return (v == null || String(v).toLowerCase() === 'none') ? null : v;
-}
 
 // Assumes the commonSPARQLPrefixes enumerages the relevant dictionary
 const defaultActivePrefixes = ['rdfs', 'owl', 'skos'];
@@ -562,9 +533,20 @@ document.getElementById('add-to-db').addEventListener('click', () => {
 });
 
 // Call this whenever you switch tabs
-function activateTab(panelId) {
+function activateTab(panelId, inferenceMode = 'materialize') {
+  if (panelId === 'tab-inference') {
+    const modeInput = document.getElementById('inference-task-mode');
+    if (modeInput && modeInput.value !== inferenceMode) {
+      modeInput.value = inferenceMode;
+      modeInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    const isActive = btn.dataset.tab === panelId;
+    const isRequestedPanel = btn.dataset.tab === panelId;
+    const isRequestedMode = panelId !== 'tab-inference'
+      || (btn.dataset.inferenceMode || 'materialize') === inferenceMode;
+    const isActive = isRequestedPanel && isRequestedMode;
     btn.classList.toggle('active', isActive);
     btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
     btn.tabIndex = isActive ? 0 : -1;
@@ -581,7 +563,10 @@ function initTabs() {
   if (!btns.length) return;
 
   btns.forEach(btn => {
-    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+    btn.addEventListener('click', () => activateTab(
+      btn.dataset.tab,
+      btn.dataset.inferenceMode || 'materialize'
+    ));
   });
 
   // Default: first tab or hash
@@ -601,8 +586,6 @@ window.addEventListener('DOMContentLoaded', () => {
       await handleFileUpload(file);
     }
   });
-  renderOntologyList();
-  document.getElementById('load-selected-ontologies')?.addEventListener('click', loadSelectedOntologiesToDB);
   document.getElementById('download-overlay')?.addEventListener('click', () => handleDownloadPreview('text/turtle'));
 });
 
@@ -617,8 +600,6 @@ document.getElementById('clear-saved-queries') ?.addEventListener('click', clear
 document.getElementById('clear-active-settings') ?.addEventListener('click', clearActiveSettings);
 // Removes databases
 document.getElementById('flush-active-workspace') ?.addEventListener('click', flushActiveWorkspace);
-
-window.addEventListener('DOMContentLoaded', refreshWorkspaceStatus);
 
 // -- UI wire-up: read/write radios --
 const $modeRead  = document.getElementById('mode-read');
@@ -818,63 +799,6 @@ document.querySelectorAll('.tab').forEach((tab, idx) => {
   };
 });
 
-
-/**
- * Loads ontology-list.json and renders the ontology selection list.
- */
-async function renderOntologyList() {
-  const listElem = document.getElementById('ontology-list');
-  listElem.innerHTML = '<li>Loading...</li>';
-
-  try {
-    const resp = await fetch(CANON_ONTOLOGIES_LIST, { cache: 'no-store' });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
-    const data = await resp.json();
-
-    listElem.innerHTML = '';
-    const seenLabels = {};
-
-    data.forEach((entry, idx) => {
-      const labelRaw =
-        nullIfNone(entry['rdfs:label']) ??
-        nullIfNone(entry['dcterms:title']) ??
-        nullIfNone(entry['dc:title']) ??
-        entry['file:name'] ??
-        'Unknown';
-
-      let label = labelRaw;
-      if (seenLabels[label]) {
-        const ver = nullIfNone(entry['owl:versionInfo']) ?? nullIfNone(entry['owl:versionIRI']) ?? idx;
-        label += ` (${ver})`;
-      }
-      seenLabels[label] = true;
-
-      const version  = nullIfNone(entry['owl:versionInfo']) ?? nullIfNone(entry['owl:versionIRI']) ?? '';
-      const dataIri  = nullIfNone(entry['owl:ontologyIRI']) ?? '';
-      const fileName = entry['file:name'] || '';
-      const dataPath = buildOntologyUrlFromName(fileName);
-
-      const warnMissing = !fileName || !dataPath;
-      const li = document.createElement('li');
-      li.style.marginLeft = '1.5em';
-      li.style.marginBottom = '0.4em';
-      li.innerHTML = `
-        <label ${warnMissing ? 'style="color:red;" title="Missing file name"' : ''}>
-          <input type="checkbox" class="ontology-checkbox"
-                 data-path="${dataPath}"
-                 data-iri="${dataIri}"
-                 data-version="${version}">
-          ${label}
-        </label>
-      `;
-      listElem.appendChild(li);
-    });
-  } catch (e) {
-    listElem.innerHTML = '<li style="color:red;">Failed to load ontology list.</li>';
-    if (debuggingConsoleEnabled) {console.error('[renderOntologyList] Error:', e);}
-    showToast('Failed to load ontology list.', 'error');
-  }
-}
 
 /**
  * Build one normalized saved-query record from textarea content.
@@ -1089,115 +1013,6 @@ function notifyIdbChange(payload) {
 }
 
 // Listen for events
-window.addEventListener('triples-changed', refreshWorkspaceStatus);
-
-bc?.addEventListener('message', (evt) => {
-  const { db, store } = evt.data || {};
-  if (db === 'OntologyWorkbenchProjects' && store === 'quadRows') refreshWorkspaceStatus();
-});
-
-// PURE: decide what the workspace status should look like
-function presentWorkspaceStatus(tripleCount, namedGraphCount) {
-  const t = Number(tripleCount) || 0;
-  const g = Number(namedGraphCount) || 0;
-  const isOk = (t > 0 || g > 0);
-  return createStatusPresentation({
-    message: `Active Workspace: ${t} triple${t===1?'':'s'}, ${g} named graph${g===1?'':'s'}`,
-    severity: isOk ? 'success' : 'idle',
-    metadata: { isOk }
-  });
-}
-
-// IMPURE: apply a presentation to the workspace button
-function renderWorkspaceStatus(pres) {
-  const el = document.getElementById('active-workspace-status');
-  if (!el) return;
-  renderStatusMessage(el, pres, { classPrefix: 'status' });
-  const isOk = !!pres.metadata?.isOk;
-  el.classList.toggle('status-ok', isOk);
-  el.classList.toggle('status-idle', !isOk);
-}
-
-// refresh workspace status from IndexedDB
-async function refreshWorkspaceStatus() {
-  try {
-    const [tripleCount, namedGraphCount] = await Promise.all([
-      countAllTriples(),
-      countNamedGraphs()
-    ]);
-
-    renderWorkspaceStatus(
-      presentWorkspaceStatus(tripleCount, namedGraphCount)
-    );
-  } catch (error) {
-    if (debuggingConsoleEnabled) {
-      console.error('[refreshWorkspaceStatus] Failed:', error);
-    }
-    renderWorkspaceStatus(presentWorkspaceStatus(0, 0));
-  }
-}
-
-// Initial idle state
-function instantIdleWorkspaceStatus() {
-  renderWorkspaceStatus(presentWorkspaceStatus(0, 0));
-}
-
-
-
-/**
- * Loads selected ontologies into IndexedDB as named graphs.
- * Updates UI with success/error per ontology and a summary toast.
- * Assumes:
- * - fetch(), parseIntoNamedGraph(text, g, base, mime), storeTriplesInNamedGraph(triples)
- * - showToast(msg, level)
- * - shared format-registry MIME detection
- * - debuggingConsoleEnabled global for logging 
- */
-async function loadSelectedOntologiesToDB() {
-  const checkboxes = document.querySelectorAll('.ontology-checkbox:checked');
-  if (!checkboxes.length) {
-    showToast('No ontologies selected.', 'info');
-    return;
-  }
-
-  let ok = 0, err = 0;
-
-  for (const cb of checkboxes) {
-    const filePath = cb.getAttribute('data-path') || '';
-    const labelEl  = cb.parentElement;
-
-    if (!filePath) {
-      err++; labelEl.style.color = 'red';
-      showToast('Missing file path for a selected ontology.', 'error');
-      continue;
-    }
-
-    try {
-      const resp = await fetch(filePath, { cache: 'no-store' });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-      const text = await resp.text();
-      const detected = getSupportedMimeTypeForFilename(filePath);
-      const mime = detected.ok && detected.value.category === 'rdf' ? detected.value.mimeType : 'text/turtle';
-      const g = $rdf.graph();
-
-      await parseIntoNamedGraph(text, g, null, mime); // default graph
-      await storeTriplesInNamedGraph(g.statements);
-
-      ok++;
-      labelEl.style.fontWeight = 'bold';
-      labelEl.style.color = '#007acc';
-      showToast(`Loaded ${g.statements.length} triple(s) from ${filePath}`, 'success');
-    } catch (e) {
-      err++; labelEl.style.color = 'red';
-      if (debuggingConsoleEnabled) {console.error(`[loadSelectedOntologiesToDB] Failed for ${filePath}:`, e);}
-      showToast(`Failed to load ${filePath}: ${e.message}`, 'error');
-    }
-  }
-
-  showToast(`Done: ${ok} loaded, ${err} failed.`, err ? 'error' : 'success');
-}
-
 // Handle special characters in HTML
 function escapeHtml(value) {
   return String(value ?? '')

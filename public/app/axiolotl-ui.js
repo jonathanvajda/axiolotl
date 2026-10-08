@@ -127,8 +127,9 @@ function syncInferenceTaskUi() {
 
   setHidden('materialization-rule-panel', isConsistency);
   setHidden('consistency-rule-panel', !isConsistency);
-  setText('inference-task-heading', isConsistency ? 'Inference Engine: Consistency Checks' : 'Inference Engine: Forward-Chain Reasoning');
-  setText('run-inference', isConsistency ? 'Check Consistency' : 'Run Inference');
+  setHidden('inference-right-sidebar', isConsistency);
+  setText('inference-task-heading', isConsistency ? 'Check Logical Model' : 'Materialize Inferrable Triples');
+  setText('run-inference', isConsistency ? 'Check Logical Model' : 'Materialize Triples');
   setText('inference-output-label', isConsistency ? 'Consistency report:' : 'Output preview:');
   setMaterializationHelpText(materializationProfileConfig.help);
   setConsistencyHelpText(profileConfig.help);
