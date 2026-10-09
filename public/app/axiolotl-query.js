@@ -576,12 +576,12 @@ function renderImportRows(item) {
     );
     return `
       <div class="staged-import-row">
-        <div>
-          <span class="staged-import-state" aria-hidden="true">${supplied ? '✓' : '!'}</span>
+        <span class="staged-import-state" aria-hidden="true">${supplied ? '&#10003;' : '!'}</span>
+        <div class="staged-import-detail">
           <code>${escapeHtml(importIri)}</code>
-          <div class="staged-ontology-muted">
+          <span class="staged-ontology-muted">
             ${supplied ? `Supplied by ${escapeHtml(supplied.file.name)}` : 'File not supplied'}
-          </div>
+          </span>
         </div>
         <button type="button" data-add-import="${escapeHtml(importIri)}">
           ${supplied ? 'Add another file' : 'Add ontology file'}
@@ -593,22 +593,22 @@ function renderImportRows(item) {
 function renderGraphControls(item) {
   if (item.namedGraphs.length) {
     return `
-      <div class="staged-graph-summary">
-        <strong>Named graph${item.namedGraphs.length === 1 ? '' : 's'} in file</strong>
-        ${item.namedGraphs.map(graph => `<code>${escapeHtml(graph)}</code>`).join('')}
+      <div class="staged-detail-row staged-graph-summary">
+        <strong>Named graph${item.namedGraphs.length === 1 ? '' : 's'}</strong>
+        <div>${item.namedGraphs.map(graph => `<code>${escapeHtml(graph)}</code>`).join('')}</div>
       </div>`;
   }
 
   if (ASSIGNABLE_GRAPH_MIMES.has(item.mimeType)) {
     return `
       <label class="staged-graph-assignment">
-        <span>Named graph IRI <small>(optional; blank loads into the default graph)</small></span>
+        <span><strong>Named graph IRI</strong><small>Optional; blank loads into the default graph</small></span>
         <input type="url" class="graph-iri" data-graph-iri-for="${item.id}"
           value="${escapeHtml(item.assignedGraphIri)}" placeholder="https://example.org/graph">
       </label>`;
   }
 
-  return '<div class="staged-graph-summary"><strong>Graph</strong><span>Default graph declared by dataset file</span></div>';
+  return '<div class="staged-detail-row staged-graph-summary"><strong>Graph</strong><span>Default graph declared by dataset file</span></div>';
 }
 
 function renderStagedOntologies() {
@@ -633,7 +633,7 @@ function renderStagedOntologies() {
         </div>
         <button type="button" class="danger" data-remove-staged="${item.id}">Remove</button>
       </header>
-      <div class="staged-ontology-metadata">
+      <div class="staged-detail-row staged-ontology-metadata">
         <strong>Ontology IRI</strong>
         <code>${escapeHtml(item.ontologyIris[0] || 'Not declared')}</code>
       </div>
@@ -671,7 +671,7 @@ function openOntologyFilePicker(suppliesImport = '') {
 
 async function loadStagedOntologies() {
   const errors = [];
-  let loaded = 0;
+  const loadedFiles = [];
   for (const item of stagedOntologies) {
     try {
       let statements = item.graph.statements;
@@ -690,7 +690,7 @@ async function loadStagedOntologies() {
         statements = target.statements;
       }
       await storeTriplesInNamedGraph(statements);
-      loaded += 1;
+      loadedFiles.push({ name: item.file.name, tripleCount: statements.length });
     } catch (error) {
       errors.push(`${item.file.name}: ${error.message || error}`);
     }
@@ -698,10 +698,22 @@ async function loadStagedOntologies() {
 
   const errorElement = document.getElementById('namedGraphError');
   if (errorElement) errorElement.textContent = errors.join(' | ');
+  const totalTriples = loadedFiles.reduce((sum, file) => sum + file.tripleCount, 0);
+  const breakdown = loadedFiles
+    .map(file => `${file.name}: ${file.tripleCount.toLocaleString()}`)
+    .join('; ');
   if (errors.length) {
-    showToast(`Loaded ${loaded} file(s); ${errors.length} failed.`, 'error');
+    showToast(
+      `Loaded ${loadedFiles.length} file(s) with ${totalTriples.toLocaleString()} total triples; ${errors.length} failed.${breakdown ? ` ${breakdown}` : ''}`,
+      'error',
+      { timeout: Math.min(15000, 8000 + loadedFiles.length * 750) }
+    );
   } else {
-    showToast(`Loaded ${loaded} staged ontology file${loaded === 1 ? '' : 's'}.`, 'success');
+    showToast(
+      `Loaded ${loadedFiles.length} file${loadedFiles.length === 1 ? '' : 's'} with ${totalTriples.toLocaleString()} total triples. ${breakdown}`,
+      'success',
+      { timeout: Math.min(15000, 6500 + loadedFiles.length * 750) }
+    );
   }
 }
 
