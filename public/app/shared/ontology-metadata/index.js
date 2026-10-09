@@ -23,6 +23,7 @@ export {
 
 export {
   appendOntologyMetadataQuads,
+  inspectOntologyDataset,
   readOntologyMetadataRecordFromQuads,
   writeOntologyMetadataQuads
 } from './rdf-metadata.js';

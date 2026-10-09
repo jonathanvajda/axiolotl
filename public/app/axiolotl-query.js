@@ -50,7 +50,9 @@ import {
 import {
   getMimeTypeForFormatKey,
   getPreferredExtensionForMimeType,
-  getSupportedMimeTypeForFilename
+  getRdfAdapterDescriptorForMimeType,
+  getSupportedMimeTypeForFilename,
+  rdfSerializationPreservesNamedGraphs
 } from './shared/format-registry/index.js';
 import {
   serializeRdfGraphExport,
@@ -58,6 +60,7 @@ import {
   serializeRdfDatasetWithAdapters
 } from './shared/rdf-io/index.js';
 import { createUuid } from './shared/ontology-utils/index.js';
+import { inspectOntologyDataset } from './shared/ontology-metadata/index.js';
 import { applySparqlUpdateToQuadStore } from './shared/sparql-utils/index.js';
 
 // Assumes the commonSPARQLPrefixes enumerages the relevant dictionary
@@ -480,54 +483,10 @@ async function exportInferredOverlay() {
   }
 }
 
-const RDF_TYPE_IRI = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
-const OWL_ONTOLOGY_IRI = 'http://www.w3.org/2002/07/owl#Ontology';
-const OWL_IMPORTS_IRI = 'http://www.w3.org/2002/07/owl#imports';
-const OWL_VERSION_IRI = 'http://www.w3.org/2002/07/owl#versionIRI';
-const ASSIGNABLE_GRAPH_MIMES = new Set([
-  'text/turtle',
-  'application/n-triples',
-  'application/ld+json'
-]);
-const STAGEABLE_RDF_MIMES = new Set([
-  ...ASSIGNABLE_GRAPH_MIMES,
-  'application/trig',
-  'application/n-quads'
-]);
+const STAGEABLE_RDF_FORMAT_IDS = new Set(['turtle', 'nTriples', 'trig', 'nQuads', 'jsonLd']);
 
 let stagedOntologySequence = 0;
 const stagedOntologies = [];
-
-function termLabel(term) {
-  if (!term || term.termType === 'DefaultGraph') return '';
-  return term.termType === 'BlankNode' ? `_:${term.value}` : term.value;
-}
-
-function inspectStagedOntology(graph) {
-  const statements = Array.from(graph?.statements || []);
-  const namedGraphs = Array.from(new Set(
-    statements.map(statement => termLabel(statement.why)).filter(Boolean)
-  )).sort();
-  const ontologyIris = new Set();
-  const imports = new Set();
-
-  for (const statement of statements) {
-    const predicate = statement.predicate?.value;
-    const object = statement.object?.value;
-    if (predicate === RDF_TYPE_IRI && object === OWL_ONTOLOGY_IRI && statement.subject?.value) {
-      ontologyIris.add(statement.subject.value);
-    }
-    if (predicate === OWL_IMPORTS_IRI && object) imports.add(object);
-    if (predicate === OWL_VERSION_IRI && object) ontologyIris.add(object);
-  }
-
-  return {
-    imports: Array.from(imports).sort(),
-    namedGraphs,
-    ontologyIris: Array.from(ontologyIris).sort(),
-    tripleCount: statements.length
-  };
-}
 
 async function stageOntologyFiles(files, suppliesImport = '') {
   const errors = [];
@@ -537,13 +496,14 @@ async function stageOntologyFiles(files, suppliesImport = '') {
       const mimeType = detected.ok && detected.value.category === 'rdf'
         ? detected.value.mimeType
         : '';
-      if (!STAGEABLE_RDF_MIMES.has(mimeType)) {
+      const adapter = getRdfAdapterDescriptorForMimeType(mimeType);
+      if (!adapter.ok || !STAGEABLE_RDF_FORMAT_IDS.has(detected.value.id)) {
         throw new Error('Use Turtle, N-Triples, TriG, N-Quads, or JSON-LD.');
       }
 
       const text = await readFileAsText(file);
       const graph = await parseRdfTextToGraph(text, mimeType);
-      const inspection = inspectStagedOntology(graph);
+      const inspection = inspectOntologyDataset(graph);
       stagedOntologies.push({
         id: `staged-ontology-${stagedOntologySequence++}`,
         file,
@@ -599,7 +559,11 @@ function renderGraphControls(item) {
       </div>`;
   }
 
-  if (ASSIGNABLE_GRAPH_MIMES.has(item.mimeType)) {
+  const adapter = getRdfAdapterDescriptorForMimeType(item.mimeType);
+  const canAssignGraph = adapter.ok && (
+    !rdfSerializationPreservesNamedGraphs(item.mimeType) || adapter.value.parserAdapter === 'jsonld'
+  );
+  if (canAssignGraph) {
     return `
       <label class="staged-graph-assignment">
         <span><strong>Named graph IRI</strong><small>Optional; blank loads into the default graph</small></span>

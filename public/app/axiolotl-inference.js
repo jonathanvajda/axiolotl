@@ -15,6 +15,7 @@ import {
   isBlankNodeTerm,
   isAbsoluteIri
 } from './shared/ontology-utils/index.js';
+import { splitSparqlPrologueFromBody } from './shared/sparql-utils/index.js';
 import {
   loadGraphFromIndexedDB,
   stashGraphToIndexedDB
@@ -1009,23 +1010,7 @@ function materializeSameAs(store) {
 }
 
 function isConstructQueryText(queryText) {
-  return /^CONSTRUCT\b/i.test(stripSparqlPrologue(queryText));
-}
-
-function stripSparqlPrologue(queryText) {
-  let text = String(queryText || '').trimStart();
-
-  while (text) {
-    const before = text;
-    text = text
-      .replace(/^PREFIX\s+[\w-]*:\s*<[^>]+>\s*/i, '')
-      .replace(/^BASE\s*<[^>]+>\s*/i, '')
-      .trimStart();
-
-    if (text === before) break;
-  }
-
-  return text;
+  return /^CONSTRUCT\b/i.test(splitSparqlPrologueFromBody(queryText).bodyText);
 }
 
 /**

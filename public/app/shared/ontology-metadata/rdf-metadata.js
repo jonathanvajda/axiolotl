@@ -107,6 +107,55 @@ export function readOntologyMetadataRecordFromQuads(dataset, options = {}) {
   return normalizeOntologyMetadataRecord(record);
 }
 
+/**
+ * Inspects an RDF dataset for ontology declarations, import assertions, and
+ * named graphs. This is the shared read boundary used by ontology-file staging
+ * UIs; callers should not need to duplicate OWL vocabulary matching.
+ *
+ * @param {any} dataset - RDF/JS dataset, quad iterable, or rdflib graph.
+ * @returns {{imports: string[], namedGraphs: string[], ontologyIris: string[], tripleCount: number}}
+ */
+export function inspectOntologyDataset(dataset) {
+  const sourceQuads = Array.isArray(dataset?.statements)
+    ? dataset.statements.map((statement) => ({
+        subject: statement.subject,
+        predicate: statement.predicate,
+        object: statement.object,
+        graph: statement.graph || statement.why
+      }))
+    : dataset;
+  const quads = datasetToQuads(sourceQuads);
+  const ontologyIris = new Set();
+  const imports = new Set();
+  const namedGraphs = new Set();
+
+  for (const item of quads) {
+    const predicateIri = item.predicate?.value;
+    const objectIri = item.object?.value;
+    if (predicateIri === COMMON_NAMESPACE_IRIS.rdf.type &&
+        objectIri === COMMON_NAMESPACE_IRIS.owl.Ontology &&
+        item.subject?.value) {
+      ontologyIris.add(item.subject.value);
+    }
+    if (predicateIri === COMMON_NAMESPACE_IRIS.owl.imports && objectIri) {
+      imports.add(objectIri);
+    }
+    if (predicateIri === COMMON_NAMESPACE_IRIS.owl.versionIRI && objectIri) {
+      ontologyIris.add(objectIri);
+    }
+    if (item.graph?.termType !== 'DefaultGraph' && item.graph?.value) {
+      namedGraphs.add(item.graph.termType === 'BlankNode' ? `_:${item.graph.value}` : item.graph.value);
+    }
+  }
+
+  return {
+    imports: Array.from(imports).sort(),
+    namedGraphs: Array.from(namedGraphs).sort(),
+    ontologyIris: Array.from(ontologyIris).sort(),
+    tripleCount: quads.length
+  };
+}
+
 function findOntologySubjectIri(quads) {
   const declaration = quads.find((item) =>
     item.predicate?.value === COMMON_NAMESPACE_IRIS.rdf.type &&

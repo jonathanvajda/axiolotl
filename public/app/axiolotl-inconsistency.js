@@ -1,22 +1,24 @@
 import { datatypeComparisonExtensions } from './datatype-value-comparison.js';
+import {
+  COMMON_NAMESPACE_IRIS,
+  namespacePrefixMapFromRegistry
+} from './shared/namespace-registry/index.js';
+import { formatSparqlPrefixDeclarations } from './shared/sparql-utils/index.js';
 
 // axiolotl-inconsistency.js
 // Additive helpers for ontology inconsistency checks and hydration queries.
 
-const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
-const RDFS = 'http://www.w3.org/2000/01/rdf-schema#';
-const OWL = 'http://www.w3.org/2002/07/owl#';
 const AXI = 'http://example.org/axiolotl/inconsistency/';
 const HYD = 'http://example.org/axiolotl/hydration/';
-
-const COMMON_PREFIXES = `
-PREFIX rdf:  <${RDF}>
-PREFIX rdfs: <${RDFS}>
-PREFIX owl:  <${OWL}>
-PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
-PREFIX axi:  <${AXI}>
-PREFIX hyd:  <${HYD}>
-`;
+const registryPrefixes = namespacePrefixMapFromRegistry();
+const COMMON_PREFIXES = formatSparqlPrefixDeclarations({
+  rdf: registryPrefixes.rdf,
+  rdfs: registryPrefixes.rdfs,
+  owl: registryPrefixes.owl,
+  xsd: registryPrefixes.xsd,
+  axi: AXI,
+  hyd: HYD
+}).value;
 
 const DEFAULT_QUERY_OPTIONS = Object.freeze({
   scope: 'union',
@@ -730,7 +732,7 @@ function findingEvidence(store, bindings, options) {
     for (const q of quads) {
       if (!resources.has(q.subject.value) && !resources.has(q.object.value)) continue;
       for (const term of [q.subject, q.object]) {
-        if ((term.termType === 'BlankNode' || q.predicate.value === OWL + 'sameAs') && !resources.has(term.value)) {
+        if ((term.termType === 'BlankNode' || q.predicate.value === COMMON_NAMESPACE_IRIS.owl.sameAs) && !resources.has(term.value)) {
           resources.add(term.value); changed = true;
         }
       }

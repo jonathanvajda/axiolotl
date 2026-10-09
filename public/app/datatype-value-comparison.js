@@ -1,6 +1,8 @@
 // Bounded OWL value comparison. Unknown/invalid values are never guessed.
-const XSD = 'http://www.w3.org/2001/XMLSchema#';
-const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+import { COMMON_NAMESPACE_REGISTRY } from './shared/namespace-registry/index.js';
+
+const XSD = COMMON_NAMESPACE_REGISTRY.xsd.namespaceIri;
+const RDF = COMMON_NAMESPACE_REGISTRY.rdf.namespaceIri;
 const integerBounds = {
   integer: [null, null], nonPositiveInteger: [null, 0n], negativeInteger: [null, -1n],
   long: [-(2n ** 63n), 2n ** 63n - 1n], int: [-(2n ** 31n), 2n ** 31n - 1n],
